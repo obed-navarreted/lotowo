@@ -1,0 +1,104 @@
+<header class="page-header">
+  <div class="page-header__copy">
+    <span class="eyebrow">Administración</span>
+    <h1>Comisiones</h1>
+    <p class="page-subtitle">Ventas, premios y comisión histórica de un vendedor.</p>
+  </div>
+  @if (report()) {
+    <button
+      class="button button--primary export-button"
+      type="button"
+      (click)="export()"
+      [disabled]="exporting()"
+    >
+      <lo-icon name="download" [size]="17" />{{ exporting() ? 'Generando…' : 'PDF' }}
+    </button>
+  }
+</header>
+
+<section class="commission-filters card">
+  <label class="seller-field"
+    ><span>Vendedor</span
+    ><select class="select" [(ngModel)]="sellerId">
+      <option value="">Seleccionar vendedor</option>
+      @for (seller of sellers(); track seller.id) {
+        <option [value]="seller.id">{{ seller.fullName }}</option>
+      }
+    </select></label
+  >
+  <label><span>Desde</span><input class="input" type="date" [(ngModel)]="from" /></label>
+  <label><span>Hasta</span><input class="input" type="date" [(ngModel)]="to" /></label>
+  <button class="button button--primary" type="button" (click)="generate()" [disabled]="loading()">
+    {{ loading() ? 'Consultando…' : 'Consultar' }}
+  </button>
+</section>
+
+@if (error()) {
+  <div class="commission-error">{{ error() }}</div>
+}
+
+@if (report(); as detail) {
+  <section class="commission-heading card">
+    <div>
+      <small>Vendedor</small><strong>{{ detail.sellerName }}</strong
+      ><span>{{ date(detail.from) }} al {{ date(detail.to) }}</span>
+    </div>
+    <label class="profit-toggle"
+      ><span
+        ><strong>Incluir utilidad</strong
+        ><small>Agrega el resultado después de premios y comisión al PDF.</small></span
+      ><input type="checkbox" [(ngModel)]="includeProfit"
+    /></label>
+  </section>
+  <section class="commission-metrics">
+    <article class="card">
+      <small>Vendido</small><strong>{{ money(detail.grossSales) }}</strong>
+    </article>
+    <article class="card">
+      <small>Premios</small><strong>{{ money(detail.prizesDue) }}</strong>
+    </article>
+    <article class="card metric--commission">
+      <small>Comisión</small><strong>{{ money(detail.commissionAmount) }}</strong>
+    </article>
+    <article class="card" [class.metric--loss]="detail.netAfterCommission < 0">
+      <small>Utilidad neta</small><strong>{{ money(detail.netAfterCommission) }}</strong>
+    </article>
+  </section>
+  <section class="commission-detail card">
+    <header>
+      <div>
+        <span class="eyebrow">Detalle</span>
+        <h2>Actividad por sorteo</h2>
+      </div>
+      <span>{{ detail.entries.length }} cierres</span>
+    </header>
+    <div class="commission-list">
+      @for (entry of detail.entries; track entry.drawId) {
+        <article>
+          <div class="entry-draw">
+            <small>{{ date(entry.scheduledAt) }}</small
+            ><strong>{{ draw(entry) }}</strong
+            ><span>Ganador {{ entry.winningNumber }}</span>
+          </div>
+          <span
+            ><small>Vendido</small><strong>{{ money(entry.grossSales) }}</strong></span
+          ><span
+            ><small>Premios</small><strong>{{ money(entry.prizesDue) }}</strong></span
+          ><span
+            ><small>Comisión · {{ money(entry.commissionRate) }}%</small
+            ><strong>{{ money(entry.commissionAmount) }}</strong></span
+          ><span class="entry-result" [class.loss]="entry.netAfterCommission < 0"
+            ><small>Utilidad neta</small
+            ><strong>{{ money(entry.netAfterCommission) }}</strong></span
+          >
+        </article>
+      }
+    </div>
+  </section>
+} @else if (!loading()) {
+  <section class="card empty-state">
+    <div>
+      <strong>Selecciona un vendedor</strong>Elige el rango y consulta para preparar su reporte.
+    </div>
+  </section>
+}

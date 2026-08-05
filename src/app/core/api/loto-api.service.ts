@@ -20,6 +20,8 @@ import {
   PushSubscriptionPayload,
   UserNotification,
   NotificationSettings,
+  SellerCommissionReport,
+  WinnerDrawSummary,
 } from '../models/api.models';
 import {
   CreateUserRequest,
@@ -222,13 +224,7 @@ export class LotoApiService {
     return this.http.get<UserAssignments>(`/api/v1/users/${userId}/assignments`);
   }
 
-  updateUserAssignments(
-    userId: string,
-    request: Pick<
-      UserAssignments,
-      'routeId' | 'routeIds'
-    >,
-  ) {
+  updateUserAssignments(userId: string, request: Pick<UserAssignments, 'routeId' | 'routeIds'>) {
     return this.http.put<UserAssignments>(`/api/v1/users/${userId}/assignments`, request);
   }
 
@@ -270,6 +266,18 @@ export class LotoApiService {
     return this.http.get<DrawSettlementReport>(`/api/v1/reports/draws/${drawId}/settlement`, {
       params,
     });
+  }
+
+  getWinnerReports(page = 0, size = 20, from?: string, to?: string) {
+    let params = new HttpParams().set('page', page).set('size', size);
+    if (from) params = params.set('from', from);
+    if (to) params = params.set('to', to);
+    return this.http.get<PageResponse<WinnerDrawSummary>>('/api/v1/reports/winners', { params });
+  }
+
+  getSellerCommissionReport(sellerId: string, from: string, to: string) {
+    const params = new HttpParams().set('sellerId', sellerId).set('from', from).set('to', to);
+    return this.http.get<SellerCommissionReport>('/api/v1/reports/commissions', { params });
   }
 
   getRoutes() {

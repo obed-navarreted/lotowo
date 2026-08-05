@@ -99,6 +99,13 @@ export class AppShell {
       route: '/reports',
       roles: ['ADMIN', 'SUPERVISOR', 'SELLER'],
     },
+    {
+      label: 'Comisiones',
+      shortLabel: 'Comisión',
+      icon: 'chart',
+      route: '/reports/commissions',
+      roles: ['ADMIN'],
+    },
   ];
 
   protected readonly navigation = computed(() => {

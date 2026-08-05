@@ -130,6 +130,12 @@
         </div>
       </div>
       <dl>
+        @if (current.customerName) {
+          <div>
+            <dt>Cliente</dt>
+            <dd>{{ current.customerName }}</dd>
+          </div>
+        }
         <div>
           <dt>Vendedor</dt>
           <dd>{{ current.sellerName }}</dd>

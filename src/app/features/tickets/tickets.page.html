@@ -145,27 +145,48 @@
             <span class="ticket-amount"
               ><small>Total</small><strong>{{ money(ticket.totalAmount) }}</strong></span
             >
-            <lo-icon class="row-arrow" name="arrow" [size]="16" />
           </a>
-          @if (ticket.status === 'ACTIVE') {
-            <button
-              class="ticket-print-button"
-              type="button"
-              (click)="printTicket(ticket)"
-              [disabled]="printingTicketId() !== null"
-              [attr.aria-label]="
-                ticket.printCount
-                  ? 'Reimprimir recibo ' + ticket.receiptNumber
-                  : 'Imprimir recibo ' + ticket.receiptNumber
-              "
-              [title]="ticket.printCount ? 'Reimprimir recibo' : 'Imprimir recibo'"
-            >
-              <lo-icon name="printer" [size]="17" />
-              @if (ticket.printCount) {
-                <span>{{ ticket.printCount }}</span>
+          <footer class="ticket-row__footer">
+            <span class="ticket-state">
+              @if (isWinningTicket(ticket)) {
+                Premiado
+              } @else if (ticket.status === 'REPLACED') {
+                Reemplazado
+              } @else if (ticket.status === 'DELETED') {
+                Eliminado
+              } @else {
+                Válido
               }
-            </button>
-          }
+            </span>
+            <a
+              class="ticket-detail-button"
+              [routerLink]="['/tickets', ticket.id]"
+              [attr.aria-label]="'Ver detalle del recibo ' + ticket.receiptNumber"
+              >Detalle <lo-icon name="arrow" [size]="15"
+            /></a>
+            @if (ticket.status === 'ACTIVE') {
+              <button
+                class="ticket-print-button"
+                type="button"
+                (click)="printTicket(ticket)"
+                [disabled]="printingTicketId() !== null"
+                [attr.aria-label]="
+                  ticket.printCount
+                    ? 'Reimprimir recibo ' + ticket.receiptNumber
+                    : 'Imprimir recibo ' + ticket.receiptNumber
+                "
+                [title]="ticket.printCount ? 'Reimprimir recibo' : 'Imprimir recibo'"
+              >
+                <lo-icon name="printer" [size]="16" />
+                <span class="ticket-print-label">{{
+                  ticket.printCount ? 'Reimprimir' : 'Imprimir'
+                }}</span>
+                @if (ticket.printCount) {
+                  <b class="ticket-print-count">{{ ticket.printCount }}</b>
+                }
+              </button>
+            }
+          </footer>
         </article>
       }
     </div>
@@ -177,11 +198,11 @@
     </div>
   }
   <footer class="ticket-legend" aria-label="Significado de los fondos">
-    <strong>Cómo leer la lista</strong>
-    <span><i class="legend-swatch legend-swatch--valid"></i> Fondo blanco: boleto válido</span>
-    <span><i class="legend-swatch legend-swatch--winner"></i> Fondo dorado: boleto premiado</span>
-    <span><i class="legend-swatch legend-swatch--replaced"></i> Fondo gris: reemplazado</span>
-    <span><i class="legend-swatch legend-swatch--deleted"></i> Fondo rojo: eliminado</span>
+    <strong>Estados</strong>
+    <span><i class="legend-swatch legend-swatch--valid"></i> Válido</span>
+    <span><i class="legend-swatch legend-swatch--winner"></i> Premiado</span>
+    <span><i class="legend-swatch legend-swatch--replaced"></i> Reemplazado</span>
+    <span><i class="legend-swatch legend-swatch--deleted"></i> Eliminado</span>
   </footer>
 </section>
 

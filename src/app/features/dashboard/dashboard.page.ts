@@ -112,12 +112,16 @@ export class DashboardPage {
   }
 
   protected time(value: string): string {
-    return new Intl.DateTimeFormat('es-NI', {
+    const parts = new Intl.DateTimeFormat('en-US', {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
       timeZone: 'America/Managua',
-    }).format(new Date(value));
+    }).formatToParts(new Date(value));
+    const hour = parts.find((part) => part.type === 'hour')?.value ?? '';
+    const minute = parts.find((part) => part.type === 'minute')?.value ?? '00';
+    const period = parts.find((part) => part.type === 'dayPeriod')?.value.toUpperCase() ?? '';
+    return minute === '00' ? `${hour}${period}` : `${hour}:${minute}${period}`;
   }
 
   protected drawLabel(draw: Draw): string {
@@ -130,7 +134,7 @@ export class DashboardPage {
   }
 
   protected statusLabel(draw: Draw): string {
-    if (draw.status === 'OPEN' && !draw.salesEnabled) return 'Ventas bloqueadas';
+    if (draw.status === 'OPEN' && !draw.salesEnabled) return 'Bloqueado';
     return (
       {
         OPEN: 'Abierto',

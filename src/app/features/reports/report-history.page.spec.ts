@@ -79,7 +79,7 @@ describe('ReportHistoryPage', () => {
 
     const result = fixture.nativeElement.querySelector('.draw-result');
     expect(fixture.nativeElement.querySelectorAll('.draw-result').length).toBe(1);
-    expect(result?.textContent).toContain('Ganador');
+    expect(result?.textContent).toContain('Ganó');
     expect(result?.textContent).toContain('03');
     expect(result?.textContent).toContain('Utilidad');
     expect(result?.textContent).toContain('Boletos');

@@ -516,15 +516,25 @@
 }
 @media (max-width: 620px) {
   .exposure-heading {
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .exposure-heading .page-header__copy {
+    width: 100%;
   }
   .heading-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
+    gap: 8px;
   }
   .heading-actions .button {
     min-width: 0;
-    flex: 1;
-    padding: 0 10px;
+    width: 100%;
+    padding: 0 12px;
   }
   .exposure-filters {
     grid-template-columns: 1fr;
@@ -579,9 +589,6 @@
   }
 }
 @media (max-width: 359px) {
-  .heading-actions {
-    gap: 7px;
-  }
   .heading-actions .button {
     gap: 6px;
     padding-inline: 8px;

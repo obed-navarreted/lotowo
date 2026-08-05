@@ -86,18 +86,13 @@ describe('TicketsPage', () => {
     expect(fixture.nativeElement.querySelectorAll('.ticket-row--deleted').length).toBe(1);
     expect(fixture.nativeElement.querySelectorAll('.ticket-row--winner').length).toBe(1);
     expect(fixture.nativeElement.querySelector('.winner-pill')?.textContent).toContain('Premiado');
-    expect(fixture.nativeElement.querySelector('.ticket-legend')?.textContent).toContain(
-      'Fondo blanco: boleto válido',
-    );
-    expect(fixture.nativeElement.querySelector('.ticket-legend')?.textContent).toContain(
-      'Fondo gris: reemplazado',
-    );
-    expect(fixture.nativeElement.querySelector('.ticket-legend')?.textContent).toContain(
-      'Fondo rojo: eliminado',
-    );
-    expect(fixture.nativeElement.querySelector('.ticket-legend')?.textContent).toContain(
-      'Fondo dorado: boleto premiado',
-    );
+    const legend = fixture.nativeElement.querySelector('.ticket-legend')?.textContent;
+    expect(legend).toContain('Válido');
+    expect(legend).toContain('Premiado');
+    expect(legend).toContain('Reemplazado');
+    expect(legend).toContain('Eliminado');
+    expect(fixture.nativeElement.querySelectorAll('.ticket-detail-button').length).toBe(3);
+    expect(fixture.nativeElement.querySelectorAll('.ticket-print-button').length).toBe(1);
   });
 });
 

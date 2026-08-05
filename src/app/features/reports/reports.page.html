@@ -6,14 +6,21 @@
   </div>
   <div class="report-actions">
     <a class="button" routerLink="/reports/history"
-      ><lo-icon name="chart" [size]="17" /> Últimos 15 días</a
-    ><button
+      ><lo-icon name="chart" [size]="17" /> Histórico</a
+    ><a class="button" routerLink="/reports/winners"
+      ><lo-icon name="check" [size]="17" /> Ganadores</a
+    >@if (auth.isAdmin()) {
+      <a class="button" routerLink="/reports/commissions"
+        ><lo-icon name="users" [size]="17" /> Comisiones</a
+      >
+    }
+    <button
       class="button button--primary"
       type="button"
       (click)="exportPdf()"
-      [disabled]="!report()"
+      [disabled]="!report() || exporting()"
     >
-      <lo-icon name="download" [size]="17" /> Exportar PDF
+      <lo-icon name="download" [size]="17" /> {{ exporting() ? 'Generando…' : 'Exportar PDF' }}
     </button>
   </div>
 </header>

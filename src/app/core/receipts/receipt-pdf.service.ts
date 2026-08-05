@@ -9,7 +9,8 @@ export class ReceiptPdfService {
     const isReprint = print.printType === 'REPRINT';
     const showRevision = ticket.revision > 1;
     const pageHeight =
-      88 + ticket.items.length * 7.5 + (isReprint ? 5 : 0) + (showRevision ? 4 : 0);
+      88 + ticket.items.length * 7.5 + (isReprint ? 5 : 0) + (showRevision ? 4 : 0) +
+      (ticket.customerName ? 5 : 0);
     const document = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
@@ -56,6 +57,9 @@ export class ReceiptPdfService {
     this.solidLine(document, left, right, y);
     y += 5;
     y = this.detailRow(document, 'SORTEO', this.draw(ticket), left, right, y, true);
+    if (ticket.customerName) {
+      y = this.detailRow(document, 'CLIENTE', this.clean(ticket.customerName), left, right, y);
+    }
     y += 1;
 
     this.solidLine(document, left, right, y);

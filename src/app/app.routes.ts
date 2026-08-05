@@ -89,11 +89,27 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/reports/report-history.page').then(
             (component) => component.ReportHistoryPage,
+        ),
+      },
+      {
+        path: 'reports/winners',
+        title: 'Detalle de ganadores · Suerte',
+        loadComponent: () =>
+          import('./features/reports/winner-detail.page').then(
+            (component) => component.WinnerDetailPage,
+          ),
+      },
+      {
+        path: 'reports/commissions',
+        title: 'Comisiones · Suerte',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/reports/commission-report.page').then(
+            (component) => component.CommissionReportPage,
           ),
       },
       {
         path: 'settings/notifications',
-        canActivate: [adminGuard],
         redirectTo: 'exposure',
         pathMatch: 'full',
       },

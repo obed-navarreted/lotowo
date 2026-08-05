@@ -35,6 +35,7 @@ export function buildEscPosReceipt(ticket: Ticket, print: TicketPrint, columns =
       columns,
     ),
   );
+  if (ticket.customerName) line(fitPair('CLIENTE', ticket.customerName, columns));
   line(repeat('-', columns));
   bold(true);
   line(fitColumns('NUMERO', 'JUGADA', 'PREMIO', columns));

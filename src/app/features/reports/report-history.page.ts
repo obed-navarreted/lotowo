@@ -9,7 +9,6 @@ import { AuthService } from '../../core/auth/auth.service';
 import { ManagedUser } from '../../core/models/admin.models';
 import { DailyReport, DrawReport } from '../../core/models/api.models';
 import { apiErrorMessage } from '../../shared/api-error';
-import { drawLabel } from '../../shared/draw-label';
 import { Icon } from '../../shared/icon/icon';
 import { newestDayFirst, newestDrawFirst } from '../../shared/result-order';
 
@@ -128,17 +127,34 @@ export class ReportHistoryPage {
   }
 
   protected date(value: string): string {
-    return new Intl.DateTimeFormat('es-NI', {
-      weekday: 'long',
+    const localDate = new Date(`${value}T12:00:00-06:00`);
+    const weekday = new Intl.DateTimeFormat('es-NI', {
+      weekday: 'short',
+      timeZone: 'America/Managua',
+    })
+      .format(localDate)
+      .replace('.', '');
+    const numeric = new Intl.DateTimeFormat('es-NI', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
       timeZone: 'America/Managua',
-    }).format(new Date(`${value}T12:00:00-06:00`));
+    }).format(localDate);
+    return `${weekday} · ${numeric}`;
   }
 
   protected drawName(draw: DrawReport): string {
-    return drawLabel({ drawType: draw.drawType, scheduledAt: draw.scheduledAt });
+    const parts = new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'America/Managua',
+    }).formatToParts(new Date(draw.scheduledAt));
+    const hour = parts.find((part) => part.type === 'hour')?.value ?? '';
+    const minute = parts.find((part) => part.type === 'minute')?.value ?? '00';
+    const period = parts.find((part) => part.type === 'dayPeriod')?.value.toUpperCase() ?? '';
+    const time = minute === '00' ? `${hour}${period}` : `${hour}:${minute}${period}`;
+    return `${draw.drawType === 'DAILY' ? 'LOTO' : 'Lotería'} · ${time}`;
   }
 
   private loadDays(): void {

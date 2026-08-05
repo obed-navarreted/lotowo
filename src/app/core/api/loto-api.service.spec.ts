@@ -228,4 +228,25 @@ describe('LotoApiService', () => {
     expect(detail.request.params.get('sellerId')).toBe('seller-id');
     detail.flush({});
   });
+
+  it('requests winner history with pagination and the selected range', () => {
+    service.getWinnerReports(2, 20, '2026-07-01', '2026-08-05').subscribe();
+
+    const request = http.expectOne((candidate) => candidate.url === '/api/v1/reports/winners');
+    expect(request.request.params.get('page')).toBe('2');
+    expect(request.request.params.get('size')).toBe('20');
+    expect(request.request.params.get('from')).toBe('2026-07-01');
+    expect(request.request.params.get('to')).toBe('2026-08-05');
+    request.flush({ content: [], page: 2, size: 20, totalElements: 0, totalPages: 0 });
+  });
+
+  it('requests the commission report for one seller and an exact range', () => {
+    service.getSellerCommissionReport('seller-id', '2026-08-01', '2026-08-05').subscribe();
+
+    const request = http.expectOne((candidate) => candidate.url === '/api/v1/reports/commissions');
+    expect(request.request.params.get('sellerId')).toBe('seller-id');
+    expect(request.request.params.get('from')).toBe('2026-08-01');
+    expect(request.request.params.get('to')).toBe('2026-08-05');
+    request.flush({});
+  });
 });

@@ -52,6 +52,7 @@ export class SalePage {
   protected readonly manualNumber = signal('');
   protected readonly manualStake = signal('');
   protected readonly manualError = signal<string | null>(null);
+  protected readonly customerName = signal('');
   private pendingAttempt: { fingerprint: string; idempotencyKey: string } | null = null;
   private readonly originalPayouts = signal<Map<string, number>>(new Map());
   @ViewChild('manualNumberInput') private manualNumberInput?: ElementRef<HTMLInputElement>;
@@ -110,6 +111,10 @@ export class SalePage {
     const [whole = '', ...decimals] = normalized.split('.');
     this.manualStake.set(decimals.length ? `${whole}.${decimals.join('').slice(0, 2)}` : whole);
     this.manualError.set(null);
+  }
+
+  protected updateCustomerName(value: string): void {
+    this.customerName.set(value.slice(0, 120));
   }
 
   protected moveToManualStake(event: Event): void {
@@ -200,6 +205,7 @@ export class SalePage {
     this.errorMessage.set(null);
     const request = {
       drawId: this.selectedDrawId(),
+      customerName: this.customerName().trim() || null,
       items: this.selectedEntries().map(([number, stake]) => ({ number, stake })),
     };
     const fingerprint = JSON.stringify(request);
@@ -263,6 +269,7 @@ export class SalePage {
     this.manualNumber.set('');
     this.manualStake.set('');
     this.manualError.set(null);
+    this.customerName.set('');
     this.focusManualNumber();
   }
 
@@ -373,6 +380,7 @@ export class SalePage {
             new Map(ticket.items.map((item) => [item.number, item.potentialPayout])),
           );
           this.selections.set(new Map(ticket.items.map((item) => [item.number, item.stake])));
+          this.customerName.set(ticket.customerName ?? '');
           this.loading.set(false);
         },
         error: (error: HttpErrorResponse) => {

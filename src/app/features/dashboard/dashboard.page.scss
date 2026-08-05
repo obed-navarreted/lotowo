@@ -400,21 +400,50 @@
     display: none;
   }
   .schedule-row {
-    grid-template-columns: 48px 16px minmax(0, 1fr) auto;
-    gap: 6px;
+    min-height: 78px;
+    grid-template-columns: 46px 15px minmax(0, 1fr) 34px;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 7px;
+    row-gap: 4px;
+  }
+  .schedule-row__time {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-self: center;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .schedule-row__rail {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+  .schedule-row__copy {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: end;
   }
   .schedule-row .status {
     grid-column: 3;
+    grid-row: 2;
     width: fit-content;
+    align-self: start;
+    margin-top: 1px;
+    white-space: nowrap;
   }
-  .draw-sales-action {
+  .draw-sales-action,
+  .draw-result-action {
     grid-column: 4;
     grid-row: 1 / span 2;
     width: 32px;
+    min-height: 32px;
     padding: 0;
     justify-content: center;
   }
-  .draw-sales-action span {
+  .draw-sales-action span,
+  .draw-result-action span {
     display: none;
   }
 }
@@ -431,6 +460,19 @@
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
+}
+@media (max-width: 520px) {
+  .draw-result-action {
+    grid-column: 4;
+    grid-row: 1 / span 2;
+    width: 32px;
+    min-height: 32px;
+    justify-content: center;
+    padding: 0;
+  }
+  .draw-result-action span {
+    display: none;
+  }
 }
 .closure-notice {
   position: fixed;

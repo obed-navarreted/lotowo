@@ -135,4 +135,15 @@ describe('ReceiptPdfService', () => {
 
     expect(pdf.texts).toContain('VERSIÓN 2');
   });
+
+  it('includes the optional customer in the commercial receipt', async () => {
+    await new ReceiptPdfService().download(
+      { ...ticket, customerName: 'Cliente Uno' },
+      originalPrint,
+    );
+
+    expect(pdf.texts).toContain('CLIENTE');
+    expect(pdf.texts).toContain('Cliente Uno');
+    expect(pdf.options).toMatchObject({ format: [58, 108] });
+  });
 });

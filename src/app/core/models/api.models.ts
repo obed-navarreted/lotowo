@@ -93,6 +93,7 @@ export interface Ticket {
   drawScheduledAt: string;
   salesCloseAt: string;
   winningNumber: string | null;
+  customerName?: string | null;
   revision: number;
   status: 'ACTIVE' | 'REPLACED' | 'DELETED';
   totalAmount: number;
@@ -136,6 +137,7 @@ export interface NumberAvailability {
 
 export interface CreateTicketRequest {
   drawId: string;
+  customerName?: string | null;
   items: Array<{ number: string; stake: number }>;
 }
 
@@ -231,6 +233,7 @@ export interface WinningTicket {
   sellerName: string;
   routeId: string;
   routeName: string;
+  customerName?: string | null;
   totalAmount: number;
   winningStake: number;
   prizeDue: number;
@@ -251,4 +254,42 @@ export interface DrawSettlementReport {
   netResult: number;
   sellers: SellerSettlement[];
   winningTickets: WinningTicket[];
+}
+
+export interface WinnerDrawSummary {
+  drawId: string;
+  drawType: Draw['drawType'];
+  scheduledAt: string;
+  winningNumber: string;
+  ticketCount: number;
+  winningTicketCount: number;
+  grossSales: number;
+  prizesDue: number;
+  netResult: number;
+}
+
+export interface SellerCommissionEntry {
+  drawId: string;
+  drawType: Draw['drawType'];
+  scheduledAt: string;
+  winningNumber: string;
+  grossSales: number;
+  prizesDue: number;
+  commissionRate: number;
+  commissionAmount: number;
+  netBeforeCommission: number;
+  netAfterCommission: number;
+}
+
+export interface SellerCommissionReport {
+  sellerId: string;
+  sellerName: string;
+  from: string;
+  to: string;
+  grossSales: number;
+  prizesDue: number;
+  commissionAmount: number;
+  netBeforeCommission: number;
+  netAfterCommission: number;
+  entries: SellerCommissionEntry[];
 }

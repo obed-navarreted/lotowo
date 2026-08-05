@@ -1,0 +1,167 @@
+:host {
+  display: block;
+}
+.winner-count {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.winner-count strong {
+  font-size: 24px;
+}
+.winner-count small {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.winner-filters {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 14px;
+}
+.winner-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.winner-filters label > span {
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 750;
+}
+.winner-filter-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.winner-error {
+  margin-bottom: 12px;
+  padding: 12px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-radius: 12px;
+  font-size: 13px;
+}
+.winner-list {
+  display: grid;
+  gap: 10px;
+}
+.winner-list .skeleton {
+  min-height: 160px;
+}
+.winner-card {
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 13px;
+  overflow: hidden;
+}
+.winner-number {
+  display: flex;
+  width: 48px;
+  height: 52px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background: var(--violet);
+  border-radius: 14px;
+}
+.winner-number small {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.winner-number strong {
+  font-size: 20px;
+}
+.winner-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.winner-copy small,
+.winner-balance small,
+.winner-totals small {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.winner-copy strong {
+  overflow: hidden;
+  margin: 2px 0;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.winner-copy span {
+  color: var(--muted-strong);
+  font-size: 12px;
+}
+.winner-balance {
+  display: flex;
+  min-width: 68px;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.winner-balance strong {
+  margin-top: 2px;
+  color: var(--mint-dark);
+  font-size: 17px;
+}
+.winner-card--loss .winner-balance strong {
+  color: var(--danger);
+}
+.winner-totals {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--surface-soft);
+  border-radius: 12px;
+}
+.winner-totals span {
+  display: flex;
+  flex-direction: column;
+}
+.winner-totals strong {
+  margin-top: 2px;
+  font-size: 13px;
+}
+.winner-actions {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.winner-actions .button {
+  min-height: 39px;
+  padding-inline: 9px;
+  font-size: 12px;
+}
+.winner-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+.winner-pagination span {
+  color: var(--muted);
+  font-size: 12px;
+}
+@media (min-width: 700px) {
+  .winner-filters {
+    grid-template-columns: 1fr 1fr auto;
+    align-items: end;
+  }
+  .winner-filter-actions .button {
+    min-width: 110px;
+  }
+  .winner-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

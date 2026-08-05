@@ -6,6 +6,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
+import { OperationalReportPdfService } from '../../core/reports/operational-report-pdf.service';
 import { ManagedUser } from '../../core/models/admin.models';
 import {
   DailyReport,
@@ -31,6 +32,7 @@ export class ReportsPage {
   private readonly api = inject(LotoApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly reportPdf = inject(OperationalReportPdfService);
   protected readonly sellers = signal<ManagedUser[]>([]);
   protected readonly days = signal<DailyReport[]>([]);
   protected readonly draws = signal<DrawReport[]>([]);
@@ -39,6 +41,7 @@ export class ReportsPage {
   protected readonly loading = signal(true);
   protected readonly filterLoading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly exporting = signal(false);
   protected readonly historyMinDate: string;
   protected selectedDate = '';
   protected selectedDrawId = '';
@@ -82,7 +85,17 @@ export class ReportsPage {
   }
 
   protected exportPdf(): void {
-    window.print();
+    const report = this.report();
+    if (!report || this.exporting()) return;
+    this.exporting.set(true);
+    this.errorMessage.set(null);
+    void this.reportPdf
+      .exportDraw(report, this.settlement(), {
+        scopeLabel: this.sellerName(),
+        dateLabel: this.filterDateLabel(),
+      })
+      .catch(() => this.errorMessage.set('No pudimos generar el PDF. Intenta nuevamente.'))
+      .finally(() => this.exporting.set(false));
   }
 
   protected money(value: number): string {

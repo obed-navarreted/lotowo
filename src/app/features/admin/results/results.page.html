@@ -30,16 +30,22 @@
 }
 @if (lastClosure(); as closure) {
   <div class="closure-success">
-    <lo-icon name="check" [size]="18" /><span
-      ><strong>Ganador {{ closure.winningNumber }} registrado correctamente.</strong>Ventas
-      {{ money(closure.grossSales) }} · Premios {{ money(closure.prizesDue) }} · Resultado
-      {{ money(closure.netResult) }}</span
+    <span class="closure-success__icon"><lo-icon name="check" [size]="17" /></span
+    ><div class="closure-success__copy">
+      <strong>Ganador {{ closure.winningNumber }} registrado</strong>
+      <div class="closure-success__metrics">
+        <span>Ventas <b>{{ money(closure.grossSales) }}</b></span>
+        <span>Premios <b>{{ money(closure.prizesDue) }}</b></span>
+        <span [class.loss]="closure.netResult < 0">Resultado <b>{{ money(closure.netResult) }}</b></span>
+      </div>
+    </div
     ><a
       class="button"
       routerLink="/reports"
       [queryParams]="{ date: selectedDate, drawId: closure.drawId }"
-      >Ver quién ganó y liquidar</a
-    ><button type="button" (click)="lastClosure.set(null)" aria-label="Cerrar">
+      title="Consultar ganadores y cierre"
+      >Ver cierre</a
+    ><button class="closure-success__close" type="button" (click)="lastClosure.set(null)" aria-label="Cerrar">
       <lo-icon name="close" [size]="16" />
     </button>
   </div>

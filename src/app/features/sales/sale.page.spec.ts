@@ -85,6 +85,7 @@ describe('SalePage', () => {
 
     component.updateManualNumber('11');
     component.updateManualStake('5');
+    component.updateCustomerName('Cliente Uno');
     component.addManualEntry();
     component.selectDraw('another-draw');
 
@@ -94,6 +95,7 @@ describe('SalePage', () => {
     component.submit();
     const request = http.expectOne('/api/v1/tickets');
     expect(request.request.body.items).toEqual([{ number: '11', stake: 5 }]);
+    expect(request.request.body.customerName).toBe('Cliente Uno');
     request.flush(ticket());
     http.expectOne('/api/v1/tickets/availability/draw-id').flush(availability());
   });
@@ -151,6 +153,7 @@ describe('SalePage', () => {
 interface ManualSaleHarness {
   updateManualNumber(value: string): void;
   updateManualStake(value: string): void;
+  updateCustomerName(value: string): void;
   addManualEntry(): void;
   selectDraw(drawId: string): void;
   submit(): void;

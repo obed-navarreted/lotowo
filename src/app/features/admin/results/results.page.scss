@@ -36,25 +36,52 @@
   border-radius: 12px;
 }
 .closure-success {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto 34px;
+  align-items: center;
+  gap: 11px;
   margin-bottom: 14px;
-  padding: 13px;
+  padding: 12px 13px;
   color: var(--mint-dark);
   background: var(--mint-soft);
+  border: 1px solid #ccece2;
   border-radius: 14px;
 }
-.closure-success > span {
+.closure-success__icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  color: var(--mint-dark);
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 10px;
+}
+.closure-success__copy {
   display: flex;
-  flex: 1;
+  min-width: 0;
   flex-direction: column;
-  color: var(--muted-strong);
-  font-size: 12px;
 }
 .closure-success strong {
   color: var(--mint-dark);
-  font-size: 13px;
+  font-size: 13.5px;
+}
+.closure-success__metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+  margin-top: 3px;
+  color: var(--muted-strong);
+  font-size: 12px;
+}
+.closure-success__metrics span {
+  white-space: nowrap;
+}
+.closure-success__metrics b {
+  color: var(--ink);
+  font-weight: 800;
+}
+.closure-success__metrics .loss b {
+  color: var(--danger);
 }
 .closure-success button {
   color: inherit;
@@ -63,19 +90,37 @@
   cursor: pointer;
 }
 .closure-success > .button {
-  min-height: 36px;
-  flex: 0 0 auto;
+  min-height: 38px;
+  padding-inline: 14px;
   color: var(--mint-dark);
   background: white;
   border-color: #c8e6dd;
   text-decoration: none;
 }
+.closure-success__close {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  padding: 0;
+  border-radius: 10px;
+}
 @media (max-width: 620px) {
   .closure-success {
-    flex-wrap: wrap;
+    grid-template-columns: 32px minmax(0, 1fr) 34px;
+    align-items: start;
+    gap: 9px;
+    padding: 11px;
   }
   .closure-success > .button {
-    width: calc(100% - 28px);
+    grid-column: 2 / 4;
+    width: fit-content;
+    min-height: 36px;
+    margin-top: 2px;
+  }
+  .closure-success__close {
+    grid-column: 3;
+    grid-row: 1;
   }
 }
 .results-grid {

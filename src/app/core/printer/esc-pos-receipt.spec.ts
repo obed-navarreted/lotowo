@@ -76,6 +76,14 @@ describe('buildEscPosReceipt', () => {
     );
     expect(text).toContain('REIMPRESION 1');
   });
+
+  it('prints the optional customer without depending on Unicode support', () => {
+    const text = printable(
+      buildEscPosReceipt({ ...ticket, customerName: 'José Pérez' }, original),
+    );
+    expect(text).toContain('CLIENTE');
+    expect(text).toContain('Jose Perez');
+  });
 });
 
 function printable(bytes: Uint8Array): string {

@@ -6,7 +6,9 @@
       {{ auth.isAdmin() ? 'Histórico completo de ganadores, ventas y premios.' : 'Ganadores, ventas y premios de los últimos 15 días.' }}
     </p>
   </div>
-  <a class="button" routerLink="/reports"><lo-icon name="chart" [size]="16" /> Reporte detallado</a>
+  <a class="button report-link" routerLink="/reports/winners" title="Abrir detalle de ganadores"
+    ><lo-icon name="chart" [size]="16" /> Ganadores</a
+  >
 </header>
 
 @if (auth.user()?.role !== 'SELLER') {
@@ -54,8 +56,8 @@
             ><small>Vendido</small><strong>{{ money(day.grossSales) }}</strong></span
           ><span
             ><small>Premios</small><strong>{{ money(day.prizesPaid) }}</strong></span
-          ><span [class.loss]="day.netResult < 0"
-            ><small>{{ day.pendingResults ? 'Provisional' : resultLabel(day.netResult) }}</small
+          ><span class="day-balance" [class.loss]="day.netResult < 0"
+            ><small>{{ day.pendingResults ? 'Parcial' : resultLabel(day.netResult) }}</small
             ><strong>{{ money(day.netResult) }}</strong></span
           ><lo-icon name="arrow" [size]="17" />
         </button>
@@ -67,7 +69,7 @@
               @for (draw of dayDraws(); track draw.drawId) {
                 <article class="draw-result">
                   <span class="draw-number" [class.draw-number--pending]="!draw.winningNumber"
-                    ><small>{{ draw.winningNumber ? 'Ganador' : 'Pendiente' }}</small
+                    ><small>{{ draw.winningNumber ? 'Ganó' : 'Pend.' }}</small
                     ><strong>{{ draw.winningNumber ?? '—' }}</strong></span
                   >
                   <span class="draw-copy"
@@ -78,7 +80,7 @@
                   >
                   <span class="draw-balance" [class.loss]="draw.netResult < 0"
                     ><small>{{
-                      draw.winningNumber ? resultLabel(draw.netResult) : 'Provisional'
+                      draw.winningNumber ? resultLabel(draw.netResult) : 'Vendido'
                     }}</small
                     ><strong>{{ money(draw.netResult) }}</strong></span
                   >

@@ -1,0 +1,92 @@
+<header class="page-header">
+  <div class="page-header__copy">
+    <span class="eyebrow">Cierres confirmados</span>
+    <h1>Detalle de ganadores</h1>
+    <p class="page-subtitle">Utilidad total de cada sorteo, del más reciente al más antiguo.</p>
+  </div>
+  <span class="winner-count"
+    ><strong>{{ totalElements() }}</strong
+    ><small>sorteos</small></span
+  >
+</header>
+
+<section class="winner-filters card">
+  <label
+    ><span>Desde</span><input class="input" type="date" [(ngModel)]="from" [min]="historyMinDate"
+  /></label>
+  <label
+    ><span>Hasta</span><input class="input" type="date" [(ngModel)]="to" [min]="historyMinDate"
+  /></label>
+  <div class="winner-filter-actions">
+    <button class="button" type="button" (click)="clear()">Limpiar</button>
+    <button class="button button--primary" type="button" (click)="search()">Buscar</button>
+  </div>
+</section>
+
+@if (error()) {
+  <div class="winner-error">{{ error() }}</div>
+}
+
+@if (loading()) {
+  <section class="winner-list">
+    <article class="card skeleton"></article>
+    <article class="card skeleton"></article>
+  </section>
+} @else if (winners().length) {
+  <section class="winner-list">
+    @for (item of winners(); track item.drawId) {
+      <article class="winner-card card" [class.winner-card--loss]="item.netResult < 0">
+        <div class="winner-number">
+          <small>Ganó</small><strong>{{ item.winningNumber }}</strong>
+        </div>
+        <div class="winner-copy">
+          <small>{{ date(item.scheduledAt) }}</small
+          ><strong>{{ draw(item) }}</strong
+          ><span>{{ item.ticketCount }} boletos · {{ item.winningTicketCount }} premiados</span>
+        </div>
+        <div class="winner-balance">
+          <small>{{ item.netResult < 0 ? 'Pérdida' : 'Utilidad' }}</small
+          ><strong>{{ money(absolute(item.netResult)) }}</strong>
+        </div>
+        <div class="winner-totals">
+          <span
+            ><small>Vendido</small><strong>{{ money(item.grossSales) }}</strong></span
+          ><span
+            ><small>Premios</small><strong>{{ money(item.prizesDue) }}</strong></span
+          >
+        </div>
+        <div class="winner-actions">
+          <a
+            class="button"
+            routerLink="/reports"
+            [queryParams]="{ date: queryDate(item.scheduledAt), drawId: item.drawId }"
+            >Ver detalle</a
+          >
+          <button
+            class="button button--primary"
+            type="button"
+            (click)="export(item)"
+            [disabled]="exportingDrawId() !== null"
+          >
+            <lo-icon name="download" [size]="16" />{{
+              exportingDrawId() === item.drawId ? 'Generando…' : 'PDF'
+            }}
+          </button>
+        </div>
+      </article>
+    }
+  </section>
+  @if (totalPages() > 1) {
+    <nav class="winner-pagination">
+      <button class="button" (click)="previous()" [disabled]="page() === 0">Anterior</button
+      ><span>{{ page() + 1 }} / {{ totalPages() }}</span
+      ><button class="button" (click)="next()" [disabled]="page() + 1 >= totalPages()">
+        Siguiente
+      </button>
+    </nav>
+  }
+} @else {
+  <section class="card empty-state">
+    <div><strong>No hay ganadores</strong>No existen cierres para el período seleccionado.</div>
+  </section>
+}
