@@ -31,8 +31,8 @@ export class PrizeTablesPage implements OnInit {
   protected maxTicketPrints = 2;
   protected alertEnabled = false;
   protected alertThreshold = 40_000;
-  protected multiplierValues: Record<string, string> = {};
-  protected limitValues: Record<string, string> = {};
+  protected multiplierValues: Record<string, string | number> = {};
+  protected limitValues: Record<string, string | number> = {};
   protected excludedSellerIds = new Set<string>();
 
   ngOnInit(): void {
@@ -74,8 +74,8 @@ export class PrizeTablesPage implements OnInit {
     this.excludedSellerIds = next;
   }
 
-  protected overrideCount(values: Record<string, string>): number {
-    return Object.values(values).filter((value) => value.trim() !== '').length;
+  protected overrideCount(values: Record<string, string | number>): number {
+    return Object.values(values).filter((value) => value !== null && value !== undefined && String(value).trim() !== '').length;
   }
 
   protected save(): void {
@@ -136,10 +136,12 @@ export class PrizeTablesPage implements OnInit {
       });
   }
 
-  private numberEntries(values: Record<string, string>, label: string) {
+  private numberEntries(values: Record<string, string | number>, label: string) {
     const result: { number: string; value: number }[] = [];
     for (const number of this.numbers) {
-      const raw = values[number]?.trim();
+      const entry = values[number];
+      if (entry === null || entry === undefined) continue;
+      const raw = String(entry).trim();
       if (!raw) continue;
       const value = Number(raw);
       if (!Number.isFinite(value) || value < 0 || (label === 'multiplicador' && value === 0)) {

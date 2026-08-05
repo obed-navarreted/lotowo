@@ -26,7 +26,7 @@ type LimitScope = 'GENERAL' | 'ROUTES' | 'SELLERS';
 interface GeneralLimitDraft {
   enabled: boolean;
   defaultLimit: number | null;
-  overrides: Record<string, string>;
+  overrides: Record<string, string | number>;
   excludedSellerIds: Set<string>;
 }
 
@@ -144,7 +144,7 @@ export class LimitsPage implements OnInit {
       ...draft,
       overrides: {
         ...draft.overrides,
-        [number]: rawValue === null || rawValue === undefined ? '' : String(rawValue),
+        [number]: rawValue === null || rawValue === undefined ? '' : rawValue,
       },
     }));
     this.notice.set('');
@@ -162,16 +162,19 @@ export class LimitsPage implements OnInit {
   }
 
   protected isOverride(number: string): boolean {
-    return Boolean(this.current().overrides[number]?.trim());
+    const val = this.current().overrides[number];
+    return val !== null && val !== undefined && Boolean(String(val).trim());
   }
 
   protected isBlocked(number: string): boolean {
-    const value = this.current().overrides[number]?.trim();
-    return value !== undefined && value !== '' && Number(value) === 0;
+    const val = this.current().overrides[number];
+    if (val === null || val === undefined) return false;
+    const value = String(val).trim();
+    return value !== '' && Number(value) === 0;
   }
 
   protected overrideCount(): number {
-    return Object.values(this.current().overrides).filter((value) => value.trim() !== '').length;
+    return Object.values(this.current().overrides).filter((value) => value !== null && value !== undefined && String(value).trim() !== '').length;
   }
 
   protected toggleExcluded(sellerId: string, checked: boolean): void {
@@ -190,7 +193,9 @@ export class LimitsPage implements OnInit {
     const defaultLimit = this.normalize(current.defaultLimit);
     const limitOverrides: { number: string; limit: number }[] = [];
     for (const number of this.numbers) {
-      const raw = current.overrides[number]?.trim();
+      const entry = current.overrides[number];
+      if (entry === null || entry === undefined) continue;
+      const raw = String(entry).trim();
       if (!raw) continue;
       const limit = Number(raw);
       if (!Number.isFinite(limit) || limit < 0) {
