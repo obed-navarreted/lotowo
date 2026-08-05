@@ -7,6 +7,7 @@
     "start:https": "ng serve --host 0.0.0.0 --port 4200 --ssl --ssl-cert .certs/lotowo-local.crt --ssl-key .certs/lotowo-local.key --configuration production",
     "cert:local": "bash scripts/create-local-https-certificate.sh",
     "build": "ng build",
+    "build:pages": "ng build --configuration production --base-href /lotowo/",
     "android:add": "npm run build && cap add android",
     "android:sync": "npm run build && cap sync android",
     "android:open": "cap open android",
