@@ -97,6 +97,9 @@ export interface NumberLimitOverride {
 
 export interface NumberLimitPolicy {
   drawType: LimitDrawType;
+  configured: boolean;
+  enabled: boolean;
+  source: 'SELLER' | 'ROUTE' | 'SYSTEM' | 'NONE';
   defaultLimit: number | null;
   overrides: NumberLimitOverride[];
   inheritedFromRoute?: boolean;
@@ -109,8 +112,25 @@ export interface SellerNumberLimits {
 }
 
 export interface SaveSellerNumberLimitsRequest {
+  enabled: boolean;
   defaultLimit: number | null;
   overrides: NumberLimitOverride[];
+}
+
+export interface SystemNumberLimitPolicy {
+  drawType: LimitDrawType;
+  enabled: boolean;
+  defaultLimit: number | null;
+  overrides: NumberLimitOverride[];
+  excludedSellerIds: string[];
+}
+
+export interface SystemNumberLimits {
+  policies: SystemNumberLimitPolicy[];
+}
+
+export interface SaveSystemNumberLimitsRequest extends SaveSellerNumberLimitsRequest {
+  excludedSellerIds: string[];
 }
 
 export interface RouteLimitSeller {
@@ -120,7 +140,12 @@ export interface RouteLimitSeller {
   enabled: boolean;
 }
 
-export interface RouteNumberLimitPolicy extends NumberLimitPolicy {
+export interface RouteNumberLimitPolicy {
+  drawType: LimitDrawType;
+  configured: boolean;
+  enabled: boolean;
+  defaultLimit: number | null;
+  overrides: NumberLimitOverride[];
   appliesToAll: boolean;
   sellerIds: string[];
 }

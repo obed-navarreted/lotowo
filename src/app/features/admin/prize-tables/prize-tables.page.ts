@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { LotoApiService } from '../../../core/api/loto-api.service';
 import { ManagedUser, SystemSalesSettings } from '../../../core/models/admin.models';
@@ -9,7 +10,7 @@ import { Icon } from '../../../shared/icon/icon';
 
 @Component({
   selector: 'lo-prize-tables-page',
-  imports: [FormsModule, Icon],
+  imports: [FormsModule, RouterLink, Icon],
   templateUrl: './prize-tables.page.html',
   styleUrl: './prize-tables.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -38,19 +39,17 @@ export class PrizeTablesPage implements OnInit {
     forkJoin({
       settings: this.api.getSystemSettings(),
       notifications: this.api.getNotificationSettings(),
-      users: this.api
-        .getUsers(0, 100)
-        .pipe(
-          catchError(() =>
-            of<PageResponse<ManagedUser>>({
-              content: [],
-              page: 0,
-              size: 100,
-              totalElements: 0,
-              totalPages: 0,
-            }),
-          ),
+      users: this.api.getUsers(0, 100).pipe(
+        catchError(() =>
+          of<PageResponse<ManagedUser>>({
+            content: [],
+            page: 0,
+            size: 100,
+            totalElements: 0,
+            totalPages: 0,
+          }),
         ),
+      ),
     })
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
@@ -86,7 +85,11 @@ export class PrizeTablesPage implements OnInit {
       this.error.set('El multiplicador general debe ser mayor que cero.');
       return;
     }
-    if (this.numberLimitsEnabled && this.defaultLimit === null && !this.overrideCount(this.limitValues)) {
+    if (
+      this.numberLimitsEnabled &&
+      this.defaultLimit === null &&
+      !this.overrideCount(this.limitValues)
+    ) {
       this.error.set('Indica un límite general o al menos un límite por número.');
       return;
     }
@@ -108,14 +111,14 @@ export class PrizeTablesPage implements OnInit {
     this.saving.set(true);
     forkJoin({
       settings: this.api.updateSystemSettings({
-          defaultPayoutMultiplier: Number(this.defaultMultiplier),
-          payoutOverrides,
-          numberLimitsEnabled: this.numberLimitsEnabled,
-          defaultPayoutLimit: this.defaultLimit === null ? null : Number(this.defaultLimit),
-          limitOverrides,
-          excludedSellerIds: [...this.excludedSellerIds],
-          maxTicketPrints: Number(this.maxTicketPrints),
-        }),
+        defaultPayoutMultiplier: Number(this.defaultMultiplier),
+        payoutOverrides,
+        numberLimitsEnabled: this.numberLimitsEnabled,
+        defaultPayoutLimit: this.defaultLimit === null ? null : Number(this.defaultLimit),
+        limitOverrides,
+        excludedSellerIds: [...this.excludedSellerIds],
+        maxTicketPrints: Number(this.maxTicketPrints),
+      }),
       notifications: this.api.updateNotificationSettings(
         this.alertEnabled,
         Number(this.alertThreshold),

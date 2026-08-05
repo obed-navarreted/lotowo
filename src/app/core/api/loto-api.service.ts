@@ -32,7 +32,9 @@ import {
   RouteSummary,
   SaveRouteNumberLimitsRequest,
   SaveSellerNumberLimitsRequest,
+  SaveSystemNumberLimitsRequest,
   SystemSalesSettings,
+  SystemNumberLimits,
   UpdateSystemSalesSettingsRequest,
   RouteNumberLimits,
   SellerNumberLimits,
@@ -220,6 +222,12 @@ export class LotoApiService {
     );
   }
 
+  inheritSellerNumberLimits(userId: string, drawType: string) {
+    return this.http.delete<SellerNumberLimits>(
+      `/api/v1/users/${userId}/number-limits/${drawType}`,
+    );
+  }
+
   getUserAssignments(userId: string) {
     return this.http.get<UserAssignments>(`/api/v1/users/${userId}/assignments`);
   }
@@ -321,12 +329,26 @@ export class LotoApiService {
     );
   }
 
+  inheritRouteNumberLimits(routeId: string, drawType: string) {
+    return this.http.delete<RouteNumberLimits>(
+      `/api/v1/routes/${routeId}/number-limits/${drawType}`,
+    );
+  }
+
   assignSupervisor(routeId: string, supervisorId: string) {
     return this.http.post<void>(`/api/v1/routes/${routeId}/supervisors/${supervisorId}`, null);
   }
 
   getSystemSettings() {
     return this.http.get<SystemSalesSettings>('/api/v1/system-settings');
+  }
+
+  getSystemNumberLimits() {
+    return this.http.get<SystemNumberLimits>('/api/v1/system-number-limits');
+  }
+
+  updateSystemNumberLimits(drawType: string, request: SaveSystemNumberLimitsRequest) {
+    return this.http.put<SystemNumberLimits>(`/api/v1/system-number-limits/${drawType}`, request);
   }
 
   updateSystemSettings(request: UpdateSystemSalesSettingsRequest) {

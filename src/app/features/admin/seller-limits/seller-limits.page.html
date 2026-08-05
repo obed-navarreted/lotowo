@@ -1,6 +1,6 @@
 <header class="page-header limits-header">
   <div class="page-header__copy">
-    <a class="back-link" routerLink="/users"><lo-icon name="arrow" [size]="14" /> Usuarios</a>
+    <a class="back-link" routerLink="/limits"><lo-icon name="arrow" [size]="14" /> Límites</a>
     <span class="eyebrow">Control por vendedor</span>
     <h1>Límites por número</h1>
     <p class="page-subtitle">
@@ -47,91 +47,133 @@
     </button>
   </div>
 
-  @if (current().inheritedFromRoute) {
-    <div class="inherited-note">
-      <lo-icon name="route" [size]="18" /><span
-        ><strong>Configuración heredada de {{ current().sourceRouteName }}</strong
-        ><small
-          >Si guardas cambios aquí, se creará una configuración individual que tendrá prioridad para
-          este vendedor.</small
-        ></span
+  <div class="mode-selector" role="radiogroup" aria-label="Modo de límites del vendedor">
+    <button
+      type="button"
+      [class.mode-selector__option--active]="mode() === 'INHERIT'"
+      (click)="selectMode('INHERIT')"
+    >
+      <lo-icon name="route" [size]="19" /><span
+        ><strong>Heredar</strong><small>Usa ruta o regla general</small></span
       >
+    </button>
+    <button
+      type="button"
+      [class.mode-selector__option--active]="mode() === 'UNLIMITED'"
+      (click)="selectMode('UNLIMITED')"
+    >
+      <lo-icon name="unlock" [size]="19" /><span
+        ><strong>Sin límites</strong><small>Excepción para este vendedor</small></span
+      >
+    </button>
+    <button
+      type="button"
+      [class.mode-selector__option--active]="mode() === 'LIMITED'"
+      (click)="selectMode('LIMITED')"
+    >
+      <lo-icon name="lock" [size]="19" /><span
+        ><strong>Con límites</strong><small>Regla individual</small></span
+      >
+    </button>
+  </div>
+
+  @if (mode() === 'INHERIT') {
+    <div class="mode-summary mode-summary--inherit">
+      <span><lo-icon name="info" [size]="20" /></span>
+      <div>
+        <strong>{{ inheritedLabel() }}</strong>
+        <p>
+          Este vendedor seguirá automáticamente la regla más cercana disponible. La prioridad es
+          vendedor → ruta → general.
+        </p>
+      </div>
     </div>
+  } @else if (mode() === 'UNLIMITED') {
+    <div class="mode-summary mode-summary--unlimited">
+      <span><lo-icon name="unlock" [size]="20" /></span>
+      <div>
+        <strong>Este vendedor operará sin límites</strong>
+        <p>
+          Para {{ typeLabel(selectedType()) }} no heredará límites de su ruta ni de la configuración
+          general.
+        </p>
+      </div>
+    </div>
+  } @else {
+    <div class="default-panel">
+      <div>
+        <span class="default-icon"><lo-icon name="table" [size]="19" /></span
+        ><span
+          ><strong>Límite general de premio por número</strong
+          ><small
+            >Es el premio potencial máximo para cada terminación que no tenga excepción.</small
+          ></span
+        >
+      </div>
+      <label
+        ><input
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="Sin límite"
+          [ngModel]="current().defaultLimit"
+          (ngModelChange)="setDefaultLimit($event)"
+          aria-label="Límite general de premio potencial por número en córdobas"
+      /></label>
+      @if (current().overrides.size) {
+        <button type="button" class="clear-button" (click)="clearOverrides()">
+          Quitar {{ current().overrides.size }} excepciones
+        </button>
+      }
+    </div>
+
+    <div class="grid-heading">
+      <div>
+        <h2>Terminaciones 00–99</h2>
+        <p>
+          Edita únicamente las excepciones. El monto representa premio potencial, no dinero jugado.
+          C$0 bloquea ese número para este vendedor.
+        </p>
+      </div>
+      <span>{{ current().overrides.size }} excepciones</span>
+    </div>
+
+    <div class="number-limit-grid">
+      @for (number of numbers; track number) {
+        <article
+          class="limit-cell"
+          [class.limit-cell--override]="isOverride(number)"
+          [class.limit-cell--blocked]="isBlocked(number)"
+        >
+          <header>
+            <strong>{{ number }}</strong
+            ><span>{{ isOverride(number) ? 'E' : 'G' }}</span>
+          </header>
+          <label
+            ><input
+              type="number"
+              min="0"
+              step="0.01"
+              [ngModel]="effectiveLimit(number)"
+              (ngModelChange)="setNumberLimit(number, $event)"
+              [placeholder]="current().defaultLimit === null ? '∞' : ''"
+              [attr.aria-label]="'Límite de premio potencial en córdobas del número ' + number"
+          /></label>
+          @if (isOverride(number)) {
+            <button
+              type="button"
+              (click)="resetNumber(number)"
+              [attr.aria-label]="'Usar límite general para ' + number"
+            >
+              <lo-icon name="close" [size]="12" /> Usar G
+            </button>
+          }
+        </article>
+      }
+    </div>
+    <footer class="limits-legend">
+      <span><b>G</b> Usa el límite general</span><span><b>E</b> Tiene una excepción individual</span
+      ><span><i></i> Fondo rojo: número bloqueado</span>
+    </footer>
   }
-
-  <div class="default-panel">
-    <div>
-      <span class="default-icon"><lo-icon name="table" [size]="19" /></span
-      ><span
-        ><strong>Límite general de premio por número</strong
-        ><small
-          >Es el premio potencial máximo para cada terminación que no tenga excepción.</small
-        ></span
-      >
-    </div>
-    <label
-      ><input
-        type="number"
-        min="0"
-        step="0.01"
-        placeholder="Sin límite"
-        [ngModel]="current().defaultLimit"
-        (ngModelChange)="setDefaultLimit($event)"
-        aria-label="Límite general de premio potencial por número en córdobas"
-    /></label>
-    @if (current().overrides.size) {
-      <button type="button" class="clear-button" (click)="clearOverrides()">
-        Quitar {{ current().overrides.size }} excepciones
-      </button>
-    }
-  </div>
-
-  <div class="grid-heading">
-    <div>
-      <h2>Terminaciones 00–99</h2>
-      <p>
-        Edita únicamente las excepciones. El monto representa premio potencial, no dinero jugado.
-        C$0 bloquea ese número para este vendedor.
-      </p>
-    </div>
-    <span>{{ current().overrides.size }} excepciones</span>
-  </div>
-
-  <div class="number-limit-grid">
-    @for (number of numbers; track number) {
-      <article
-        class="limit-cell"
-        [class.limit-cell--override]="isOverride(number)"
-        [class.limit-cell--blocked]="isBlocked(number)"
-      >
-        <header>
-          <strong>{{ number }}</strong
-          ><span>{{ isOverride(number) ? 'E' : 'G' }}</span>
-        </header>
-        <label
-          ><input
-            type="number"
-            min="0"
-            step="0.01"
-            [ngModel]="effectiveLimit(number)"
-            (ngModelChange)="setNumberLimit(number, $event)"
-            [placeholder]="current().defaultLimit === null ? '∞' : ''"
-            [attr.aria-label]="'Límite de premio potencial en córdobas del número ' + number"
-        /></label>
-        @if (isOverride(number)) {
-          <button
-            type="button"
-            (click)="resetNumber(number)"
-            [attr.aria-label]="'Usar límite general para ' + number"
-          >
-            <lo-icon name="close" [size]="12" /> Usar G
-          </button>
-        }
-      </article>
-    }
-  </div>
-  <footer class="limits-legend">
-    <span><b>G</b> Usa el límite general</span><span><b>E</b> Tiene una excepción individual</span
-    ><span><i></i> Fondo rojo: número bloqueado</span>
-  </footer>
 </section>

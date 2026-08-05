@@ -50,6 +50,7 @@ export class AppShell {
     },
     { label: 'Usuarios', shortLabel: 'Usuarios', icon: 'users', route: '/users', roles: ['ADMIN'] },
     { label: 'Rutas', shortLabel: 'Rutas', icon: 'route', route: '/routes', roles: ['ADMIN'] },
+    { label: 'Límites', shortLabel: 'Límites', icon: 'lock', route: '/limits', roles: ['ADMIN'] },
     {
       label: 'Lotería Nacional',
       shortLabel: 'Lotería',
@@ -117,7 +118,7 @@ export class AppShell {
     const role = this.auth.user()?.role;
     const preferred =
       role === 'ADMIN'
-        ? ['/dashboard', '/results', '/tickets', '/exposure']
+        ? ['/dashboard', '/results', '/tickets', '/exposure', '/limits']
         : role === 'SELLER'
           ? ['/dashboard', '/sell', '/tickets', '/reports/history']
           : ['/dashboard', '/tickets', '/reports/history', '/exposure'];

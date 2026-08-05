@@ -4,13 +4,22 @@
     <h1>Reglas del sistema</h1>
     <p class="page-subtitle">Pagos, límites e impresiones desde un solo lugar.</p>
   </div>
-  <button class="button button--primary" type="button" (click)="save()" [disabled]="saving() || loading()">
+  <button
+    class="button button--primary"
+    type="button"
+    (click)="save()"
+    [disabled]="saving() || loading()"
+  >
     <lo-icon name="check" [size]="18" /> {{ saving() ? 'Guardando…' : 'Guardar' }}
   </button>
 </header>
 
-@if (error()) { <div class="notice notice--error"><lo-icon name="info" [size]="18" />{{ error() }}</div> }
-@if (notice()) { <div class="notice notice--success"><lo-icon name="check" [size]="18" />{{ notice() }}</div> }
+@if (error()) {
+  <div class="notice notice--error"><lo-icon name="info" [size]="18" />{{ error() }}</div>
+}
+@if (notice()) {
+  <div class="notice notice--success"><lo-icon name="check" [size]="18" />{{ notice() }}</div>
+}
 
 @if (loading()) {
   <div class="settings-loading card">Cargando reglas…</div>
@@ -19,60 +28,67 @@
     <section class="settings-card card">
       <header class="settings-card__header">
         <span class="section-icon"><lo-icon name="wallet" [size]="21" /></span>
-        <div><span class="section-number">01</span><h2>Pagos</h2><p>Todos pagan ×80, salvo las excepciones.</p></div>
+        <div>
+          <span class="section-number">01</span>
+          <h2>Pagos</h2>
+          <p>Todos pagan ×80, salvo las excepciones.</p>
+        </div>
       </header>
       <label class="main-value">
-        <span><strong>Multiplicador general</strong><small>Se usa en cualquier número sin excepción.</small></span>
-        <div><b>×</b><input type="number" min="0.0001" step="0.01" [(ngModel)]="defaultMultiplier" /></div>
+        <span
+          ><strong>Multiplicador general</strong
+          ><small>Se usa en cualquier número sin excepción.</small></span
+        >
+        <div>
+          <b>×</b><input type="number" min="0.0001" step="0.01" [(ngModel)]="defaultMultiplier" />
+        </div>
       </label>
-      <div class="number-heading"><strong>Excepciones</strong><span>{{ overrideCount(multiplierValues) }} configuradas</span></div>
+      <div class="number-heading">
+        <strong>Excepciones</strong><span>{{ overrideCount(multiplierValues) }} configuradas</span>
+      </div>
       <p class="number-help">Deja vacío para usar ×{{ defaultMultiplier }}.</p>
       <div class="number-settings-grid">
         @for (number of numbers; track number) {
-          <label><b>{{ number }}</b><span>×</span><input type="number" min="0.0001" step="0.01" [placeholder]="defaultMultiplier.toString()" [(ngModel)]="multiplierValues[number]" /></label>
+          <label
+            ><b>{{ number }}</b
+            ><span>×</span
+            ><input
+              type="number"
+              min="0.0001"
+              step="0.01"
+              [placeholder]="defaultMultiplier.toString()"
+              [(ngModel)]="multiplierValues[number]"
+          /></label>
         }
       </div>
     </section>
 
-    <section class="settings-card card">
+    <section class="settings-card card settings-card--compact">
       <header class="settings-card__header">
         <span class="section-icon"><lo-icon name="lock" [size]="21" /></span>
-        <div><span class="section-number">02</span><h2>Límites de premio</h2><p>Aplica un tope global, por ruta o por vendedor.</p></div>
-      </header>
-      <label class="switch-row">
-        <span><strong>{{ numberLimitsEnabled ? 'Límites activos' : 'Ventas sin límites' }}</strong><small>El interruptor controla todos los límites por número.</small></span>
-        <input type="checkbox" [(ngModel)]="numberLimitsEnabled" /><i></i>
-      </label>
-      @if (numberLimitsEnabled) {
-        <label class="main-value">
-          <span><strong>Límite general</strong><small>Premio máximo por número y sorteo.</small></span>
-          <div><input type="number" min="0" step="1" placeholder="Sin límite" [(ngModel)]="defaultLimit" /></div>
-        </label>
-        <div class="number-heading"><strong>Excepciones por número</strong><span>{{ overrideCount(limitValues) }} configuradas</span></div>
-        <p class="number-help">Vacío usa el límite general; 0 bloquea el número por premio.</p>
-        <div class="number-settings-grid number-settings-grid--limits">
-          @for (number of numbers; track number) {
-            <label><b>{{ number }}</b><input type="number" min="0" step="1" [placeholder]="defaultLimit === null ? '—' : defaultLimit.toString()" [(ngModel)]="limitValues[number]" /></label>
-          }
+        <div>
+          <span class="section-number">02</span>
+          <h2>Límites</h2>
+          <p>Administra la regla general, rutas y vendedores desde su propia pantalla.</p>
         </div>
-        @if (sellers().length) {
-          <div class="seller-exclusions">
-            <div><strong>Vendedores sin límite global</strong><small>Los límites propios o de ruta todavía pueden aplicar.</small></div>
-            <div class="seller-list">
-              @for (seller of sellers(); track seller.id) {
-                <label><input type="checkbox" [checked]="excludedSellerIds.has(seller.id)" (change)="toggleExcluded(seller.id, $any($event.target).checked)" /><span><strong>{{ seller.fullName }}</strong><small>{{ seller.routeName || 'Sin ruta' }}</small></span></label>
-              }
-            </div>
-          </div>
-        }
-      }
-      <div class="layer-note"><lo-icon name="info" [size]="18" /><span><strong>Orden sencillo:</strong> sistema → ruta → vendedor. Siempre se respeta el tope efectivo más seguro.</span></div>
+      </header>
+      <a class="limits-shortcut" routerLink="/limits">
+        <span>
+          <strong>Configuración granular</strong>
+          <small>Reglas separadas para sorteos diarios y Lotería Nacional</small>
+        </span>
+        <span>Gestionar <lo-icon name="arrow" [size]="17" /></span>
+      </a>
     </section>
 
     <section class="settings-card card settings-card--compact">
       <header class="settings-card__header">
         <span class="section-icon"><lo-icon name="printer" [size]="21" /></span>
-        <div><span class="section-number">03</span><h2>Impresiones</h2><p>Evita reimpresiones innecesarias.</p></div>
+        <div>
+          <span class="section-number">03</span>
+          <h2>Impresiones</h2>
+          <p>Evita reimpresiones innecesarias.</p>
+        </div>
       </header>
       <label class="main-value">
         <span><strong>Máximo por recibo</strong><small>Incluye la impresión original.</small></span>
@@ -83,20 +99,43 @@
     <section class="settings-card card settings-card--compact">
       <header class="settings-card__header">
         <span class="section-icon"><lo-icon name="bell" [size]="21" /></span>
-        <div><span class="section-number">04</span><h2>Alertas</h2><p>Avisa cuando un número acumule demasiado premio.</p></div>
+        <div>
+          <span class="section-number">04</span>
+          <h2>Alertas</h2>
+          <p>Avisa cuando un número acumule demasiado premio.</p>
+        </div>
       </header>
       <label class="switch-row">
-        <span><strong>{{ alertEnabled ? 'Alertas activas' : 'Alertas desactivadas' }}</strong><small>El aviso se genera una vez por número y sorteo.</small></span>
+        <span
+          ><strong>{{ alertEnabled ? 'Alertas activas' : 'Alertas desactivadas' }}</strong
+          ><small>El aviso se genera una vez por número y sorteo.</small></span
+        >
         <input type="checkbox" [(ngModel)]="alertEnabled" /><i></i>
       </label>
       @if (alertEnabled) {
         <label class="main-value">
-          <span><strong>Avisar al superar</strong><small>Se evalúa el premio comprometido del número.</small></span>
+          <span
+            ><strong>Avisar al superar</strong
+            ><small>Se evalúa el premio comprometido del número.</small></span
+          >
           <div><input type="number" min="1" step="100" [(ngModel)]="alertThreshold" /></div>
         </label>
       }
-      <div class="layer-note"><lo-icon name="info" [size]="18" /><span>Los administradores con notificaciones activas recibirán el aviso push.</span></div>
+      <div class="layer-note">
+        <lo-icon name="info" [size]="18" /><span
+          >Los administradores con notificaciones activas recibirán el aviso push.</span
+        >
+      </div>
     </section>
   </div>
-  <div class="mobile-save"><button class="button button--primary button--block" type="button" (click)="save()" [disabled]="saving()">{{ saving() ? 'Guardando…' : 'Guardar cambios' }}</button></div>
+  <div class="mobile-save">
+    <button
+      class="button button--primary button--block"
+      type="button"
+      (click)="save()"
+      [disabled]="saving()"
+    >
+      {{ saving() ? 'Guardando…' : 'Guardar cambios' }}
+    </button>
+  </div>
 }

@@ -1,6 +1,6 @@
 <header class="page-header limits-header">
   <div class="page-header__copy">
-    <a class="back-link" routerLink="/routes"><lo-icon name="arrow" [size]="14" /> Rutas</a>
+    <a class="back-link" routerLink="/limits"><lo-icon name="arrow" [size]="14" /> Límites</a>
     <span class="eyebrow">Control por ruta</span>
     <h1>Límites de {{ routeLimits()?.routeName || 'ruta' }}</h1>
     <p class="page-subtitle">
@@ -47,134 +47,190 @@
     </button>
   </div>
 
-  <div class="scope-panel">
-    <div class="scope-copy">
-      <span class="scope-icon"><lo-icon name="users" [size]="19" /></span
-      ><span
-        ><strong>¿A quiénes se aplicará?</strong
-        ><small
-          >Al guardar se reemplazan los límites individuales actuales de los vendedores
-          seleccionados.</small
-        ></span
+  <div class="mode-selector" role="radiogroup" aria-label="Modo de límites de la ruta">
+    <button
+      type="button"
+      [class.mode-selector__option--active]="mode() === 'INHERIT'"
+      (click)="selectMode('INHERIT')"
+    >
+      <lo-icon name="trend" [size]="19" /><span
+        ><strong>Usar general</strong><small>Sin regla de ruta</small></span
       >
+    </button>
+    <button
+      type="button"
+      [class.mode-selector__option--active]="mode() === 'UNLIMITED'"
+      (click)="selectMode('UNLIMITED')"
+    >
+      <lo-icon name="unlock" [size]="19" /><span
+        ><strong>Sin límites</strong><small>Para vendedores elegidos</small></span
+      >
+    </button>
+    <button
+      type="button"
+      [class.mode-selector__option--active]="mode() === 'LIMITED'"
+      (click)="selectMode('LIMITED')"
+    >
+      <lo-icon name="lock" [size]="19" /><span
+        ><strong>Con límites</strong><small>Regla propia de ruta</small></span
+      >
+    </button>
+  </div>
+
+  @if (mode() === 'INHERIT') {
+    <div class="mode-summary mode-summary--inherit">
+      <span><lo-icon name="info" [size]="20" /></span>
+      <div>
+        <strong>Esta ruta usa la configuración general</strong>
+        <p>Los vendedores con una regla individual conservarán su propia configuración.</p>
+      </div>
     </div>
-    <div class="scope-options">
-      <label [class.scope-option--active]="current().appliesToAll"
-        ><input
-          type="radio"
-          name="scope"
-          [checked]="current().appliesToAll"
-          (change)="setScope(true)"
-        /><span
-          ><strong>Todos</strong><small>{{ sellers().length }} vendedores</small></span
-        ></label
-      >
-      <label [class.scope-option--active]="!current().appliesToAll"
-        ><input
-          type="radio"
-          name="scope"
-          [checked]="!current().appliesToAll"
-          (change)="setScope(false)"
-        /><span><strong>Elegir vendedores</strong><small>Aplicación selectiva</small></span></label
-      >
-    </div>
-    @if (!current().appliesToAll) {
-      <div class="seller-selector">
-        <header>
-          <span>{{ current().sellerIds.size }} de {{ sellers().length }} seleccionados</span>
-          <div>
-            <button type="button" (click)="selectAllSellers()">Marcar todos</button
-            ><button type="button" (click)="clearSellers()">Ninguno</button>
+  } @else {
+    <div class="scope-panel">
+      <div class="scope-copy">
+        <span class="scope-icon"><lo-icon name="users" [size]="19" /></span
+        ><span
+          ><strong>¿A quiénes se aplicará?</strong
+          ><small
+            >Al guardar se reemplazan los límites individuales actuales de los vendedores
+            seleccionados.</small
+          ></span
+        >
+      </div>
+      <div class="scope-options">
+        <label [class.scope-option--active]="current().appliesToAll"
+          ><input
+            type="radio"
+            name="scope"
+            [checked]="current().appliesToAll"
+            (change)="setScope(true)"
+          /><span
+            ><strong>Todos</strong><small>{{ sellers().length }} vendedores</small></span
+          ></label
+        >
+        <label [class.scope-option--active]="!current().appliesToAll"
+          ><input
+            type="radio"
+            name="scope"
+            [checked]="!current().appliesToAll"
+            (change)="setScope(false)"
+          /><span
+            ><strong>Elegir vendedores</strong><small>Aplicación selectiva</small></span
+          ></label
+        >
+      </div>
+      @if (!current().appliesToAll) {
+        <div class="seller-selector">
+          <header>
+            <span>{{ current().sellerIds.size }} de {{ sellers().length }} seleccionados</span>
+            <div>
+              <button type="button" (click)="selectAllSellers()">Marcar todos</button
+              ><button type="button" (click)="clearSellers()">Ninguno</button>
+            </div>
+          </header>
+          <div class="seller-grid">
+            @for (seller of sellers(); track seller.id) {
+              <label [class.seller--selected]="isSellerSelected(seller.id)"
+                ><input
+                  type="checkbox"
+                  [checked]="isSellerSelected(seller.id)"
+                  (change)="toggleSeller(seller.id, $any($event.target).checked)"
+                /><span
+                  ><strong>{{ seller.fullName }}</strong
+                  ><small
+                    >@{{ seller.username }}{{ seller.enabled ? '' : ' · Desactivado' }}</small
+                  ></span
+                ></label
+              >
+            }
           </div>
-        </header>
-        <div class="seller-grid">
-          @for (seller of sellers(); track seller.id) {
-            <label [class.seller--selected]="isSellerSelected(seller.id)"
-              ><input
-                type="checkbox"
-                [checked]="isSellerSelected(seller.id)"
-                (change)="toggleSeller(seller.id, $any($event.target).checked)"
-              /><span
-                ><strong>{{ seller.fullName }}</strong
-                ><small
-                  >@{{ seller.username }}{{ seller.enabled ? '' : ' · Desactivado' }}</small
-                ></span
-              ></label
-            >
-          }
+        </div>
+      }
+      @if (!sellers().length && !loading()) {
+        <div class="no-sellers">Esta ruta todavía no tiene vendedores activos para configurar.</div>
+      }
+    </div>
+
+    @if (mode() === 'UNLIMITED') {
+      <div class="mode-summary mode-summary--unlimited">
+        <span><lo-icon name="unlock" [size]="20" /></span>
+        <div>
+          <strong>Los vendedores seleccionados operarán sin límites</strong>
+          <p>
+            Esta decisión reemplaza su regla anterior para {{ typeLabel(selectedType()) }}. Después
+            podrás configurar nuevamente un vendedor específico.
+          </p>
         </div>
       </div>
-    }
-    @if (!sellers().length && !loading()) {
-      <div class="no-sellers">Esta ruta todavía no tiene vendedores activos para configurar.</div>
-    }
-  </div>
-
-  <div class="default-panel">
-    <div>
-      <span class="default-icon"><lo-icon name="table" [size]="19" /></span
-      ><span
-        ><strong>Límite general de premio por número</strong
-        ><small
-          >Es el premio potencial máximo para cada terminación que no tenga excepción.</small
-        ></span
-      >
-    </div>
-    <label
-      ><input
-        type="number"
-        min="0"
-        step="0.01"
-        placeholder="Sin límite"
-        [ngModel]="current().defaultLimit"
-        (ngModelChange)="setDefaultLimit($event)"
-        aria-label="Límite general de premio potencial por número en córdobas"
-    /></label>
-    @if (current().overrides.size) {
-      <button type="button" class="clear-button" (click)="clearOverrides()">
-        Quitar {{ current().overrides.size }} excepciones
-      </button>
-    }
-  </div>
-
-  <div class="grid-heading">
-    <div>
-      <h2>Terminaciones 00–99</h2>
-      <p>El monto representa premio potencial, no dinero jugado. C$0 bloquea el número.</p>
-    </div>
-    <span>{{ current().overrides.size }} excepciones</span>
-  </div>
-  <div class="number-limit-grid">
-    @for (number of numbers; track number) {
-      <article
-        class="limit-cell"
-        [class.limit-cell--override]="isOverride(number)"
-        [class.limit-cell--blocked]="isBlocked(number)"
-      >
-        <header>
-          <strong>{{ number }}</strong
-          ><span>{{ isOverride(number) ? 'E' : 'G' }}</span>
-        </header>
+    } @else {
+      <div class="default-panel">
+        <div>
+          <span class="default-icon"><lo-icon name="table" [size]="19" /></span
+          ><span
+            ><strong>Límite general de premio por número</strong
+            ><small
+              >Es el premio potencial máximo para cada terminación que no tenga excepción.</small
+            ></span
+          >
+        </div>
         <label
           ><input
             type="number"
             min="0"
             step="0.01"
-            [ngModel]="effectiveLimit(number)"
-            (ngModelChange)="setNumberLimit(number, $event)"
-            [placeholder]="current().defaultLimit === null ? '∞' : ''"
-            [attr.aria-label]="'Límite de premio potencial en córdobas del número ' + number"
+            placeholder="Sin límite"
+            [ngModel]="current().defaultLimit"
+            (ngModelChange)="setDefaultLimit($event)"
+            aria-label="Límite general de premio potencial por número en córdobas"
         /></label>
-        @if (isOverride(number)) {
-          <button type="button" (click)="resetNumber(number)">
-            <lo-icon name="close" [size]="12" /> Usar G
+        @if (current().overrides.size) {
+          <button type="button" class="clear-button" (click)="clearOverrides()">
+            Quitar {{ current().overrides.size }} excepciones
           </button>
         }
-      </article>
+      </div>
+
+      <div class="grid-heading">
+        <div>
+          <h2>Terminaciones 00–99</h2>
+          <p>El monto representa premio potencial, no dinero jugado. C$0 bloquea el número.</p>
+        </div>
+        <span>{{ current().overrides.size }} excepciones</span>
+      </div>
+      <div class="number-limit-grid">
+        @for (number of numbers; track number) {
+          <article
+            class="limit-cell"
+            [class.limit-cell--override]="isOverride(number)"
+            [class.limit-cell--blocked]="isBlocked(number)"
+          >
+            <header>
+              <strong>{{ number }}</strong
+              ><span>{{ isOverride(number) ? 'E' : 'G' }}</span>
+            </header>
+            <label
+              ><input
+                type="number"
+                min="0"
+                step="0.01"
+                [ngModel]="effectiveLimit(number)"
+                (ngModelChange)="setNumberLimit(number, $event)"
+                [placeholder]="current().defaultLimit === null ? '∞' : ''"
+                [attr.aria-label]="'Límite de premio potencial en córdobas del número ' + number"
+            /></label>
+            @if (isOverride(number)) {
+              <button type="button" (click)="resetNumber(number)">
+                <lo-icon name="close" [size]="12" /> Usar G
+              </button>
+            }
+          </article>
+        }
+      </div>
+      <footer class="limits-legend">
+        <span><b>G</b> Usa el límite general</span
+        ><span><b>E</b> Tiene una excepción individual</span
+        ><span><i></i> Fondo rojo: número bloqueado</span>
+      </footer>
     }
-  </div>
-  <footer class="limits-legend">
-    <span><b>G</b> Usa el límite general</span><span><b>E</b> Tiene una excepción individual</span
-    ><span><i></i> Fondo rojo: número bloqueado</span>
-  </footer>
+  }
 </section>

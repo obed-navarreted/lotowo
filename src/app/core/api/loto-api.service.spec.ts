@@ -144,6 +144,7 @@ describe('LotoApiService', () => {
   it('saves a seller number-limit policy by draw family', () => {
     service
       .updateSellerNumberLimits('seller-id', 'DAILY', {
+        enabled: true,
         defaultLimit: 10_000,
         overrides: [
           { number: '03', limit: 4_000 },
@@ -154,6 +155,7 @@ describe('LotoApiService', () => {
 
     const request = http.expectOne('/api/v1/users/seller-id/number-limits/DAILY');
     expect(request.request.method).toBe('PUT');
+    expect(request.request.body.enabled).toBe(true);
     expect(request.request.body.defaultLimit).toBe(10_000);
     expect(request.request.body.overrides).toEqual([
       { number: '03', limit: 4_000 },
@@ -165,6 +167,7 @@ describe('LotoApiService', () => {
   it('applies route limits to all or selected sellers', () => {
     service
       .updateRouteNumberLimits('route-id', 'NATIONAL_LOTTERY', {
+        enabled: true,
         defaultLimit: 5_000,
         overrides: [{ number: '11', limit: 0 }],
         appliesToAll: false,
@@ -178,6 +181,43 @@ describe('LotoApiService', () => {
     expect(request.request.body.sellerIds).toEqual(['seller-1', 'seller-2']);
     expect(request.request.body.overrides).toEqual([{ number: '11', limit: 0 }]);
     request.flush({});
+  });
+
+  it('removes a seller policy so the seller inherits again', () => {
+    service.inheritSellerNumberLimits('seller-id', 'DAILY').subscribe();
+
+    const request = http.expectOne('/api/v1/users/seller-id/number-limits/DAILY');
+    expect(request.request.method).toBe('DELETE');
+    request.flush({});
+  });
+
+  it('removes a route policy so the route uses the general rule again', () => {
+    service.inheritRouteNumberLimits('route-id', 'DAILY').subscribe();
+
+    const request = http.expectOne('/api/v1/routes/route-id/number-limits/DAILY');
+    expect(request.request.method).toBe('DELETE');
+    request.flush({});
+  });
+
+  it('saves the general number limits independently by draw family', () => {
+    service
+      .updateSystemNumberLimits('DAILY', {
+        enabled: true,
+        defaultLimit: 20_000,
+        overrides: [{ number: '03', limit: 4_000 }],
+        excludedSellerIds: ['seller-1'],
+      })
+      .subscribe();
+
+    const request = http.expectOne('/api/v1/system-number-limits/DAILY');
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({
+      enabled: true,
+      defaultLimit: 20_000,
+      overrides: [{ number: '03', limit: 4_000 }],
+      excludedSellerIds: ['seller-1'],
+    });
+    request.flush({ policies: [] });
   });
 
   it('loads the dedicated saleable draw catalog', () => {

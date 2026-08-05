@@ -89,7 +89,7 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/reports/report-history.page').then(
             (component) => component.ReportHistoryPage,
-        ),
+          ),
       },
       {
         path: 'reports/winners',
@@ -153,6 +153,13 @@ export const routes: Routes = [
           import('./features/admin/route-limits/route-limits.page').then(
             (component) => component.RouteLimitsPage,
           ),
+      },
+      {
+        path: 'limits',
+        title: 'Límites · Suerte',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/admin/limits/limits.page').then((component) => component.LimitsPage),
       },
       {
         path: 'settings/system',

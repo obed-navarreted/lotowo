@@ -1,0 +1,305 @@
+<header class="page-header limits-heading">
+  <div class="page-header__copy">
+    <span class="eyebrow">Control de riesgo</span>
+    <h1>Límites</h1>
+    <p class="page-subtitle">
+      Decide cuánto premio puede acumular cada número, desde una regla general hasta una excepción
+      individual.
+    </p>
+  </div>
+  @if (selectedScope() === 'GENERAL') {
+    <button
+      class="button button--primary desktop-save"
+      type="button"
+      (click)="saveGeneral()"
+      [disabled]="loading() || saving()"
+    >
+      <lo-icon name="check" [size]="18" /> {{ saving() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  }
+</header>
+
+@if (error()) {
+  <div class="notice notice--error"><lo-icon name="info" [size]="19" />{{ error() }}</div>
+}
+@if (notice()) {
+  <div class="notice notice--success"><lo-icon name="check" [size]="19" />{{ notice() }}</div>
+}
+
+<section class="priority-card card">
+  <span class="priority-card__icon"><lo-icon name="help" [size]="22" /></span>
+  <div>
+    <strong>La regla más específica manda</strong>
+    <p>
+      Vendedor tiene prioridad sobre ruta, y ruta sobre general. También puedes declarar una ruta o
+      vendedor sin límites, aunque exista una regla general.
+    </p>
+  </div>
+  <div class="priority-flow" aria-label="Orden de prioridad">
+    <span>General</span><lo-icon name="arrow" [size]="15" /><span>Ruta</span
+    ><lo-icon name="arrow" [size]="15" /><b>Vendedor</b>
+  </div>
+</section>
+
+<nav class="scope-tabs" aria-label="Nivel de configuración">
+  <button
+    type="button"
+    [class.scope-tabs__item--active]="selectedScope() === 'GENERAL'"
+    (click)="selectScope('GENERAL')"
+  >
+    <span><lo-icon name="table" [size]="21" /></span>
+    <div><strong>General</strong><small>Regla base del sistema</small></div>
+  </button>
+  <button
+    type="button"
+    [class.scope-tabs__item--active]="selectedScope() === 'ROUTES'"
+    (click)="selectScope('ROUTES')"
+  >
+    <span><lo-icon name="route" [size]="21" /></span>
+    <div>
+      <strong>Rutas</strong><small>{{ routes().length }} disponibles</small>
+    </div>
+  </button>
+  <button
+    type="button"
+    [class.scope-tabs__item--active]="selectedScope() === 'SELLERS'"
+    (click)="selectScope('SELLERS')"
+  >
+    <span><lo-icon name="users" [size]="21" /></span>
+    <div>
+      <strong>Vendedores</strong><small>{{ sellers().length }} registrados</small>
+    </div>
+  </button>
+</nav>
+
+@if (loading()) {
+  <div class="limits-loading card">Cargando configuración…</div>
+} @else if (selectedScope() === 'GENERAL') {
+  <section class="general-workspace card">
+    <header class="workspace-heading">
+      <div>
+        <span class="eyebrow">Regla base</span>
+        <h2>Límite general</h2>
+        <p>Se usa cuando una ruta o un vendedor no tienen una decisión propia.</p>
+      </div>
+      <span class="status-pill" [class.status-pill--limited]="current().enabled">
+        {{ current().enabled ? 'Con límites' : 'Sin límites' }}
+      </span>
+    </header>
+
+    <div class="draw-tabs" role="tablist" aria-label="Familia de sorteo">
+      <button
+        type="button"
+        [class.draw-tabs__item--active]="selectedType() === 'DAILY'"
+        (click)="selectType('DAILY')"
+      >
+        <strong>Sorteos diarios</strong><small>11 AM · 3 PM · 9 PM</small>
+      </button>
+      <button
+        type="button"
+        [class.draw-tabs__item--active]="selectedType() === 'NATIONAL_LOTTERY'"
+        (click)="selectType('NATIONAL_LOTTERY')"
+      >
+        <strong>Lotería Nacional</strong><small>Sorteos manuales</small>
+      </button>
+    </div>
+
+    <div class="mode-selector" role="radiogroup" aria-label="Modo de límite general">
+      <button
+        type="button"
+        [class.mode-selector__option--active]="!current().enabled"
+        (click)="selectGeneralMode(false)"
+      >
+        <lo-icon name="unlock" [size]="21" />
+        <span><strong>Sin límites</strong><small>No aplica un tope general</small></span>
+      </button>
+      <button
+        type="button"
+        [class.mode-selector__option--active]="current().enabled"
+        (click)="selectGeneralMode(true)"
+      >
+        <lo-icon name="lock" [size]="21" />
+        <span><strong>Con límites</strong><small>Controla el premio por número</small></span>
+      </button>
+    </div>
+
+    @if (!current().enabled) {
+      <div class="mode-summary">
+        <span><lo-icon name="unlock" [size]="22" /></span>
+        <div>
+          <strong>El sistema no impondrá un límite general</strong>
+          <p>Las reglas configuradas en rutas o vendedores continuarán aplicándose normalmente.</p>
+        </div>
+      </div>
+    } @else {
+      <div class="default-limit">
+        <div>
+          <span class="field-icon"><lo-icon name="table" [size]="20" /></span>
+          <span
+            ><strong>Límite predeterminado</strong
+            ><small>Premio máximo por número dentro de cada sorteo.</small></span
+          >
+        </div>
+        <label>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            placeholder="Sin valor general"
+            [ngModel]="current().defaultLimit"
+            (ngModelChange)="setDefaultLimit($event)"
+          />
+        </label>
+      </div>
+
+      <div class="number-heading">
+        <div>
+          <h2>Terminaciones 00–99</h2>
+          <p>Vacío usa el valor general. Un valor de 0 bloquea ventas nuevas de ese número.</p>
+        </div>
+        <span>{{ overrideCount() }} excepciones</span>
+      </div>
+
+      <div class="number-grid">
+        @for (number of numbers; track number) {
+          <article
+            class="number-cell"
+            [class.number-cell--override]="isOverride(number)"
+            [class.number-cell--blocked]="isBlocked(number)"
+          >
+            <header>
+              <strong>{{ number }}</strong
+              ><span>{{ isOverride(number) ? 'E' : 'G' }}</span>
+            </header>
+            <label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                [ngModel]="current().overrides[number]"
+                (ngModelChange)="setNumberLimit(number, $event)"
+                [placeholder]="current().defaultLimit === null ? '∞' : '' + current().defaultLimit"
+                [attr.aria-label]="'Límite del número ' + number"
+              />
+            </label>
+            @if (isOverride(number)) {
+              <button type="button" (click)="clearNumber(number)">Usar general</button>
+            }
+          </article>
+        }
+      </div>
+
+      <footer class="limit-legend">
+        <span><b>G</b> valor general</span><span><b>E</b> excepción</span
+        ><span><i></i> número bloqueado</span>
+        @if (overrideCount()) {
+          <button type="button" (click)="clearOverrides()">Quitar excepciones</button>
+        }
+      </footer>
+
+      @if (sellers().length) {
+        <section class="exclusions">
+          <header>
+            <div>
+              <h2>Excepciones a la regla general</h2>
+              <p>
+                Estos vendedores no usarán la regla general. Una regla propia o de ruta sí puede
+                aplicarles.
+              </p>
+            </div>
+            <span>{{ current().excludedSellerIds.size }} excluidos</span>
+          </header>
+          <div class="exclusion-grid">
+            @for (seller of sellers(); track seller.id) {
+              <label [class.exclusion--selected]="current().excludedSellerIds.has(seller.id)">
+                <input
+                  type="checkbox"
+                  [checked]="current().excludedSellerIds.has(seller.id)"
+                  (change)="toggleExcluded(seller.id, $any($event.target).checked)"
+                />
+                <span
+                  ><strong>{{ seller.fullName }}</strong
+                  ><small>{{ seller.routeName || 'Sin ruta' }}</small></span
+                >
+              </label>
+            }
+          </div>
+        </section>
+      }
+    }
+  </section>
+
+  <div class="mobile-save">
+    <button
+      class="button button--primary button--block"
+      type="button"
+      (click)="saveGeneral()"
+      [disabled]="saving()"
+    >
+      {{ saving() ? 'Guardando…' : 'Guardar regla general' }}
+    </button>
+  </div>
+} @else {
+  <section class="entity-workspace card">
+    <header class="workspace-heading workspace-heading--entities">
+      <div>
+        <span class="eyebrow">{{ selectedScope() === 'ROUTES' ? 'Por ruta' : 'Individual' }}</span>
+        <h2>{{ selectedScope() === 'ROUTES' ? 'Elige una ruta' : 'Elige un vendedor' }}</h2>
+        <p>
+          {{
+            selectedScope() === 'ROUTES'
+              ? 'Configura sorteos diarios y Lotería Nacional para toda la ruta o vendedores elegidos.'
+              : 'Define si hereda, trabaja sin límites o utiliza límites propios.'
+          }}
+        </p>
+      </div>
+      <label class="entity-search">
+        <lo-icon name="search" [size]="19" />
+        <input
+          type="search"
+          [value]="query()"
+          (input)="setQuery($any($event.target).value)"
+          [placeholder]="selectedScope() === 'ROUTES' ? 'Buscar ruta' : 'Buscar vendedor'"
+        />
+      </label>
+    </header>
+
+    <div class="entity-list">
+      @if (selectedScope() === 'ROUTES') {
+        @for (route of filteredRoutes(); track route.id) {
+          <a class="entity-row" [routerLink]="['/routes', route.id, 'limits']">
+            <span class="entity-avatar entity-avatar--route">{{
+              route.code.slice(0, 2).toUpperCase()
+            }}</span>
+            <div class="entity-main">
+              <strong>{{ route.name }}</strong
+              ><small>{{ route.code }} · {{ route.sellerCount }} vendedores</small>
+            </div>
+            <span class="entity-state" [class.entity-state--inactive]="!route.active">{{
+              route.active ? 'Activa' : 'Inactiva'
+            }}</span>
+            <span class="entity-action">Configurar <lo-icon name="arrow" [size]="17" /></span>
+          </a>
+        } @empty {
+          <div class="empty-state">No encontramos rutas con ese criterio.</div>
+        }
+      } @else {
+        @for (seller of filteredSellers(); track seller.id) {
+          <a class="entity-row" [routerLink]="['/users', seller.id, 'limits']">
+            <span class="entity-avatar">{{ seller.fullName.slice(0, 2).toUpperCase() }}</span>
+            <div class="entity-main">
+              <strong>{{ seller.fullName }}</strong
+              ><small>@{{ seller.username }} · {{ seller.routeName || 'Sin ruta' }}</small>
+            </div>
+            <span class="entity-state" [class.entity-state--inactive]="!seller.enabled">{{
+              seller.enabled ? 'Habilitado' : 'Desactivado'
+            }}</span>
+            <span class="entity-action">Configurar <lo-icon name="arrow" [size]="17" /></span>
+          </a>
+        } @empty {
+          <div class="empty-state">No encontramos vendedores con ese criterio.</div>
+        }
+      }
+    </div>
+  </section>
+}
