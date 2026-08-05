@@ -2,7 +2,7 @@
 
 Aplicación mobile-first para la operación de Lotowo. La PWA y la aplicación Android comparten la misma base Angular 22/TypeScript; Android añade acceso nativo a impresoras térmicas Bluetooth Classic sin abrir el diálogo de impresión ni depender de aplicaciones de terceros.
 
-## Desarrollo
+## Desarrollo $$$
 
 Requisitos: Node.js `22.22.3+` y la API de Lotowo ejecutándose en `http://localhost:8080`.
 
