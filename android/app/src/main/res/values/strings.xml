@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Suerte</string>
+    <string name="title_activity_main">Suerte</string>
+    <string name="package_name">ni.lotowo.app</string>
+    <string name="custom_url_scheme">ni.lotowo.app</string>
+</resources>

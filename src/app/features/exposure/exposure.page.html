@@ -1,0 +1,225 @@
+<header class="page-header exposure-heading">
+  <div class="page-header__copy">
+    <span class="eyebrow">Ventas por número</span>
+    <h1>Control de ventas</h1>
+    <p class="page-subtitle">
+      Mira cuánto se ha vendido y cuánto pagarías si cae cada terminación.
+    </p>
+  </div>
+  <div class="heading-actions">
+    @if (auth.isAdmin()) {
+      <button class="button" type="button" (click)="openAlertSettings()"
+        ><lo-icon name="bell" [size]="18" /><span>Alertas</span></button
+      >
+    }
+    <button
+      class="button button--primary"
+      type="button"
+      (click)="refresh()"
+      [disabled]="refreshing()"
+    >
+      <lo-icon name="refresh" [size]="18" />
+      <span>{{ refreshing() ? 'Cargando…' : 'Actualizar' }}</span>
+    </button>
+  </div>
+</header>
+
+@if (actionMessage()) {
+  <div class="exposure-notice">
+    <lo-icon name="check" [size]="18" /><span>{{ actionMessage() }}</span>
+    <button type="button" (click)="actionMessage.set(null)" aria-label="Cerrar aviso">
+      <lo-icon name="close" [size]="16" />
+    </button>
+  </div>
+}
+
+<section class="exposure-filters card">
+  <div class="filter-intro">
+    <span><lo-icon name="calendar" [size]="17" /></span>
+    <div><strong>Elige qué quieres revisar</strong><small>Selecciona el día y el sorteo.</small></div>
+  </div>
+  <label>
+    <span>Fecha</span>
+    <span class="date-picker">
+      <lo-icon name="calendar" [size]="19" />
+      <span class="date-picker__copy"
+        ><strong>{{ dateLabel() }}</strong
+        ><small>DD/MM/AAAA</small></span
+      >
+      <input
+        type="date"
+        [(ngModel)]="selectedDate"
+        [min]="historyMinDate"
+        (change)="onDateChanged()"
+      />
+    </span>
+  </label>
+  <label>
+      <span>Sorteo</span>
+    <select class="select" [(ngModel)]="selectedDrawId" (change)="onDrawChanged()">
+      <option value="">Selecciona un sorteo</option>
+      @for (draw of draws(); track draw.drawId) {
+        <option [value]="draw.drawId">{{ drawName(draw) }}</option>
+      }
+    </select>
+  </label>
+  @if (auth.user()?.role !== 'SELLER') {
+    <label>
+      <span>Ruta</span>
+      <select class="select" [(ngModel)]="selectedRouteId" (change)="onRouteChanged()">
+        <option value="">Todas las rutas</option>
+        @for (route of routes(); track route.id) {
+          <option [value]="route.id">{{ route.code }} · {{ route.name }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      <span>Vendedor</span>
+      <select class="select" [(ngModel)]="selectedSellerId" (change)="loadReport()">
+        <option value="">Todos los vendedores</option>
+        @for (seller of availableSellers(); track seller.id) {
+          <option [value]="seller.id">{{ seller.fullName }}</option>
+        }
+      </select>
+    </label>
+  }
+</section>
+
+@if (errorMessage()) {
+  <div class="exposure-error"><lo-icon name="info" [size]="18" /> {{ errorMessage() }}</div>
+}
+
+@if (loading()) {
+  <section class="exposure-loading"><i></i><i></i><i></i></section>
+} @else if (report(); as detail) {
+  <section class="exposure-summary">
+    <article class="card">
+      <small>Total vendido</small><strong>{{ money(detail.grossSales) }}</strong
+      ><span>{{ detail.ticketCount }} boletos válidos</span>
+    </article>
+    <article class="card">
+      <small>Números con venta</small><strong>{{ soldNumberCount() }} de 100</strong
+      ><span>Terminaciones que tienen jugadas</span>
+    </article>
+    <article class="card exposure-summary__highest">
+      <small>Mayor riesgo</small>
+      @if (highestExposure(); as highest) {
+        <div>
+          <b>{{ highest.number }}</b
+          ><strong>{{ money(highest.potentialPayout) }}</strong>
+        </div>
+        <span>Se pagaría si gana · {{ money(highest.salesAmount) }} vendidos</span>
+      } @else {
+        <strong>Sin ventas</strong><span>Todavía no hay premio comprometido</span>
+      }
+    </article>
+  </section>
+
+  <section class="number-exposure card">
+    <header>
+      <div>
+        <span class="eyebrow">{{ drawName(detail) }}</span>
+        <h2>Riesgo por terminación</h2>
+        <p>{{ updatedLabel() }} · montos según los filtros elegidos.</p>
+      </div>
+      <label class="sold-toggle"
+        ><input type="checkbox" [(ngModel)]="showOnlyWithSales" /><span></span> Solo vendidos</label
+      >
+    </header>
+    @if (auth.isAdmin() && notificationSettings()?.numberExposureEnabled) {
+      <div class="alert-legend">
+        <i></i> En alerta cuando el premio supera
+        {{ money(notificationSettings()!.numberExposureThreshold) }}.
+      </div>
+    }
+    @if (visibleNumbers().length) {
+      <div class="number-grid">
+        @for (item of visibleNumbers(); track item.number) {
+          <article [class.number-card--alert]="exceedsAlert(item)">
+            <header>
+              <b>{{ item.number }}</b
+              ><span>{{ item.ticketCount }} bol.</span>
+            </header>
+            <small>Vendido</small><strong>{{ money(item.salesAmount) }}</strong>
+            <small>Premio</small
+            ><strong class="number-card__payout">{{ money(item.potentialPayout) }}</strong>
+          </article>
+        }
+      </div>
+    } @else {
+      <div class="empty-state">
+        <div><strong>No hay números vendidos</strong>Este alcance todavía no registra ventas.</div>
+      </div>
+    }
+  </section>
+} @else {
+  <section class="card empty-state">
+    <div><strong>No hay información disponible</strong>Selecciona una fecha y un sorteo.</div>
+  </section>
+}
+
+@if (alertDialogOpen()) {
+  <div class="alert-dialog-backdrop" (click)="closeAlertSettings()">
+    <section
+      class="alert-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="alert-dialog-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header>
+        <span><lo-icon name="bell" [size]="22" /></span>
+        <div>
+          <h2 id="alert-dialog-title">Alerta de riesgo</h2>
+          <p>Te avisaremos cuando el premio de un número pase el monto indicado.</p>
+        </div>
+        <button type="button" (click)="closeAlertSettings()" aria-label="Cerrar">
+          <lo-icon name="close" [size]="18" />
+        </button>
+      </header>
+
+      @if (alertSettingsLoading()) {
+        <div class="alert-dialog__loading">Cargando configuración…</div>
+      } @else {
+        <label class="alert-switch">
+          <span><strong>Enviar alerta</strong><small>A todos los administradores activos.</small></span>
+          <input type="checkbox" [(ngModel)]="alertEnabled" /><i></i>
+        </label>
+
+        <label class="alert-amount" [class.alert-amount--disabled]="!alertEnabled">
+          <span>Avisar desde</span>
+          <div>
+            <b>C$</b>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              inputmode="numeric"
+              [(ngModel)]="alertThreshold"
+              [disabled]="!alertEnabled"
+            />
+          </div>
+          <small>Ejemplo: 40,000 alerta al superar C$40,000 de premio.</small>
+        </label>
+
+        @if (alertSettingsError()) {
+          <div class="alert-dialog__error">
+            <lo-icon name="info" [size]="17" /> {{ alertSettingsError() }}
+          </div>
+        }
+
+        <footer>
+          <button class="button" type="button" (click)="closeAlertSettings()">Cancelar</button>
+          <button
+            class="button button--primary"
+            type="button"
+            (click)="saveAlertSettings()"
+            [disabled]="alertSettingsSaving()"
+          >
+            {{ alertSettingsSaving() ? 'Guardando…' : 'Guardar' }}
+          </button>
+        </footer>
+      }
+    </section>
+  </div>
+}

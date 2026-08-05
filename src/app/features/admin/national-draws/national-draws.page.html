@@ -1,0 +1,64 @@
+<header class="page-header">
+  <div class="page-header__copy">
+    <span class="eyebrow">Programación manual</span>
+    <h1>Lotería Nacional</h1>
+    <p class="page-subtitle">Crea cada sorteo manualmente y conserva su consecutivo histórico.</p>
+  </div>
+</header>
+
+@if (notice()) { <div class="alert alert--success"><lo-icon name="check" [size]="17" />{{ notice() }}</div> }
+@if (error()) { <div class="alert alert--error">{{ error() }}</div> }
+
+<div class="national-layout">
+  <section class="card create-card">
+    <div class="section-heading"><div><h2>Nuevo sorteo</h2><p>Las fechas y horas se interpretan siempre en Nicaragua.</p></div><span class="draw-mark">LN</span></div>
+    <form (submit)="$event.preventDefault(); save()">
+      <div class="field">
+        <label for="nationalName">Nombre del sorteo</label>
+        <input id="nationalName" class="input" name="nationalName" [(ngModel)]="name" maxlength="120" placeholder="Ej. Lotería Nacional ordinaria" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="nationalSequence">Consecutivo</label>
+        <input id="nationalSequence" class="input" name="nationalSequence" type="number" min="1" step="1" [(ngModel)]="nationalSequence" [readonly]="sequenceLocked()" placeholder="Cargando consecutivo…">
+        <small>Calculado desde el último consecutivo histórico (2281); no puede saltarse.</small>
+      </div>
+      <div class="date-grid">
+        <div class="field">
+          <label for="scheduledDate">Fecha y hora del sorteo</label>
+          <div class="date-time-inputs">
+            <input id="scheduledDate" class="input" name="scheduledDate" type="text" inputmode="numeric" maxlength="10" placeholder="DD/MM/AAAA" autocomplete="off" [ngModel]="scheduledDate" (ngModelChange)="scheduledDate = dateInput($event)" aria-label="Fecha del sorteo, día mes año">
+            <input class="input time-input" name="scheduledTime" type="time" [(ngModel)]="scheduledTime" aria-label="Hora del sorteo">
+          </div>
+        </div>
+        <div class="field">
+          <label for="salesCloseDate">Cierre de ventas</label>
+          <div class="date-time-inputs">
+            <input id="salesCloseDate" class="input" name="salesCloseDate" type="text" inputmode="numeric" maxlength="10" placeholder="DD/MM/AAAA" autocomplete="off" [ngModel]="salesCloseDate" (ngModelChange)="salesCloseDate = dateInput($event)" aria-label="Fecha de cierre, día mes año">
+            <input class="input time-input" name="salesCloseTime" type="time" [(ngModel)]="salesCloseTime" aria-label="Hora de cierre">
+          </div>
+        </div>
+      </div>
+      @if (formError()) { <div class="form-alert">{{ formError() }}</div> }
+      <button class="button button--primary button--block" type="submit" [disabled]="saving()">{{ saving() ? 'Creando sorteo…' : 'Crear sorteo de lotería' }}</button>
+    </form>
+  </section>
+
+  <section class="card history-card">
+    <div class="section-heading"><div><h2>Histórico de consecutivos</h2><p>Últimos 50 sorteos registrados.</p></div></div>
+    @if (loading()) {
+      <div class="history-loading">Cargando sorteos…</div>
+    } @else {
+      <div class="draw-list">
+        @for (draw of draws(); track draw.id) {
+          <article class="draw-row">
+            <span class="sequence">#{{ draw.nationalSequence }}</span>
+            <div><strong>{{ draw.name }}</strong><small>{{ dateTime(draw.scheduledAt) }} · cierra {{ dateTime(draw.salesCloseAt) }}</small></div>
+            <span class="status" [class.status--open]="draw.status === 'OPEN'" [class.status--closed]="draw.status === 'CLOSED' || draw.status === 'CANCELLED'" [class.status--settled]="draw.status === 'SETTLED' || draw.status === 'RESULT_ENTERED'">{{ statusLabel(draw.status) }}</span>
+          </article>
+        } @empty {
+          <div class="empty-state"><div><strong>No hay sorteos registrados en la aplicación</strong>El próximo consecutivo disponible es #{{ nationalSequence }}.</div></div>
+        }
+      </div>
+    }
+  </section>
+</div>

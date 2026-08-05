@@ -1,0 +1,253 @@
+<header class="page-header detail-header">
+  <div class="page-header__copy">
+    <nav class="detail-breadcrumb" aria-label="Ruta de navegación">
+      <a routerLink="/tickets"><lo-icon name="arrow" [size]="14" /> Boletos</a>
+      <span>/</span>
+      <strong>Detalle de venta</strong>
+    </nav>
+    <h1>{{ ticket() ? 'Boleto #' + ticket()!.receiptNumber : 'Boleto' }}</h1>
+    <p class="page-subtitle">Información completa, versiones y trazabilidad del registro.</p>
+  </div>
+  @if (ticket(); as current) {
+    <div class="detail-actions">
+      @if (canPrint()) {
+        <button
+          class="button button--primary"
+          type="button"
+          (click)="printTicket()"
+          [disabled]="printing()"
+        >
+          <lo-icon name="download" [size]="17" />
+          {{ printing() ? 'Generando…' : current.printCount ? 'Reimprimir' : 'Imprimir' }}
+        </button>
+      }
+      @if (canEdit()) {
+        <a class="button" [routerLink]="['/tickets', current.id, 'edit']"
+          ><lo-icon name="edit" [size]="17" /> Editar</a
+        >
+      }
+      @if (canDelete()) {
+        <button class="button button--danger-outline" type="button" (click)="openDeleteDialog()">
+          <lo-icon name="trash" [size]="17" /> Eliminar
+        </button>
+      }
+    </div>
+  }
+</header>
+
+@if (loading()) {
+  <section class="detail-skeleton card"><i></i><i></i><i></i></section>
+} @else if (error()) {
+  <section class="card detail-error">
+    <strong>No se pudo abrir el boleto</strong>
+    <p>{{ error() }}</p>
+    <a class="button" routerLink="/tickets">Volver a boletos</a>
+  </section>
+} @else if (ticket(); as current) {
+  @if (printError()) {
+    <section class="print-error"><lo-icon name="info" [size]="18" /> {{ printError() }}</section>
+  }
+  @if (current.status === 'DELETED') {
+    <section class="deletion-banner">
+      <span><lo-icon name="trash" [size]="21" /></span>
+      <div>
+        <strong>Boleto eliminado</strong>
+        <p>
+          Eliminado por {{ current.deletedByName || 'Usuario no disponible' }} el
+          {{ dateTime(current.deletedAt) }}.
+        </p>
+        <small>Motivo: {{ current.deletionReason }}</small>
+      </div>
+    </section>
+  } @else if (current.status === 'REPLACED') {
+    <section class="history-banner">
+      <lo-icon name="edit" [size]="19" />
+      <div>
+        <strong>Versión histórica</strong
+        ><span
+          >Este boleto fue reemplazado por una edición posterior y se conserva para auditoría.</span
+        >
+      </div>
+    </section>
+  }
+
+  @if (current.winningNumber) {
+    <section class="winner-banner" [class.winner-banner--matched]="containsWinner()">
+      <span>{{ current.winningNumber }}</span>
+      <div>
+        <strong>{{
+          containsWinner() ? 'Este boleto contiene el número ganador' : 'Resultado registrado'
+        }}</strong
+        ><small>Número ganador del sorteo: {{ current.winningNumber }}</small>
+      </div>
+    </section>
+  }
+
+  <div class="detail-grid">
+    <main class="receipt-card card">
+      <div class="receipt-card__brand">
+        <span class="receipt-mark"><i></i><i></i><i></i><i></i></span><strong>suerte</strong
+        ><span
+          class="status"
+          [class.status--active]="current.status === 'ACTIVE'"
+          [class.status--cancelled]="current.status === 'DELETED'"
+          >{{ statusLabel(current.status) }}</span
+        >
+      </div>
+      <div class="receipt-title">
+        <small>Sorteo</small>
+        <h2>{{ draw(current) }}</h2>
+        <span>Recibo #{{ current.receiptNumber }}</span>
+      </div>
+      <div class="receipt-items">
+        <div class="receipt-items__head">
+          <span>Número</span><span>Jugada</span><span>Premio</span>
+        </div>
+        @for (item of current.items; track item.id) {
+          <div class="receipt-item" [class.receipt-item--winner]="isWinner(item.number)">
+            <b>{{ item.number }}</b
+            ><strong>{{ money(item.stake) }}</strong
+            ><strong>{{ money(item.potentialPayout) }}</strong>
+          </div>
+        }
+      </div>
+      <div class="receipt-total">
+        <span
+          ><small>Total jugado</small><strong>{{ money(current.totalAmount) }}</strong></span
+        ><span
+          ><small>Máximo premio potencial</small
+          ><strong>{{ money(maximumExposure()?.potentialPayout ?? 0) }}</strong
+          ><em>Número {{ maximumExposure()?.number ?? '—' }}</em></span
+        >
+      </div>
+    </main>
+
+    <aside class="metadata-card card">
+      <div class="section-heading">
+        <div>
+          <h2>Información</h2>
+          <p>Datos asociados al boleto</p>
+        </div>
+      </div>
+      <dl>
+        <div>
+          <dt>Vendedor</dt>
+          <dd>{{ current.sellerName }}</dd>
+        </div>
+        <div>
+          <dt>Ruta</dt>
+          <dd>{{ current.routeName }}</dd>
+        </div>
+        <div>
+          <dt>Registrado</dt>
+          <dd>{{ dateTime(current.createdAt) }}</dd>
+        </div>
+        <div>
+          <dt>Cierre del sorteo</dt>
+          <dd>{{ dateTime(current.salesCloseAt) }}</dd>
+        </div>
+        <div>
+          <dt>Versión</dt>
+          <dd>{{ current.revision }}</dd>
+        </div>
+        <div>
+          <dt>Impresiones</dt>
+          <dd>{{ current.printCount }}</dd>
+        </div>
+        @if (current.lastPrintedAt) {
+          <div>
+            <dt>Última impresión</dt>
+            <dd>{{ dateTime(current.lastPrintedAt) }}</dd>
+          </div>
+        }
+      </dl>
+      @if (previousVersion() && revisionChanges().length) {
+        <section class="revision-changes">
+          <header>
+            <strong>Cambios de la versión {{ current.revision }}</strong
+            ><small>Comparada con la versión {{ current.revision - 1 }}</small>
+          </header>
+          <div>
+            @for (change of revisionChanges(); track change.number) {
+              <article [class]="'revision-change revision-change--' + change.type.toLowerCase()">
+                <b>{{ change.number }}</b
+                ><span
+                  ><strong>{{ changeLabel(change.type) }}</strong
+                  ><small>
+                    @if (change.before !== null) {
+                      {{ money(change.before) }}
+                    }
+                    @if (change.before !== null && change.after !== null) {
+                      →
+                    }
+                    @if (change.after !== null) {
+                      {{ money(change.after) }}
+                    }
+                  </small></span
+                >
+              </article>
+            }
+          </div>
+        </section>
+      }
+      <div class="revision-help">
+        <lo-icon name="help" [size]="17" />
+        <p>
+          <strong>¿Qué significa versión?</strong>Cada edición crea un boleto nuevo. La versión
+          anterior no se sobrescribe y permanece disponible para revisión.
+        </p>
+      </div>
+      @if (current.previousTicketId) {
+        <a class="previous-link" [routerLink]="['/tickets', current.previousTicketId]"
+          ><lo-icon name="arrow" [size]="14" /> Ver versión anterior</a
+        >
+      }
+    </aside>
+  </div>
+}
+
+@if (deleteDialogOpen() && ticket(); as current) {
+  <div class="modal-backdrop" role="presentation" (click)="closeDeleteDialog()">
+    <section
+      class="delete-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="delete-title"
+      (click)="$event.stopPropagation()"
+    >
+      <span class="delete-dialog__icon"><lo-icon name="trash" [size]="24" /></span>
+      <h2 id="delete-title">Eliminar boleto #{{ current.receiptNumber }}</h2>
+      <p>
+        La venta se descontará de los acumulados, pero el boleto y esta acción permanecerán visibles
+        en el historial.
+      </p>
+      <label
+        ><span>Motivo de la eliminación</span
+        ><textarea
+          class="input"
+          rows="3"
+          maxlength="300"
+          placeholder="Ej. Error de digitación"
+          [value]="deletionReason()"
+          (input)="updateDeletionReason($any($event.target).value)"
+        ></textarea
+        ><small>{{ deletionReason().length }}/300</small></label
+      >
+      @if (actionError()) {
+        <div class="dialog-error">{{ actionError() }}</div>
+      }
+      <div class="delete-dialog__actions">
+        <button class="button" type="button" (click)="closeDeleteDialog()" [disabled]="deleting()">
+          Cancelar</button
+        ><button
+          class="button button--danger"
+          type="button"
+          (click)="confirmDelete()"
+          [disabled]="deleting() || !deletionReason().trim()"
+        >
+          {{ deleting() ? 'Eliminando…' : 'Sí, eliminar boleto' }}
+        </button>
+      </div>
+    </section>
+  </div>
+}

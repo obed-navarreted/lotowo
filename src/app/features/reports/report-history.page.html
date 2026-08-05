@@ -1,0 +1,120 @@
+<header class="page-header">
+  <div class="page-header__copy">
+    <span class="eyebrow">Histórico operativo</span>
+    <h1>Resultados</h1>
+    <p class="page-subtitle">
+      {{ auth.isAdmin() ? 'Histórico completo de ganadores, ventas y premios.' : 'Ganadores, ventas y premios de los últimos 15 días.' }}
+    </p>
+  </div>
+  <a class="button" routerLink="/reports"><lo-icon name="chart" [size]="16" /> Reporte detallado</a>
+</header>
+
+@if (auth.user()?.role !== 'SELLER') {
+  <section class="history-filter card">
+    <label
+      ><span>Vendedor</span
+      ><select class="select" [(ngModel)]="selectedSellerId" (change)="onSellerChanged()">
+        <option value="">Todos los vendedores permitidos</option>
+        @for (seller of sellers(); track seller.id) {
+          <option [value]="seller.id">{{ seller.fullName }}</option>
+        }
+      </select></label
+    >
+  </section>
+}
+@if (errorMessage()) {
+  <div class="history-error">{{ errorMessage() }}</div>
+}
+
+@if (loading()) {
+  <section class="history-list">
+    <article class="card skeleton"></article>
+    <article class="card skeleton"></article>
+    <article class="card skeleton"></article>
+  </section>
+} @else if (days().length) {
+  <section class="history-list">
+    @for (day of visibleDays(); track day.date) {
+      <article class="day-card card" [class.day-card--open]="expandedDate() === day.date">
+        <button
+          class="day-card__summary"
+          type="button"
+          (click)="toggleDay(day)"
+          [attr.aria-expanded]="expandedDate() === day.date"
+        >
+          <span class="day-date"
+            ><small>Día</small><strong>{{ date(day.date) }}</strong
+            ><em
+              >{{ day.drawCount }} sorteos · {{ day.ticketCount }} boletos
+              @if (day.pendingResults) {
+                · {{ day.pendingResults }} pendientes
+              }
+            </em></span
+          ><span
+            ><small>Vendido</small><strong>{{ money(day.grossSales) }}</strong></span
+          ><span
+            ><small>Premios</small><strong>{{ money(day.prizesPaid) }}</strong></span
+          ><span [class.loss]="day.netResult < 0"
+            ><small>{{ day.pendingResults ? 'Provisional' : resultLabel(day.netResult) }}</small
+            ><strong>{{ money(day.netResult) }}</strong></span
+          ><lo-icon name="arrow" [size]="17" />
+        </button>
+        @if (expandedDate() === day.date) {
+          <div class="draw-breakdown">
+            @if (drawsLoading()) {
+              <div class="draw-loading">Cargando sorteos…</div>
+            } @else {
+              @for (draw of dayDraws(); track draw.drawId) {
+                <article class="draw-result">
+                  <span class="draw-number" [class.draw-number--pending]="!draw.winningNumber"
+                    ><small>{{ draw.winningNumber ? 'Ganador' : 'Pendiente' }}</small
+                    ><strong>{{ draw.winningNumber ?? '—' }}</strong></span
+                  >
+                  <span class="draw-copy"
+                    ><strong>{{ drawName(draw) }}</strong
+                    ><small
+                      >{{ draw.ticketCount }} boletos · {{ money(draw.grossSales) }} vendido</small
+                    ><em>{{ money(draw.prizesPaid) }} en premios</em></span
+                  >
+                  <span class="draw-balance" [class.loss]="draw.netResult < 0"
+                    ><small>{{
+                      draw.winningNumber ? resultLabel(draw.netResult) : 'Provisional'
+                    }}</small
+                    ><strong>{{ money(draw.netResult) }}</strong></span
+                  >
+                  <div class="draw-actions">
+                    <a class="button" routerLink="/tickets" [queryParams]="ticketsQuery(draw)" title="Consultar boletos"
+                      ><lo-icon name="ticket" [size]="15" /> Boletos</a
+                    >
+                    <a
+                      class="button button--primary"
+                      routerLink="/reports"
+                      [queryParams]="reportQuery(draw)"
+                      title="Consultar cierre">Cierre <lo-icon name="arrow" [size]="14"
+                    /></a>
+                  </div>
+                </article>
+              } @empty {
+                <div class="draw-loading">No hay ventas para los sorteos de este día.</div>
+              }
+            }
+          </div>
+        }
+      </article>
+    }
+  </section>
+  @if (totalPages() > 1) {
+    <nav class="history-pagination" aria-label="Páginas del histórico">
+      <button class="button" type="button" (click)="previousPage()" [disabled]="page() === 0" title="Página anterior"><lo-icon name="arrow" [size]="16" /></button>
+      <span>{{ page() + 1 }} / {{ totalPages() }}</span>
+      <button class="button" type="button" (click)="nextPage()" [disabled]="page() + 1 >= totalPages()" title="Página siguiente"><lo-icon name="arrow" [size]="16" /></button>
+    </nav>
+  }
+} @else {
+  <section class="card empty-state">
+    <div>
+      <strong>No hay resultados disponibles</strong>Las jornadas con ventas aparecerán
+      aquí.
+    </div>
+  </section>
+}

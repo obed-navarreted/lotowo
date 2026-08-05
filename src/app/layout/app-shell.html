@@ -1,0 +1,229 @@
+<div class="app-frame">
+  @if (menuOpen()) {
+    <button class="scrim" aria-label="Cerrar menú" (click)="closeMenu()"></button>
+  }
+
+  <aside class="sidebar" [class.sidebar--open]="menuOpen()">
+    <div class="brand-row">
+      <a class="brand" routerLink="/dashboard" (click)="closeMenu()" aria-label="Suerte, inicio">
+        <span class="brand__mark"><i></i><i></i><i></i><i></i></span>
+        <span>suerte</span>
+      </a>
+      <button class="icon-button sidebar__close" (click)="closeMenu()" aria-label="Cerrar menú">
+        <lo-icon name="close" />
+      </button>
+    </div>
+
+    <div class="workspace-chip">
+      <span class="workspace-chip__icon">NI</span>
+      <span><small>Operación</small><strong>Nicaragua</strong></span>
+      <span class="workspace-chip__status"></span>
+    </div>
+
+    <nav class="side-nav" aria-label="Navegación principal">
+      <span class="side-nav__eyebrow">Menú</span>
+      @for (item of navigation(); track item.route) {
+        <a
+          [routerLink]="item.route"
+          routerLinkActive="side-nav__link--active"
+          [routerLinkActiveOptions]="{ exact: item.route === '/reports' }"
+          class="side-nav__link"
+          (click)="closeMenu()"
+        >
+          <lo-icon [name]="item.icon" />
+          <span>{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+
+    <div class="sidebar__bottom">
+      <div class="user-card">
+        <div class="user-card__identity">
+          <span class="avatar">{{ auth.initials() }}</span>
+          <span class="user-card__copy">
+            <strong>{{ auth.user()?.fullName }}</strong>
+            <small>{{ roleLabel(auth.user()?.role) }}</small>
+          </span>
+        </div>
+        <div class="user-card__actions">
+          <a routerLink="/change-password" (click)="closeMenu()">
+            <lo-icon name="lock" [size]="18" /><span>Contraseña</span>
+          </a>
+          <a routerLink="/settings/printer" (click)="closeMenu()">
+            <lo-icon name="printer" [size]="18" /><span>Impresora</span>
+          </a>
+          <button type="button" (click)="logout()" [disabled]="loggingOut()">
+            <lo-icon name="logout" [size]="18" /><span>Salir</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-content">
+    <header class="topbar">
+      <button class="icon-button topbar__menu" (click)="menuOpen.set(true)" aria-label="Abrir menú">
+        <lo-icon name="menu" />
+      </button>
+      <a class="brand brand--mobile" routerLink="/dashboard" aria-label="Suerte, inicio">
+        <span class="brand__mark"><i></i><i></i><i></i><i></i></span>
+        <span>suerte</span>
+      </a>
+      <div class="topbar__actions">
+        <span class="live-pill"><i></i> En línea</span>
+        @if (printer.settings().enabled) {
+          <a
+            class="icon-button printer-status"
+            [attr.data-state]="printer.state()"
+            routerLink="/settings/printer"
+            [attr.aria-label]="printer.stateLabel()"
+            [attr.title]="printer.stateLabel()"
+          >
+            <lo-icon name="printer" [size]="19" />
+            <i></i>
+            @if (printer.queueSize()) {
+              <span>{{ printer.queueSize() > 9 ? '9+' : printer.queueSize() }}</span>
+            }
+          </a>
+        }
+        <div class="notification-center">
+          <button
+            class="icon-button notification-button"
+            aria-label="Notificaciones"
+            [attr.aria-expanded]="notificationsOpen()"
+            (click)="toggleNotifications()"
+          >
+            <lo-icon name="bell" />
+            @if (notifications.unreadCount() > 0) {
+              <span class="notification-badge">{{
+                notifications.unreadCount() > 9 ? '9+' : notifications.unreadCount()
+              }}</span>
+            }
+          </button>
+          @if (notificationsOpen()) {
+            <section class="notification-panel" aria-label="Centro de notificaciones">
+              <header>
+                <div>
+                  <span class="eyebrow">Avisos</span>
+                  <h2>Notificaciones</h2>
+                </div>
+                @if (notifications.unreadCount()) {
+                  <button type="button" (click)="notifications.markAllRead()">Marcar leídas</button>
+                }
+              </header>
+              @if (!notifications.browserSupported) {
+                <div class="notification-permission">
+                  <lo-icon name="info" [size]="17" /><span
+                    >Los avisos se conservan dentro de Suerte. Para recibir push con la app cerrada,
+                    usa la app Android o instala la PWA desde una conexión HTTPS confiable.</span
+                  >
+                </div>
+              } @else if (
+                notifications.browserPermission() !== 'denied' && !notifications.pushActive()
+              ) {
+                <button
+                  class="notification-permission notification-permission--action"
+                  type="button"
+                  (click)="notifications.requestBrowserPermission()"
+                >
+                  <lo-icon name="bell" [size]="17" /><span>Activar notificaciones push</span>
+                </button>
+              } @else if (notifications.browserPermission() === 'denied') {
+                <div class="notification-permission">
+                  <lo-icon name="info" [size]="17" /><span
+                    >Las notificaciones están bloqueadas. Habilítalas desde los permisos de Suerte
+                    en este dispositivo.</span
+                  >
+                </div>
+              } @else if (notifications.pushActive()) {
+                <div class="notification-permission notification-permission--active">
+                  <lo-icon name="check" [size]="17" /><span>Push activas en este dispositivo.</span>
+                </div>
+              }
+              @if (notifications.pushMessage() && !notifications.pushActive()) {
+                <div class="notification-permission">
+                  <lo-icon name="info" [size]="17" /><span>{{ notifications.pushMessage() }}</span>
+                </div>
+              }
+              <div class="notification-list">
+                @for (notification of notifications.notifications(); track notification.id) {
+                  <button
+                    type="button"
+                    class="notification-item"
+                    [class.notification-item--unread]="!notification.read"
+                    (click)="openNotification(notification)"
+                  >
+                    <i></i
+                    ><span
+                      ><strong>{{ notification.title }}</strong
+                      ><small>{{ notification.message }}</small
+                      ><time>{{ notificationTime(notification.createdAt) }}</time></span
+                    >
+                  </button>
+                } @empty {
+                  <div class="notification-empty">
+                    <lo-icon name="bell" [size]="24" /><strong>Todo al día</strong
+                    ><span>Los avisos de cierre y ganadores aparecerán aquí.</span>
+                  </div>
+                }
+              </div>
+            </section>
+          }
+        </div>
+        <span class="avatar avatar--small">{{ auth.initials() }}</span>
+      </div>
+    </header>
+
+    <main class="page-container">
+      <router-outlet />
+    </main>
+
+    <nav class="bottom-nav" aria-label="Navegación móvil">
+      @for (item of mobileNavigation(); track item.route) {
+        <a
+          [routerLink]="item.route"
+          routerLinkActive="bottom-nav__link--active"
+          [routerLinkActiveOptions]="{ exact: item.route === '/reports' }"
+          class="bottom-nav__link"
+        >
+          <lo-icon [name]="item.icon" [size]="21" />
+          <span>{{ item.shortLabel }}</span>
+        </a>
+      }
+    </nav>
+
+    @if (pwa.offerVisible()) {
+      <aside class="install-card" aria-live="polite">
+        <span class="install-card__icon"><lo-icon name="download" [size]="22" /></span>
+        <div class="install-card__copy">
+          <strong>Instala Suerte</strong>
+          @if (!pwa.secureConnection) {
+            <span>Abre Suerte mediante HTTPS para poder instalarla en este dispositivo.</span>
+          } @else if (pwa.ios && !pwa.installAvailable()) {
+            <span>En Safari, toca Compartir y luego “Agregar a pantalla de inicio”.</span>
+          } @else {
+            <span>Úsala como una aplicación, con acceso directo y pantalla completa.</span>
+          }
+        </div>
+        @if (pwa.installAvailable()) {
+          <button
+            class="install-card__action"
+            type="button"
+            [disabled]="pwa.installing()"
+            (click)="pwa.install()"
+          >
+            {{ pwa.installing() ? 'Abriendo…' : 'Instalar' }}
+          </button>
+        }
+        <button
+          class="install-card__close"
+          type="button"
+          aria-label="Cerrar invitación de instalación"
+          (click)="pwa.dismiss()"
+        >
+          <lo-icon name="close" [size]="16" />
+        </button>
+      </aside>
+    }
+  </div>
+</div>

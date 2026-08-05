@@ -1,0 +1,158 @@
+<header class="page-header">
+  <div class="page-header__copy">
+    <span class="eyebrow">Administración</span>
+    <h1>Resultados</h1>
+    <p class="page-subtitle">
+      Registra ganadores y consulta los cierres generados por cada sorteo.
+    </p>
+  </div>
+</header>
+
+<section class="result-filter card">
+  <label
+    ><span>Fecha de los sorteos</span
+    ><span class="date-picker"
+      ><lo-icon name="calendar" [size]="19" /><span class="date-picker__copy"
+        ><strong>{{ dateLabel() }}</strong
+        ><small>DD/MM/AAAA</small></span
+      ><input
+        type="date"
+        [(ngModel)]="selectedDate"
+        (change)="load()"
+        aria-label="Fecha de los sorteos" /></span></label
+  ><span
+    ><lo-icon name="help" [size]="17" /> El ganador puede registrarse únicamente después del cierre
+    de ventas.</span
+  >
+</section>
+@if (errorMessage()) {
+  <div class="results-error">{{ errorMessage() }}</div>
+}
+@if (lastClosure(); as closure) {
+  <div class="closure-success">
+    <lo-icon name="check" [size]="18" /><span
+      ><strong>Ganador {{ closure.winningNumber }} registrado correctamente.</strong>Ventas
+      {{ money(closure.grossSales) }} · Premios {{ money(closure.prizesDue) }} · Resultado
+      {{ money(closure.netResult) }}</span
+    ><a
+      class="button"
+      routerLink="/reports"
+      [queryParams]="{ date: selectedDate, drawId: closure.drawId }"
+      >Ver quién ganó y liquidar</a
+    ><button type="button" (click)="lastClosure.set(null)" aria-label="Cerrar">
+      <lo-icon name="close" [size]="16" />
+    </button>
+  </div>
+}
+
+@if (loading()) {
+  <section class="results-grid">
+    <article class="card skeleton"></article>
+    <article class="card skeleton"></article>
+  </section>
+} @else {
+  <section class="results-grid">
+    <article class="result-section card">
+      <header>
+        <div>
+          <span class="eyebrow">Requieren atención</span>
+          <h2>Pendientes de ganador</h2>
+        </div>
+        <b>{{ pending().length }}</b>
+      </header>
+      @if (pending().length) {
+        <div class="draw-list">
+          @for (draw of pending(); track draw.id) {
+            <article>
+              <span class="pending-number">?</span
+              ><span
+                ><strong>{{ drawName(draw) }}</strong
+                ><small>Ventas cerradas · listo para liquidar</small></span
+              ><button class="button button--primary" type="button" (click)="openResult(draw)">
+                <lo-icon name="check" [size]="16" /> Agregar ganador
+              </button>
+            </article>
+          }
+        </div>
+      } @else {
+        <div class="empty-state">
+          <div>
+            <strong>Todo está al día</strong>No hay sorteos cerrados pendientes en esta fecha.
+          </div>
+        </div>
+      }
+    </article>
+
+    <article class="result-section card">
+      <header>
+        <div>
+          <span class="eyebrow">Histórico del día</span>
+          <h2>Resultados registrados</h2>
+        </div>
+        <b>{{ registered().length }}</b>
+      </header>
+      @if (registered().length) {
+        <div class="draw-list">
+          @for (draw of registered(); track draw.id) {
+            <a routerLink="/reports" [queryParams]="{ date: selectedDate, drawId: draw.id }"
+              ><span class="winner-number">{{ draw.winningNumber }}</span
+              ><span
+                ><strong>{{ drawName(draw) }}</strong
+                ><small>Ganador registrado · ver cierre y detalle</small></span
+              ><lo-icon name="arrow" [size]="17"
+            /></a>
+          }
+        </div>
+      } @else {
+        <div class="empty-state">
+          <div>
+            <strong>Sin resultados registrados</strong>Los ganadores del día aparecerán aquí.
+          </div>
+        </div>
+      }
+    </article>
+  </section>
+}
+
+@if (selectedDraw(); as draw) {
+  <div class="result-modal" (click)="closeResult()">
+    <section
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="winner-title"
+      (click)="$event.stopPropagation()"
+    >
+      <span class="modal-icon"><lo-icon name="check" [size]="23" /></span
+      ><span class="eyebrow">Cierre definitivo</span>
+      <h2 id="winner-title">Agregar número ganador</h2>
+      <p>{{ drawName(draw) }}</p>
+      <label
+        ><span>Terminación ganadora</span
+        ><input
+          class="input winner-input"
+          inputmode="numeric"
+          maxlength="2"
+          placeholder="00"
+          [value]="winningNumber()"
+          (input)="updateNumber($any($event.target).value)"
+          autofocus
+        /><small>Se calcularán premios y cierres globales, por ruta y por vendedor.</small></label
+      >
+      @if (actionError()) {
+        <div class="modal-error">{{ actionError() }}</div>
+      }
+      <footer>
+        <button class="button" type="button" (click)="closeResult()" [disabled]="saving()">
+          Cancelar</button
+        ><button
+          class="button button--primary"
+          type="button"
+          (click)="submitResult()"
+          [disabled]="saving() || winningNumber().length !== 2"
+        >
+          {{ saving() ? 'Calculando cierres…' : 'Registrar ganador' }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}

@@ -1,0 +1,146 @@
+<section class="settings-page">
+  <header class="page-heading">
+    <div>
+      <span class="eyebrow">Mi dispositivo</span>
+      <h1>Impresora de recibos</h1>
+      <p>Configura una impresora térmica Bluetooth de 58 mm para este teléfono.</p>
+    </div>
+    <span class="printer-state" [attr.data-state]="printer.state()">
+      <i></i>{{ printer.stateLabel() }}
+    </span>
+  </header>
+
+  @if (!printer.isNativeAndroid) {
+    <div class="notice notice--info">
+      <lo-icon name="info" [size]="20" />
+      <div>
+        <strong>La impresión directa requiere Suerte para Android</strong>
+        <span
+          >Desde el navegador puedes continuar generando recibos PDF. La aplicación Android usa esta
+          misma interfaz y agrega la conexión Bluetooth sin intermediarios.</span
+        >
+      </div>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="notice notice--error"><lo-icon name="info" [size]="19" />{{ error() }}</div>
+  }
+  @if (message()) {
+    <div class="notice notice--success"><lo-icon name="check" [size]="19" />{{ message() }}</div>
+  }
+
+  <div class="settings-grid">
+    <article class="settings-card">
+      <header>
+        <span class="card-icon"><lo-icon name="printer" [size]="23" /></span>
+        <div>
+          <h2>Impresión en este equipo</h2>
+          <p>La preferencia se guarda únicamente en este teléfono.</p>
+        </div>
+      </header>
+      <label class="setting-row">
+        <span
+          ><strong>Habilitar impresiones</strong
+          ><small>Muestra el estado e intenta reconectar cada 3 segundos.</small></span
+        >
+        <input
+          type="checkbox"
+          [ngModel]="printer.settings().enabled"
+          (ngModelChange)="toggleEnabled($event)"
+        />
+      </label>
+      <label class="setting-row" [class.setting-row--disabled]="!printer.settings().enabled">
+        <span
+          ><strong>Imprimir al completar la venta</strong
+          ><small>Envía el recibo automáticamente; si no hay conexión queda en cola.</small></span
+        >
+        <input
+          type="checkbox"
+          [disabled]="!printer.settings().enabled"
+          [ngModel]="printer.settings().automaticPrinting"
+          (ngModelChange)="toggleAutomatic($event)"
+        />
+      </label>
+      <div class="paper-row">
+        <span><strong>Papel</strong><small>Ancho comercial 58 mm · 32 caracteres</small></span
+        ><b>58 mm</b>
+      </div>
+    </article>
+
+    <article class="settings-card">
+      <header>
+        <span class="card-icon card-icon--mint"><lo-icon name="bluetooth" [size]="23" /></span>
+        <div>
+          <h2>Impresora Bluetooth</h2>
+          <p>Enciéndela y mantenla cerca durante la configuración inicial.</p>
+        </div>
+      </header>
+      @if (printer.settings().deviceId) {
+        <div class="selected-device">
+          <span
+            ><small>Impresora seleccionada</small
+            ><strong>{{
+              printer.settings().deviceName || printer.settings().deviceId
+            }}</strong></span
+          >
+          <i [class.connected]="printer.connected()"></i>
+        </div>
+      }
+      <div class="device-actions">
+        <button
+          class="button button--secondary"
+          type="button"
+          [disabled]="searching() || !printer.isNativeAndroid"
+          (click)="loadPaired()"
+        >
+          Vinculadas
+        </button>
+        <button
+          class="button button--secondary"
+          type="button"
+          [disabled]="searching() || !printer.isNativeAndroid"
+          (click)="search()"
+        >
+          {{ searching() ? 'Buscando…' : 'Buscar cerca' }}
+        </button>
+      </div>
+      @if (devices().length) {
+        <div class="device-list">
+          @for (device of devices(); track device.id) {
+            <button
+              type="button"
+              [disabled]="saving()"
+              [class.selected]="printer.settings().deviceId === device.id"
+              (click)="select(device)"
+            >
+              <span
+                ><strong>{{ device.name }}</strong
+                ><small
+                  >{{ device.bonded ? 'Vinculada' : 'Disponible' }} · {{ device.id }}</small
+                ></span
+              >
+              <lo-icon
+                [name]="printer.settings().deviceId === device.id ? 'check' : 'arrow'"
+                [size]="18"
+              />
+            </button>
+          }
+        </div>
+      }
+      <button
+        class="button button--primary test-button"
+        type="button"
+        [disabled]="testing() || !printer.settings().deviceId || !printer.isNativeAndroid"
+        (click)="test()"
+      >
+        <lo-icon name="printer" [size]="18" />{{ testing() ? 'Imprimiendo…' : 'Imprimir prueba' }}
+      </button>
+      @if (printer.queueSize()) {
+        <p class="queue-note">
+          {{ printer.queueSize() }} recibo(s) pendiente(s). Se imprimirán al recuperar la conexión.
+        </p>
+      }
+    </article>
+  </div>
+</section>

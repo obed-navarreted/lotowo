@@ -1,0 +1,196 @@
+<header class="page-header">
+  <div class="page-header__copy">
+    <span class="eyebrow">Historial</span>
+    <h1>Boletos</h1>
+    <p class="page-subtitle">Consulta por turno, fecha y vendedor según tu nivel de acceso.</p>
+  </div>
+  <span class="ticket-total-count"
+    ><strong>{{ totalElements() }}</strong
+    ><small>registros</small></span
+  >
+</header>
+
+<section class="ticket-filters card">
+  <div class="filter-grid">
+    <label class="filter-field filter-field--date"
+      ><span>Fecha</span
+      ><span class="date-picker"
+        ><lo-icon name="calendar" [size]="19" /><span class="date-picker__copy"
+          ><strong>{{ filterDateLabel() }}</strong
+          ><small>DD/MM/AAAA</small></span
+        ><input
+          type="date"
+          [(ngModel)]="selectedDate"
+          [min]="historyMinDate"
+          (change)="onDateChanged()"
+          aria-label="Fecha de los boletos" /></span
+    ></label>
+    <label class="filter-field filter-field--draw"
+      ><span>Turno</span
+      ><select
+        class="select"
+        [(ngModel)]="selectedDrawId"
+        (change)="applyFilters()"
+        [disabled]="filterLoading()"
+      >
+        <option value="">Todos los turnos del día</option>
+        @for (draw of draws(); track draw.id) {
+          <option [value]="draw.id">{{ drawName(draw) }}</option>
+        }
+      </select></label
+    >
+    @if (auth.user()?.role !== 'SELLER') {
+      <label class="filter-field"
+        ><span>Vendedor</span
+        ><select class="select" [(ngModel)]="selectedSellerId" (change)="applyFilters()">
+          <option value="">Todos los vendedores permitidos</option>
+          @for (seller of sellers(); track seller.id) {
+            <option [value]="seller.id">{{ seller.fullName }}</option>
+          }
+        </select></label
+      >
+    }
+    <label class="search-box"
+      ><lo-icon name="search" [size]="18" /><input
+        type="search"
+        placeholder="Ej. #3 o número 25"
+        [(ngModel)]="search"
+        (keyup.enter)="applyFilters()"
+    /></label>
+  </div>
+  <div class="filter-actions">
+    <small>{{
+      auth.isAdmin() ? 'Histórico completo disponible' : 'Consulta permitida hasta 15 días atrás'
+    }}</small
+    ><button class="button" type="button" (click)="clearFilters()">Limpiar</button
+    ><button
+      class="button button--primary"
+      type="button"
+      (click)="applyFilters()"
+      [disabled]="filterLoading()"
+    >
+      {{ filterLoading() ? 'Consultando…' : 'Buscar' }}
+    </button>
+  </div>
+</section>
+
+@if (exposure().length) {
+  <section class="exposure-strip card">
+    <div class="exposure-strip__heading">
+      <span class="eyebrow">Premio comprometido</span
+      ><strong>{{
+        auth.user()?.role === 'SELLER'
+          ? 'Mayor premio por terminación'
+          : 'Top 5 por premio potencial'
+      }}</strong>
+    </div>
+    <div class="exposure-list">
+      @for (item of exposure(); track item.number; let rank = $index) {
+        <article>
+          <small>#{{ rank + 1 }}</small
+          ><b>{{ item.number }}</b
+          ><span
+            ><strong>{{ money(item.potentialPayout) }}</strong
+            ><em>{{ money(item.salesAmount) }} vendido</em></span
+          >
+        </article>
+      }
+    </div>
+  </section>
+}
+
+@if (errorMessage()) {
+  <div class="tickets-error">{{ errorMessage() }}</div>
+}
+
+<section class="tickets-card card">
+  @if (loading()) {
+    <div class="ticket-skeleton"><i></i><i></i><i></i><i></i></div>
+  } @else if (tickets().length) {
+    <div class="table-head">
+      <span>Recibo</span><span>Fecha</span><span>Total</span><span></span>
+    </div>
+    <div class="ticket-list">
+      @for (ticket of tickets(); track ticket.id) {
+        <article
+          class="ticket-row"
+          [class.ticket-row--replaced]="ticket.status === 'REPLACED'"
+          [class.ticket-row--deleted]="ticket.status === 'DELETED'"
+          [class.ticket-row--winner]="isWinningTicket(ticket)"
+        >
+          <a
+            class="ticket-row__main"
+            [routerLink]="['/tickets', ticket.id]"
+            [attr.aria-label]="
+              'Ver boleto ' +
+              ticket.receiptNumber +
+              ', ' +
+              (ticket.status === 'ACTIVE'
+                ? 'válido'
+                : ticket.status === 'REPLACED'
+                  ? 'reemplazado'
+                  : 'eliminado')
+            "
+          >
+            <span class="receipt"
+              ><small>Recibo</small><strong>#{{ ticket.receiptNumber }}</strong
+              ><em>{{ ticket.sellerName }} · v{{ ticket.revision }}</em>
+              @if (isWinningTicket(ticket)) {
+                <b class="winner-pill">Premiado · {{ money(winningPrize(ticket)) }}</b>
+              }
+            </span>
+            <span class="ticket-date"
+              ><small>Fecha</small><strong>{{ date(ticket.createdAt) }}</strong></span
+            >
+            <span class="ticket-amount"
+              ><small>Total</small><strong>{{ money(ticket.totalAmount) }}</strong></span
+            >
+            <lo-icon class="row-arrow" name="arrow" [size]="16" />
+          </a>
+          @if (ticket.status === 'ACTIVE') {
+            <button
+              class="ticket-print-button"
+              type="button"
+              (click)="printTicket(ticket)"
+              [disabled]="printingTicketId() !== null"
+              [attr.aria-label]="
+                ticket.printCount
+                  ? 'Reimprimir recibo ' + ticket.receiptNumber
+                  : 'Imprimir recibo ' + ticket.receiptNumber
+              "
+              [title]="ticket.printCount ? 'Reimprimir recibo' : 'Imprimir recibo'"
+            >
+              <lo-icon name="printer" [size]="17" />
+              @if (ticket.printCount) {
+                <span>{{ ticket.printCount }}</span>
+              }
+            </button>
+          }
+        </article>
+      }
+    </div>
+  } @else {
+    <div class="empty-state">
+      <div>
+        <strong>No encontramos boletos</strong>Ajusta la fecha, el turno o el criterio de búsqueda.
+      </div>
+    </div>
+  }
+  <footer class="ticket-legend" aria-label="Significado de los fondos">
+    <strong>Cómo leer la lista</strong>
+    <span><i class="legend-swatch legend-swatch--valid"></i> Fondo blanco: boleto válido</span>
+    <span><i class="legend-swatch legend-swatch--winner"></i> Fondo dorado: boleto premiado</span>
+    <span><i class="legend-swatch legend-swatch--replaced"></i> Fondo gris: reemplazado</span>
+    <span><i class="legend-swatch legend-swatch--deleted"></i> Fondo rojo: eliminado</span>
+  </footer>
+</section>
+
+@if (totalPages() > 1) {
+  <nav class="pagination" aria-label="Paginación">
+    <button class="button" (click)="previous()" [disabled]="page() === 0">Anterior</button
+    ><span>{{ page() + 1 }} / {{ totalPages() }}</span
+    ><button class="button" (click)="next()" [disabled]="page() + 1 >= totalPages()">
+      Siguiente
+    </button>
+  </nav>
+}

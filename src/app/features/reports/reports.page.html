@@ -1,0 +1,293 @@
+<header class="page-header">
+  <div class="page-header__copy">
+    <span class="eyebrow">Detalle por sorteo</span>
+    <h1>Reportes</h1>
+    <p class="page-subtitle">Ventas y premio comprometido de cada terminación según tu alcance.</p>
+  </div>
+  <div class="report-actions">
+    <a class="button" routerLink="/reports/history"
+      ><lo-icon name="chart" [size]="17" /> Últimos 15 días</a
+    ><button
+      class="button button--primary"
+      type="button"
+      (click)="exportPdf()"
+      [disabled]="!report()"
+    >
+      <lo-icon name="download" [size]="17" /> Exportar PDF
+    </button>
+  </div>
+</header>
+
+<section class="report-filters card">
+  <label class="filter-field"
+    ><span>Fecha</span
+    ><span class="date-picker"
+      ><lo-icon name="calendar" [size]="19" /><span class="date-picker__copy"
+        ><strong>{{ filterDateLabel() }}</strong
+        ><small>DD/MM/AAAA</small></span
+      ><input
+        type="date"
+        [(ngModel)]="selectedDate"
+        [min]="historyMinDate"
+        (change)="onDateChanged()"
+        aria-label="Fecha del reporte" /></span
+  ></label>
+  <label class="filter-field"
+    ><span>Sorteo</span
+    ><select
+      class="select"
+      [(ngModel)]="selectedDrawId"
+      (change)="onDrawChanged()"
+      [disabled]="filterLoading()"
+    >
+      <option value="">Selecciona un sorteo</option>
+      @for (draw of draws(); track draw.drawId) {
+        <option [value]="draw.drawId">{{ drawName(draw) }}</option>
+      }
+    </select></label
+  >
+  @if (auth.user()?.role !== 'SELLER') {
+    <label class="filter-field"
+      ><span>Vendedor</span
+      ><select class="select" [(ngModel)]="selectedSellerId" (change)="onSellerChanged()">
+        <option value="">Todos los vendedores permitidos</option>
+        @for (seller of sellers(); track seller.id) {
+          <option [value]="seller.id">{{ seller.fullName }}</option>
+        }
+      </select></label
+    >
+  }
+</section>
+
+@if (errorMessage()) {
+  <div class="report-error">{{ errorMessage() }}</div>
+}
+
+@if (loading()) {
+  <section class="report-loading">
+    <article class="card skeleton"></article>
+    <article class="card skeleton"></article>
+    <article class="card skeleton"></article>
+  </section>
+} @else if (report(); as detail) {
+  <section class="print-heading">
+    <span>SUERTE · REPORTE DE SORTEO</span>
+    <h1>{{ drawName(detail) }}</h1>
+    <p>{{ sellerName() }} · {{ filterDateLabel() }}</p>
+  </section>
+  <section class="report-metrics">
+    <article class="metric card">
+      <small>Total vendido</small><strong>{{ money(detail.grossSales) }}</strong
+      ><span>{{ detail.ticketCount }} boletos válidos</span>
+    </article>
+    <article class="metric card">
+      <small>Premios por entregar</small><strong>{{ money(detail.prizesPaid) }}</strong
+      ><span>{{
+        detail.winningNumber ? 'Ganador ' + detail.winningNumber : 'Resultado pendiente'
+      }}</span>
+    </article>
+    <article class="metric card" [class.metric--loss]="detail.netResult < 0">
+      <small>Balance del sorteo</small><strong>{{ money(detail.netResult) }}</strong
+      ><span>Ventas menos premios</span>
+    </article>
+  </section>
+
+  @if (settlement(); as closure) {
+    <section class="settlement-guide card">
+      <span class="settlement-guide__winner">{{ closure.winningNumber }}</span>
+      <div>
+        <strong>Cierre listo para revisar</strong>
+        <p>
+          Revisa primero quién debe entregar dinero. El balance del sorteo es ventas menos premios;
+          la comisión acumulada se liquida aparte en el cierre manual del período.
+        </p>
+      </div>
+      <span class="settlement-guide__count"
+        ><strong>{{ closure.winningTicketCount }}</strong
+        ><small>boletos premiados</small></span
+      >
+    </section>
+
+    <nav class="report-tabs" aria-label="Vistas del cierre">
+      <button
+        type="button"
+        [class.report-tab--active]="activeTab === 'SELLERS'"
+        (click)="activeTab = 'SELLERS'"
+      >
+        <lo-icon name="users" [size]="18" /> Por vendedor
+      </button>
+      <button
+        type="button"
+        [class.report-tab--active]="activeTab === 'TICKETS'"
+        (click)="activeTab = 'TICKETS'"
+      >
+        <lo-icon name="ticket" [size]="18" /> Boletos premiados
+        <b>{{ closure.winningTicketCount }}</b>
+      </button>
+      <button
+        type="button"
+        [class.report-tab--active]="activeTab === 'NUMBERS'"
+        (click)="activeTab = 'NUMBERS'"
+      >
+        <lo-icon name="table" [size]="18" /> Por número
+      </button>
+    </nav>
+
+    @if (activeTab === 'SELLERS') {
+      <section class="seller-settlements card">
+        <header>
+          <div>
+            <span class="eyebrow">Liquidación operativa</span>
+            <h2>Balance por vendedor</h2>
+            <p>Ordenado por el mayor monto de premios.</p>
+          </div>
+        </header>
+        @if (closure.sellers.length) {
+          <div class="seller-table__head">
+            <span>Vendedor</span><span>Ventas</span><span>Premios</span><span>Movimiento</span
+            ><span></span>
+          </div>
+          <div class="seller-table">
+            @for (seller of closure.sellers; track seller.sellerId) {
+              <article [class.seller-row--business-pays]="seller.netResult < 0">
+                <div class="seller-identity">
+                  <span>{{ seller.sellerName.slice(0, 1) }}</span>
+                  <div>
+                    <strong>{{ seller.sellerName }}</strong>
+                    <small>{{ seller.routeName }} · {{ seller.ticketCount }} boletos</small>
+                  </div>
+                </div>
+                <div class="seller-value">
+                  <small>Ventas</small><strong>{{ money(seller.grossSales) }}</strong>
+                </div>
+                <div class="seller-value">
+                  <small>Premios</small><strong>{{ money(seller.prizesDue) }}</strong
+                  ><span>{{ seller.winningTicketCount }} premiados</span>
+                </div>
+                <div class="seller-balance" [class.seller-balance--pay]="seller.netResult < 0">
+                  <small>{{ sellerBalanceLabel(seller) }}</small>
+                  <strong>{{ money(absolute(seller.netResult)) }}</strong>
+                  <span
+                    >Comisión pendiente: {{ money(seller.commissionAccrued) }} ({{
+                      seller.commissionRate
+                    }}%)</span
+                  >
+                </div>
+                <a
+                  class="seller-tickets-link"
+                  routerLink="/tickets"
+                  [queryParams]="{
+                    date: selectedDate,
+                    drawId: closure.drawId,
+                    sellerId: seller.sellerId,
+                  }"
+                  >Ver boletos <lo-icon name="arrow" [size]="15"
+                /></a>
+              </article>
+            }
+          </div>
+        } @else {
+          <div class="empty-state">
+            <div>
+              <strong>Sin ventas</strong>No hay vendedores con boletos válidos en este alcance.
+            </div>
+          </div>
+        }
+      </section>
+    } @else if (activeTab === 'TICKETS') {
+      <section class="winning-tickets card">
+        <header>
+          <div>
+            <span class="eyebrow">Premios por entregar</span>
+            <h2>Boletos premiados</h2>
+            <p>
+              Solo aparecen boletos válidos que contienen el número {{ closure.winningNumber }}.
+            </p>
+          </div>
+        </header>
+        @if (closure.winningTickets.length) {
+          <div class="winning-ticket-list">
+            @for (ticket of closure.winningTickets; track ticket.ticketId) {
+              <a [routerLink]="['/tickets', ticket.ticketId]">
+                <span class="winning-receipt"
+                  ><small>Recibo</small><strong>#{{ ticket.receiptNumber }}</strong></span
+                >
+                <span class="winning-ticket-seller"
+                  ><strong>{{ ticket.sellerName }}</strong
+                  ><small>{{ ticket.routeName }} · {{ dateTime(ticket.createdAt) }}</small></span
+                >
+                <span
+                  ><small>Jugada ganadora</small
+                  ><strong>{{ money(ticket.winningStake) }}</strong></span
+                >
+                <span class="winning-prize"
+                  ><small>Premio</small><strong>{{ money(ticket.prizeDue) }}</strong></span
+                >
+                <lo-icon name="arrow" [size]="17" />
+              </a>
+            }
+          </div>
+        } @else {
+          <div class="no-winners">
+            <span>{{ closure.winningNumber }}</span>
+            <div>
+              <strong>No hubo boletos ganadores</strong>
+              <p>Ningún boleto válido contiene esta terminación.</p>
+            </div>
+          </div>
+        }
+      </section>
+    }
+  }
+
+  @if (activeTab === 'NUMBERS') {
+    <section class="number-report card">
+      <header>
+        <div>
+          <span class="eyebrow">Detalle por terminación</span>
+          <h2>Números 00–99</h2>
+          <p>Montos agrupados únicamente con boletos vigentes.</p>
+        </div>
+        <label class="sales-toggle"
+          ><input type="checkbox" [(ngModel)]="showOnlyWithSales" /><span></span> Solo números
+          vendidos</label
+        >
+      </header>
+      @if (visibleNumbers().length) {
+        <div class="number-table">
+          <div class="number-table__head">
+            <span>Número</span><span>Boletos</span><span>Vendido</span><span>Premio potencial</span
+            ><span>Premio ganador</span>
+          </div>
+          @for (item of visibleNumbers(); track item.number) {
+            <article [class.number-row--winner]="item.number === detail.winningNumber">
+              <div class="number-cell">
+                <b>{{ item.number }}</b>
+                @if (item.number === detail.winningNumber) {
+                  <span>Ganador</span>
+                }
+              </div>
+              <span data-label="Boletos">{{ item.ticketCount }}</span
+              ><strong data-label="Vendido">{{ money(item.salesAmount) }}</strong
+              ><span data-label="Premio potencial">{{ money(item.potentialPayout) }}</span
+              ><span data-label="Premio ganador">{{ money(item.prizesPaid) }}</span>
+            </article>
+          }
+        </div>
+      } @else {
+        <div class="empty-state">
+          <div>
+            <strong>No hay números vendidos</strong>Este sorteo no registra ventas para el alcance
+            seleccionado.
+          </div>
+        </div>
+      }
+    </section>
+  }
+} @else {
+  <section class="card empty-state">
+    <div>
+      <strong>No hay un reporte disponible</strong>Selecciona otra fecha, sorteo o vendedor.
+    </div>
+  </section>
+}

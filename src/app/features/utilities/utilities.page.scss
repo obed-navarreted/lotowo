@@ -1,0 +1,221 @@
+:host {
+  display: block;
+}
+.utility-filters {
+  margin-bottom: 16px;
+  padding: 15px;
+}
+.filter-grid {
+  display: grid;
+  gap: 10px;
+}
+.filter-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+.filter-field > span {
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 750;
+}
+.calendar-input {
+  color-scheme: light;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.filter-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.filter-actions small {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+.filter-actions .button {
+  min-height: 40px;
+}
+.utility-error {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-radius: 12px;
+  font-size: 13px;
+}
+.utility-overview {
+  padding: 17px;
+}
+.utility-overview > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.utility-overview h2 {
+  margin: 0;
+}
+.utility-overview > header > span {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  color: var(--violet);
+  background: var(--violet-soft);
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.utility-metrics {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+.utility-metrics > .skeleton {
+  min-height: 145px;
+}
+.utility-metric {
+  display: flex;
+  min-height: 128px;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  box-shadow: none;
+}
+.metric-icon {
+  display: grid;
+  width: 45px;
+  height: 45px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--mint-dark);
+  background: var(--mint-soft);
+  border-radius: 14px;
+}
+.metric-icon--sales {
+  color: var(--violet);
+  background: var(--violet-soft);
+}
+.metric-icon--prizes {
+  color: #9a6800;
+  background: var(--sun-soft);
+}
+.utility-metric div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.utility-metric small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.utility-metric strong {
+  margin-top: 3px;
+  font-size: 22px;
+  line-height: 1.2;
+}
+.utility-metric p {
+  margin: 5px 0 0;
+  color: var(--muted-strong);
+  font-size: 12px;
+}
+.utility-metric--loss .metric-icon {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+.utility-metric--loss strong {
+  color: var(--danger);
+}
+.pending-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 13px;
+  color: #865d00;
+  background: var(--sun-soft);
+  border-radius: 13px;
+}
+.pending-note lo-icon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+.pending-note span {
+  display: flex;
+  flex-direction: column;
+  color: var(--muted-strong);
+  font-size: 12px;
+}
+.pending-note strong {
+  margin-bottom: 2px;
+  color: #795300;
+  font-size: 13px;
+}
+.utility-overview > footer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+}
+.utility-overview > footer p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.utility-overview > footer .button {
+  width: 100%;
+}
+
+@media (max-width: 520px) {
+  .filter-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .filter-actions small {
+    grid-column: 1/-1;
+  }
+  .utility-overview > header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (min-width: 700px) {
+  .filter-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .utility-overview {
+    padding: 22px;
+  }
+  .utility-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .utility-metric {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 168px;
+    padding: 19px;
+  }
+  .utility-metric strong {
+    font-size: 26px;
+  }
+  .utility-overview > footer {
+    align-items: center;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .utility-overview > footer .button {
+    width: auto;
+  }
+}

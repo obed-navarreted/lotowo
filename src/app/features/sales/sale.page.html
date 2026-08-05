@@ -1,0 +1,76 @@
+<header class="page-header sale-header sale-header--traditional">
+  <div class="page-header__copy">
+    <span class="eyebrow">{{ isEditing ? 'Edición auditada' : 'Venta rápida' }}</span>
+    <h1>{{ isEditing ? 'Editar boleto' : 'Nueva venta' }}</h1>
+    <p class="page-subtitle">{{ isEditing ? 'Se guardará una nueva versión.' : 'Número, monto y agregar.' }}</p>
+  </div>
+  <div class="availability-chip"><small>Vendido</small><strong>{{ money(availability()?.totalSold) }}</strong></div>
+</header>
+
+@if (auth.user()?.role !== 'SELLER') {
+  <section class="card empty-state"><div><strong>Disponible para vendedores</strong>Consulta las ventas desde boletos y reportes.</div></section>
+} @else {
+  @if (selectedDraw() && !selectedDraw()!.salesEnabled) {
+    <div class="blocked-sale-banner" role="alert"><span><lo-icon name="lock" [size]="19" /></span><div><strong>Sorteo bloqueado</strong><p>Puedes preparar la jugada, pero no confirmarla.</p></div></div>
+  }
+  <div class="sale-layout sale-layout--traditional">
+    <section class="number-panel number-panel--traditional card">
+      <div class="sale-controls">
+        <div class="field draw-field">
+          <label for="draw">Sorteo</label>
+          <select id="draw" class="select" [value]="selectedDrawId()" (change)="selectDraw($any($event.target).value)" [disabled]="loading() || drawLocked() || saving()">
+            @if (loading()) { <option value="">Cargando…</option> }
+            @for (draw of draws(); track draw.id) { <option [value]="draw.id">{{ formatDraw(draw) }}{{ draw.salesEnabled ? '' : ' · Bloqueado' }}</option> }
+          </select>
+          @if (drawLocked()) { <small class="draw-lock"><lo-icon name="lock" [size]="12" /> Sorteo fijado</small> }
+        </div>
+        <div class="manual-shortcut"><strong>Digita y presiona Enter</strong><small>El cursor vuelve al número automáticamente.</small></div>
+      </div>
+
+      @if (!loading() && !draws().length) {
+        <div class="empty-state"><div><strong>No hay ventas abiertas</strong>Espera el próximo sorteo.</div></div>
+      } @else {
+        <div class="manual-stage">
+          <div class="manual-heading"><h2>Agregar jugada</h2><p>Se paga ×{{ systemSettings()?.defaultPayoutMultiplier || 80 }}, salvo excepciones.</p></div>
+          <form class="manual-form" (submit)="$event.preventDefault(); addManualEntry()">
+            <label class="manual-field manual-field--number"><span>Número</span><input #manualNumberInput class="input" type="text" inputmode="numeric" enterkeyhint="next" autocomplete="off" maxlength="2" placeholder="00" [value]="manualNumber()" (input)="updateManualNumber($any($event.target).value)" (keydown.enter)="moveToManualStake($event)" [disabled]="!selectedDrawId() || saving()" /><small>00–99</small></label>
+            <label class="manual-field"><span>Monto</span><span class="manual-money-input"><input #manualStakeInput class="input" type="text" inputmode="decimal" enterkeyhint="done" autocomplete="off" placeholder="0" [value]="manualStake()" (input)="updateManualStake($any($event.target).value)" [disabled]="!selectedDrawId() || saving()" /></span><small>Mayor que cero</small></label>
+            <button class="button button--primary manual-add" type="submit" [disabled]="!canAddManual()"><lo-icon name="plus" [size]="17" /> Agregar</button>
+          </form>
+          @if (manualError()) { <div class="sale-error" role="alert">{{ manualError() }}</div> }
+          @if (selections().size) { <div class="manual-ready"><lo-icon name="check" [size]="15" /><span><strong>{{ selections().size }} {{ selections().size === 1 ? 'jugada' : 'jugadas' }}</strong>Listo para confirmar.</span></div> }
+
+          <section class="manual-ticket" aria-label="Resumen del boleto">
+            <header><span><small>Boleto</small><strong>{{ selections().size }} jugadas</strong></span><strong>{{ money(total()) }}</strong></header>
+            @if (selectedEntries().length) {
+              <div class="manual-ticket__items">
+                @for (entry of selectedEntries(); track entry[0]) {
+                  <div><b>{{ entry[0] }}</b><span><strong>{{ money(entry[1]) }}</strong><small>Premio {{ money(prizeFor(entry[0], entry[1])) }}</small></span><button type="button" (click)="editNumber(entry[0])" title="Editar" aria-label="Editar número {{ entry[0] }}"><lo-icon name="edit" [size]="16" /></button><button type="button" (click)="removeNumber(entry[0])" title="Quitar" aria-label="Quitar número {{ entry[0] }}"><lo-icon name="close" [size]="17" /></button></div>
+                }
+              </div>
+            } @else { <p>Agrega el primer número.</p> }
+            @if (errorMessage()) { <div class="sale-error" role="alert">{{ errorMessage() }}</div> }
+            <button class="button button--primary button--block" type="button" [disabled]="!canSubmit()" (click)="submit()">{{ saving() ? 'Procesando…' : 'Vender · ' + money(total()) }}</button>
+          </section>
+        </div>
+      }
+    </section>
+
+    <aside class="ticket-panel ticket-panel--traditional card">
+      <div class="section-heading ticket-panel__heading"><div><h2>Boleto</h2><p>{{ selectedDraw() ? formatDraw(selectedDraw()!) : 'Selecciona un sorteo' }}</p></div><span class="ticket-count">{{ selections().size }}</span></div>
+      @if (selectedEntries().length) {
+        <div class="ticket-items">
+          @for (entry of selectedEntries(); track entry[0]) {
+            <div class="ticket-item"><span class="ticket-item__number">{{ entry[0] }}</span><div class="ticket-item__amount"><small>Jugada → premio</small><strong>{{ money(entry[1]) }} → {{ money(prizeFor(entry[0], entry[1])) }}</strong></div><button type="button" (click)="editNumber(entry[0])" title="Editar" aria-label="Editar número {{ entry[0] }}"><lo-icon name="edit" [size]="15" /></button><button type="button" (click)="removeNumber(entry[0])" title="Quitar" aria-label="Quitar número {{ entry[0] }}"><lo-icon name="close" [size]="16" /></button></div>
+          }
+        </div>
+      } @else { <div class="ticket-empty"><span>00</span><span>99</span><strong>Boleto vacío</strong><p>Digita un número y su monto.</p></div> }
+      @if (errorMessage()) { <div class="sale-error" role="alert">{{ errorMessage() }}</div> }
+      <div class="ticket-total"><span><small>Total</small><strong>{{ money(total()) }}</strong></span><button class="button button--primary" type="button" [disabled]="!canSubmit()" (click)="submit()">{{ saving() ? 'Procesando…' : 'Vender' }} <lo-icon name="arrow" [size]="17" /></button></div>
+    </aside>
+  </div>
+}
+
+@if (createdTicket(); as ticket) {
+  <div class="success-layer" role="dialog" aria-modal="true" aria-labelledby="success-title"><div class="success-card"><span class="success-card__icon"><lo-icon name="check" [size]="30" /></span><span class="eyebrow">{{ isEditing ? 'Edición lista' : 'Venta lista' }}</span><h2 id="success-title">Recibo #{{ ticket.receiptNumber }}</h2><div class="success-numbers">@for (item of ticket.items; track item.id) { <span>{{ item.number }}</span> }</div><div class="success-total"><small>Total</small><strong>{{ money(ticket.totalAmount) }}</strong></div>@if (receiptError()) { <div class="success-receipt-error">{{ receiptError() }}</div> }<div class="success-actions"><button class="button button--primary button--block" type="button" (click)="printCreatedTicket()" [disabled]="printingReceipt()" title="Imprimir recibo"><lo-icon name="printer" [size]="18" />{{ printingReceipt() ? 'Imprimiendo…' : ticket.printCount ? 'Reimprimir' : 'Imprimir' }}</button><button class="button button--block" type="button" (click)="continueSelling()">Seguir</button><button class="success-home" type="button" (click)="goHome()">Inicio</button></div></div></div>
+}

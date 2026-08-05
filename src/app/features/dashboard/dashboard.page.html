@@ -1,0 +1,265 @@
+<header class="page-header dashboard-header">
+  <div class="page-header__copy">
+    <span class="eyebrow">Panel principal</span>
+    <h1>{{ greeting() }}, {{ firstName() }}.</h1>
+    <p class="page-subtitle">Aquí tienes el pulso de la operación en Nicaragua.</p>
+  </div>
+  @if (auth.user()?.role === 'SELLER') {
+    <a
+      class="button button--primary dashboard-header__action"
+      routerLink="/sell"
+      aria-label="Nueva venta"
+      ><span class="new-sale-plus" aria-hidden="true"></span
+      ><span class="dashboard-header__label">Nueva venta</span></a
+    >
+  }
+</header>
+
+@if (loadError()) {
+  <div class="connection-banner" role="alert">
+    <div>
+      <strong>No pudimos actualizar el tablero</strong
+      ><span>Comprueba que la API esté disponible.</span>
+    </div>
+    <button class="button" (click)="reload()">Reintentar</button>
+  </div>
+}
+@if (actionError()) {
+  <div class="connection-banner" role="alert">
+    <div>
+      <strong>No se pudo actualizar el sorteo</strong><span>{{ actionError() }}</span>
+    </div>
+  </div>
+}
+
+<section class="hero-grid">
+  <article class="next-draw card" [class.skeleton]="loading()">
+    <div class="next-draw__top">
+      <span class="next-draw__icon"><lo-icon name="clock" [size]="22" /></span>
+      <span
+        class="status"
+        [class.status--open]="nextDraw()?.salesEnabled"
+        [class.status--closed]="nextDraw() && !nextDraw()!.salesEnabled"
+        >{{
+          nextDraw()
+            ? nextDraw()!.salesEnabled
+              ? 'Ventas abiertas'
+              : 'Ventas bloqueadas'
+            : 'Sin sorteos'
+        }}</span
+      >
+    </div>
+    <div class="next-draw__copy">
+      <small>Próximo cierre</small>
+      <h2>{{ nextDraw() ? drawLabel(nextDraw()!) : 'No hay sorteos abiertos' }}</h2>
+      <strong class="countdown">{{ countdown(nextDraw()) }}</strong>
+      <span class="countdown-label">{{
+        nextDraw() ? 'Cierra a las ' + time(nextDraw()!.salesCloseAt) : 'Vuelve a revisar más tarde'
+      }}</span>
+    </div>
+    @if (nextDraw() && auth.user()?.role === 'SELLER') {
+      <a routerLink="/sell" class="next-draw__link"
+        >Abrir venta <lo-icon name="arrow" [size]="17"
+      /></a>
+    }
+  </article>
+
+  <div class="metric-grid">
+    <article class="metric-card card" [class.skeleton]="loading()">
+      <span class="metric-card__icon metric-card__icon--violet"><lo-icon name="sell" /></span>
+      <div>
+        <small>Sorteos vigentes</small><strong>{{ openDraws().length }}</strong
+        ><span>en la agenda actual</span>
+      </div>
+    </article>
+    <article class="metric-card card" [class.skeleton]="loading()">
+      <span class="metric-card__icon metric-card__icon--mint"><lo-icon name="check" /></span>
+      <div>
+        <small>Con resultado</small><strong>{{ completedDraws().length }}</strong
+        ><span>en el período</span>
+      </div>
+    </article>
+    <article class="metric-card card metric-card--wide" [class.skeleton]="loading()">
+      <span class="metric-card__icon metric-card__icon--sun"><lo-icon name="wallet" /></span>
+      <div>
+        <small>{{
+          auth.user()?.role === 'SELLER' ? 'Vendido en próximo sorteo' : 'Estado de la plataforma'
+        }}</small>
+        <strong class="metric-card__money">{{
+          auth.user()?.role === 'SELLER' ? money(availability()?.totalSold) : 'Operando'
+        }}</strong>
+        <span>{{
+          auth.user()?.role === 'SELLER'
+            ? 'Límites disponibles por número'
+            : 'Todos los servicios disponibles'
+        }}</span>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section class="dashboard-body">
+  <article class="schedule-card card">
+    <div class="section-heading">
+      <div>
+        <h2>Jornada de sorteos</h2>
+        <p>Horas mostradas en America/Managua</p>
+      </div>
+      <span class="date-chip">Hoy</span>
+    </div>
+    @if (loading()) {
+      <div class="schedule-loading"><i></i><i></i><i></i></div>
+    } @else if (draws().length) {
+      <div class="schedule-list">
+        @for (draw of scheduleDraws(); track draw.id; let index = $index) {
+          <div class="schedule-row">
+            <span class="schedule-row__time">{{ time(draw.scheduledAt) }}</span>
+            <span
+              class="schedule-row__rail"
+              [class.schedule-row__rail--done]="['SETTLED', 'RESULT_ENTERED'].includes(draw.status)"
+              ><i></i
+            ></span>
+            <div class="schedule-row__copy">
+              <strong>{{ drawLabel(draw) }}</strong
+              ><small>{{ draw.drawType === 'DAILY' ? 'Sorteo diario' : 'Lotería nacional' }}</small>
+            </div>
+            <span
+              class="status"
+              [class.status--open]="draw.status === 'OPEN' && draw.salesEnabled"
+              [class.status--settled]="draw.status === 'SETTLED'"
+              [class.status--closed]="
+                draw.status === 'CLOSED' || (draw.status === 'OPEN' && !draw.salesEnabled)
+              "
+              >{{ statusLabel(draw) }}</span
+            >
+            @if (auth.isAdmin() && canManageSales(draw)) {
+              <button
+                class="draw-sales-action"
+                [class.draw-sales-action--enable]="!draw.salesEnabled"
+                type="button"
+                (click)="toggleSales(draw)"
+                [disabled]="updatingDrawId() !== null"
+                [attr.aria-label]="
+                  draw.salesEnabled
+                    ? 'Bloquear ventas de ' + draw.name
+                    : 'Habilitar ventas de ' + draw.name
+                "
+              >
+                <lo-icon [name]="draw.salesEnabled ? 'lock' : 'unlock'" [size]="15" />
+                <span>{{
+                  updatingDrawId() === draw.id
+                    ? 'Guardando…'
+                    : draw.salesEnabled
+                      ? 'Bloquear'
+                      : 'Habilitar'
+                }}</span>
+              </button>
+            }
+            @if (auth.isAdmin() && canRegisterResult(draw)) {
+              <button class="draw-result-action" type="button" (click)="openResult(draw)">
+                <lo-icon name="check" [size]="15" /><span>Resultado</span>
+              </button>
+            }
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="empty-state">
+        <div>
+          <strong>No hay sorteos en agenda</strong>Los próximos aparecerán aquí automáticamente.
+        </div>
+      </div>
+    }
+  </article>
+
+  <article class="result-card card">
+    <div class="section-heading">
+      <div>
+        <h2>Últimos resultados</h2>
+        <p>Terminaciones registradas</p>
+      </div>
+      <a class="result-history-link" routerLink="/reports/history">
+        Ver historial
+        <lo-icon name="arrow" [size]="14" />
+      </a>
+    </div>
+    @if (completedDraws().length) {
+      <div class="result-list">
+        @for (draw of completedDraws().slice(0, 4); track draw.id) {
+          <div class="result-row">
+            <span class="result-number">{{ draw.winningNumber || '—' }}</span>
+            <div>
+              <strong>{{ drawLabel(draw) }}</strong
+              ><small>{{ time(draw.scheduledAt) }}</small>
+            </div>
+            <span class="result-row__check"><lo-icon name="check" [size]="15" /></span>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="empty-state">
+        <div>
+          <strong>Aún no hay resultados</strong>Cuando se registre un ganador aparecerá aquí.
+        </div>
+      </div>
+    }
+  </article>
+</section>
+
+@if (lastClosure(); as closure) {
+  <div class="closure-notice">
+    <lo-icon name="check" [size]="18" /><span
+      ><strong>Resultado {{ closure.winningNumber }} registrado.</strong> Cierre generado: ventas
+      {{ money(closure.grossSales) }}, premios {{ money(closure.prizesDue) }}, resultado neto
+      {{ money(closure.netResult) }}.</span
+    ><button type="button" (click)="lastClosure.set(null)">
+      <lo-icon name="close" [size]="15" />
+    </button>
+  </div>
+}
+
+@if (resultDraw(); as draw) {
+  <div class="result-modal-backdrop" (click)="closeResult()">
+    <section
+      class="result-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="result-dialog-title"
+      (click)="$event.stopPropagation()"
+    >
+      <span class="result-dialog__mark"><lo-icon name="check" [size]="23" /></span>
+      <span class="eyebrow">Cierre del sorteo</span>
+      <h2 id="result-dialog-title">Registrar número ganador</h2>
+      <p>{{ drawLabel(draw) }}</p>
+      <label
+        ><span>Terminación ganadora</span
+        ><input
+          class="input result-number-input"
+          inputmode="numeric"
+          maxlength="2"
+          placeholder="00"
+          [value]="resultNumber()"
+          (input)="updateResultNumber($any($event.target).value)"
+          autofocus
+        /><small
+          >Esta acción calcula boletos premiados y cierres por vendedor, ruta y total.</small
+        ></label
+      >
+      @if (resultError()) {
+        <div class="result-dialog__error">{{ resultError() }}</div>
+      }
+      <footer>
+        <button class="button" type="button" (click)="closeResult()" [disabled]="resultSaving()">
+          Cancelar</button
+        ><button
+          class="button button--primary"
+          type="button"
+          (click)="submitResult()"
+          [disabled]="resultSaving() || resultNumber().length !== 2"
+        >
+          {{ resultSaving() ? 'Calculando cierres…' : 'Registrar y cerrar' }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}

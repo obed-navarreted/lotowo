@@ -1,0 +1,5 @@
+.angular/
+.certs/
+dist/
+node_modules/
+android/app/google-services.json

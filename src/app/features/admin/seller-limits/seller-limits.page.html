@@ -1,0 +1,137 @@
+<header class="page-header limits-header">
+  <div class="page-header__copy">
+    <a class="back-link" routerLink="/users"><lo-icon name="arrow" [size]="14" /> Usuarios</a>
+    <span class="eyebrow">Control por vendedor</span>
+    <h1>Límites por número</h1>
+    <p class="page-subtitle">
+      {{ user()?.fullName || 'Cargando vendedor…' }} · controla el premio potencial acumulado por
+      número y sorteo.
+    </p>
+  </div>
+  <button
+    class="button button--primary"
+    type="button"
+    (click)="save()"
+    [disabled]="loading() || saving()"
+  >
+    <lo-icon name="check" [size]="17" /> {{ saving() ? 'Guardando…' : 'Guardar límites' }}
+  </button>
+</header>
+
+@if (error()) {
+  <div class="alert alert--error">{{ error() }}</div>
+}
+@if (notice()) {
+  <div class="alert alert--success"><lo-icon name="check" [size]="16" />{{ notice() }}</div>
+}
+
+<section class="limit-workspace card" [class.skeleton]="loading()">
+  <div class="limit-tabs" role="tablist" aria-label="Familia de sorteo">
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="selectedType() === 'DAILY'"
+      [class.limit-tab--active]="selectedType() === 'DAILY'"
+      (click)="selectType('DAILY')"
+    >
+      <strong>Sorteos diarios</strong><small>11 AM · 3 PM · 9 PM</small>
+    </button>
+    <button
+      type="button"
+      role="tab"
+      [attr.aria-selected]="selectedType() === 'NATIONAL_LOTTERY'"
+      [class.limit-tab--active]="selectedType() === 'NATIONAL_LOTTERY'"
+      (click)="selectType('NATIONAL_LOTTERY')"
+    >
+      <strong>Lotería Nacional</strong><small>Sorteo manual</small>
+    </button>
+  </div>
+
+  @if (current().inheritedFromRoute) {
+    <div class="inherited-note">
+      <lo-icon name="route" [size]="18" /><span
+        ><strong>Configuración heredada de {{ current().sourceRouteName }}</strong
+        ><small
+          >Si guardas cambios aquí, se creará una configuración individual que tendrá prioridad para
+          este vendedor.</small
+        ></span
+      >
+    </div>
+  }
+
+  <div class="default-panel">
+    <div>
+      <span class="default-icon"><lo-icon name="table" [size]="19" /></span
+      ><span
+        ><strong>Límite general de premio por número</strong
+        ><small
+          >Es el premio potencial máximo para cada terminación que no tenga excepción.</small
+        ></span
+      >
+    </div>
+    <label
+      ><input
+        type="number"
+        min="0"
+        step="0.01"
+        placeholder="Sin límite"
+        [ngModel]="current().defaultLimit"
+        (ngModelChange)="setDefaultLimit($event)"
+        aria-label="Límite general de premio potencial por número en córdobas"
+    /></label>
+    @if (current().overrides.size) {
+      <button type="button" class="clear-button" (click)="clearOverrides()">
+        Quitar {{ current().overrides.size }} excepciones
+      </button>
+    }
+  </div>
+
+  <div class="grid-heading">
+    <div>
+      <h2>Terminaciones 00–99</h2>
+      <p>
+        Edita únicamente las excepciones. El monto representa premio potencial, no dinero jugado.
+        C$0 bloquea ese número para este vendedor.
+      </p>
+    </div>
+    <span>{{ current().overrides.size }} excepciones</span>
+  </div>
+
+  <div class="number-limit-grid">
+    @for (number of numbers; track number) {
+      <article
+        class="limit-cell"
+        [class.limit-cell--override]="isOverride(number)"
+        [class.limit-cell--blocked]="isBlocked(number)"
+      >
+        <header>
+          <strong>{{ number }}</strong
+          ><span>{{ isOverride(number) ? 'E' : 'G' }}</span>
+        </header>
+        <label
+          ><input
+            type="number"
+            min="0"
+            step="0.01"
+            [ngModel]="effectiveLimit(number)"
+            (ngModelChange)="setNumberLimit(number, $event)"
+            [placeholder]="current().defaultLimit === null ? '∞' : ''"
+            [attr.aria-label]="'Límite de premio potencial en córdobas del número ' + number"
+        /></label>
+        @if (isOverride(number)) {
+          <button
+            type="button"
+            (click)="resetNumber(number)"
+            [attr.aria-label]="'Usar límite general para ' + number"
+          >
+            <lo-icon name="close" [size]="12" /> Usar G
+          </button>
+        }
+      </article>
+    }
+  </div>
+  <footer class="limits-legend">
+    <span><b>G</b> Usa el límite general</span><span><b>E</b> Tiene una excepción individual</span
+    ><span><i></i> Fondo rojo: número bloqueado</span>
+  </footer>
+</section>

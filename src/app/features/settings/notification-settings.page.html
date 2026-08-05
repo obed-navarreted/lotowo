@@ -1,0 +1,76 @@
+<section class="notification-settings">
+  <header class="page-header">
+    <div class="page-header__copy">
+      <span class="eyebrow">Control administrativo</span>
+      <h1>Alertas y notificaciones</h1>
+      <p class="page-subtitle">
+        Define cuándo debe avisarse que un número acumula demasiado premio.
+      </p>
+    </div>
+    <a class="button" routerLink="/exposure"><lo-icon name="table" [size]="18" /> Ver control</a>
+  </header>
+
+  @if (errorMessage()) {
+    <div class="notice notice--error"><lo-icon name="info" [size]="18" /> {{ errorMessage() }}</div>
+  }
+  @if (successMessage()) {
+    <div class="notice notice--success">
+      <lo-icon name="check" [size]="18" /> {{ successMessage() }}
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="settings-skeleton"></div>
+  } @else {
+    <article class="alert-card card">
+      <header>
+        <span class="alert-card__icon"><lo-icon name="bell" [size]="23" /></span>
+        <div>
+          <h2>Premio acumulado por número</h2>
+          <p>El cálculo suma los premios potenciales de todos los boletos válidos del sorteo.</p>
+        </div>
+      </header>
+
+      <label class="switch-row">
+        <span
+          ><strong>Alertar al superar el monto</strong
+          ><small>La alerta se genera una vez por número y sorteo.</small></span
+        >
+        <input type="checkbox" [(ngModel)]="enabled" /><i></i>
+      </label>
+
+      <label class="amount-field" [class.amount-field--disabled]="!enabled">
+        <span>Monto de premio para alertar</span>
+        <div>
+          <b>C$</b
+          ><input
+            type="number"
+            min="1"
+            step="1"
+            [(ngModel)]="threshold"
+            [disabled]="!enabled"
+            inputmode="numeric"
+          />
+        </div>
+        <small
+          >Ejemplo: con 40,000 se avisa cuando una terminación supera C$40,000 de premio
+          potencial.</small
+        >
+      </label>
+
+      <div class="delivery-note">
+        <lo-icon name="info" [size]="19" />
+        <p>
+          <strong>¿Quién recibe la alerta?</strong> Todos los administradores activos. Aparece en el
+          centro de notificaciones y se envía como push a los dispositivos que la tengan habilitada.
+        </p>
+      </div>
+
+      <footer>
+        <button class="button button--primary" type="button" (click)="save()" [disabled]="saving()">
+          {{ saving() ? 'Guardando…' : 'Guardar configuración' }}
+        </button>
+      </footer>
+    </article>
+  }
+</section>

@@ -1,0 +1,207 @@
+:host {
+  display: block;
+}
+.back-arrow {
+  transform: rotate(180deg);
+}
+.history-filter {
+  max-width: 440px;
+  margin-bottom: 15px;
+  padding: 14px;
+}
+.history-filter label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.history-filter label > span {
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 750;
+}
+.history-error {
+  margin-bottom: 14px;
+  padding: 12px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-radius: 12px;
+}
+.history-list {
+  display: grid;
+  gap: 10px;
+}
+.history-list > .skeleton {
+  min-height: 100px;
+}
+.day-card {
+  overflow: hidden;
+}
+.day-card__summary {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto 20px;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.day-card__summary > span {
+  display: none;
+  flex-direction: column;
+}
+.day-card__summary .day-date,
+.day-card__summary > span:last-of-type {
+  display: flex;
+}
+.day-card__summary small {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.day-card__summary strong {
+  margin-top: 2px;
+  font-size: 14px;
+  text-transform: capitalize;
+}
+.day-card__summary em {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+}
+.day-card__summary > lo-icon {
+  transition: transform 0.15s;
+}
+.day-card--open .day-card__summary > lo-icon {
+  transform: rotate(90deg);
+}
+.loss {
+  color: var(--danger);
+}
+.draw-breakdown {
+  padding: 0 10px 10px;
+  background: #faf9f7;
+  border-top: 1px solid var(--line-soft);
+}
+.draw-result {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 92px;
+  padding: 12px 9px;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line-soft);
+}
+.draw-result:last-child {
+  border-bottom: 0;
+}
+.draw-result > span {
+  display: flex;
+  flex-direction: column;
+}
+.draw-breakdown small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.draw-breakdown strong {
+  font-size: 13px;
+}
+.draw-number {
+  display: flex !important;
+  width: 50px;
+  height: 54px;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background: var(--violet);
+  border-radius: 14px;
+}
+.draw-number small {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 9px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+.draw-number strong {
+  font-size: 18px;
+  font-weight: 850;
+}
+.draw-number--pending {
+  color: var(--muted);
+  background: var(--surface-soft);
+}
+.draw-number--pending small {
+  color: var(--muted);
+}
+.draw-copy {
+  min-width: 0;
+}
+.draw-copy strong {
+  font-size: 14px;
+}
+.draw-copy em {
+  margin-top: 2px;
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-style: normal;
+}
+.draw-balance {
+  align-items: flex-end;
+}
+.draw-balance small {
+  text-transform: uppercase;
+}
+.draw-balance strong {
+  margin-top: 2px;
+  color: var(--mint-dark);
+  font-size: 15px;
+}
+.draw-balance.loss strong {
+  color: var(--danger);
+}
+.draw-actions {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.draw-actions .button {
+  min-height: 39px;
+  padding-inline: 9px;
+  font-size: 12px;
+}
+.draw-loading {
+  padding: 22px;
+  color: var(--muted);
+  text-align: center;
+}
+.history-pagination { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 14px; }
+.history-pagination span { color: var(--muted-strong); font-size: 13px; font-weight: 750; }
+.history-pagination .button { width: 42px; min-height: 42px; padding: 0; }
+.history-pagination .button:first-child lo-icon { transform: rotate(180deg); }
+@media (min-width: 760px) {
+  .day-card__summary {
+    grid-template-columns: 1.5fr repeat(3, minmax(110px, 0.65fr)) 20px;
+    min-height: 94px;
+    padding: 14px 20px;
+  }
+  .day-card__summary > span {
+    display: flex;
+  }
+  .draw-breakdown {
+    padding: 0 18px 12px;
+  }
+  .draw-result {
+    grid-template-columns: 54px minmax(0, 1fr) 120px auto;
+    padding-inline: 12px;
+  }
+  .draw-actions {
+    display: flex;
+    grid-column: auto;
+  }
+}

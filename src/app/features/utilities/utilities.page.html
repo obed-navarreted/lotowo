@@ -1,0 +1,136 @@
+<header class="page-header">
+  <div class="page-header__copy">
+    <span class="eyebrow">Resultado operativo</span>
+    <h1>Utilidades</h1>
+    <p class="page-subtitle">Revisa ventas, premios y resultado neto por día, sorteo o vendedor.</p>
+  </div>
+</header>
+
+<section class="utility-filters card">
+  <div class="filter-grid">
+    <label class="filter-field"
+      ><span>Fecha</span
+      ><span class="date-picker"
+        ><lo-icon name="calendar" [size]="19" /><span class="date-picker__copy"
+          ><strong>{{ dateLabel() }}</strong
+          ><small>DD/MM/AAAA</small></span
+        ><input
+          type="date"
+          [(ngModel)]="selectedDate"
+          [min]="historyMinDate"
+          (change)="onDateChanged()"
+          aria-label="Fecha de utilidades" /></span
+    ></label>
+    <label class="filter-field"
+      ><span>Turno</span
+      ><select
+        class="select"
+        [(ngModel)]="selectedDrawId"
+        (change)="applyFilters()"
+        [disabled]="filterLoading()"
+      >
+        <option value="">Todos los turnos del día</option>
+        @for (draw of draws(); track draw.id) {
+          <option [value]="draw.id">{{ drawName(draw) }}</option>
+        }
+      </select></label
+    >
+    @if (auth.user()?.role !== 'SELLER') {
+      <label class="filter-field"
+        ><span>Vendedor</span
+        ><select class="select" [(ngModel)]="selectedSellerId" (change)="applyFilters()">
+          <option value="">Todos los vendedores permitidos</option>
+          @for (seller of sellers(); track seller.id) {
+            <option [value]="seller.id">{{ seller.fullName }}</option>
+          }
+        </select></label
+      >
+    }
+  </div>
+  <div class="filter-actions">
+    <small>{{
+      auth.isAdmin() ? 'Histórico completo disponible' : 'Consulta permitida hasta 15 días atrás'
+    }}</small
+    ><button class="button" type="button" (click)="clearFilters()">Limpiar</button
+    ><button
+      class="button button--primary"
+      type="button"
+      (click)="applyFilters()"
+      [disabled]="filterLoading() || loading()"
+    >
+      {{ loading() ? 'Calculando…' : 'Consultar' }}
+    </button>
+  </div>
+</section>
+
+@if (errorMessage()) {
+  <div class="utility-error">{{ errorMessage() }}</div>
+}
+
+@if (loading()) {
+  <section class="utility-metrics">
+    <article class="card skeleton"></article>
+    <article class="card skeleton"></article>
+    <article class="card skeleton"></article>
+  </section>
+} @else if (summary(); as result) {
+  <section class="utility-overview card">
+    <header>
+      <div>
+        <span class="eyebrow">{{ dateLabel() }}</span>
+        <h2>{{ selectedContext() }}</h2>
+      </div>
+      <span
+        >{{ result.ticketCount }}
+        {{ result.ticketCount === 1 ? 'boleto válido' : 'boletos válidos' }}</span
+      >
+    </header>
+    <div class="utility-metrics">
+      <article class="utility-metric card">
+        <span class="metric-icon metric-icon--sales"><lo-icon name="wallet" /></span>
+        <div>
+          <small>Total vendido</small><strong>{{ money(result.grossSales) }}</strong>
+          <p>Solo boletos vigentes</p>
+        </div>
+      </article>
+      <article class="utility-metric card">
+        <span class="metric-icon metric-icon--prizes"><lo-icon name="ticket" /></span>
+        <div>
+          <small>Total pagado</small><strong>{{ money(result.prizesPaid) }}</strong>
+          <p>Premios de números ganadores</p>
+        </div>
+      </article>
+      <article class="utility-metric card" [class.utility-metric--loss]="result.netResult < 0">
+        <span class="metric-icon"><lo-icon name="trend" /></span>
+        <div>
+          <small>{{ result.netResult < 0 ? 'Pérdida' : 'Utilidad' }}</small
+          ><strong>{{ money(result.netResult) }}</strong>
+          <p>Ventas menos premios</p>
+        </div>
+      </article>
+    </div>
+    @if (result.pendingResults > 0) {
+      <div class="pending-note">
+        <lo-icon name="clock" [size]="18" /><span
+          ><strong>Resultado todavía provisional</strong>{{ result.pendingResults }}
+          {{
+            result.pendingResults === 1
+              ? 'sorteo aún no tiene ganador registrado'
+              : 'sorteos aún no tienen ganador registrado'
+          }}.</span
+        >
+      </div>
+    }
+    <footer>
+      <p>El cálculo excluye boletos reemplazados y eliminados.</p>
+      <a class="button button--primary" routerLink="/tickets" [queryParams]="ticketsQuery()"
+        ><lo-icon name="ticket" [size]="17" /> Ver boletos de este resultado
+        <lo-icon name="arrow" [size]="15"
+      /></a>
+    </footer>
+  </section>
+} @else {
+  <section class="card empty-state">
+    <div><strong>No hay ventas para esta selección</strong>Prueba otro día, turno o vendedor.</div>
+  </section>
+}

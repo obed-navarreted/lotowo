@@ -1,0 +1,76 @@
+<header class="page-header">
+  <div class="page-header__copy">
+    <span class="eyebrow">Organización</span>
+    <h1>Rutas</h1>
+    <p class="page-subtitle">Organiza zonas de venta y conoce cuántos vendedores y supervisores tiene cada una.</p>
+  </div>
+  <button class="button button--primary" type="button" (click)="openCreate()"><lo-icon name="plus" [size]="18" /> Nueva ruta</button>
+</header>
+
+<section class="route-help">
+  <span><lo-icon name="route" [size]="21" /></span>
+  <div><strong>Las rutas conectan al equipo</strong><p>Todo vendedor pertenece a una ruta; los supervisores pueden atender varias. Las asignaciones se realizan desde Usuarios.</p></div>
+</section>
+
+@if (notice()) { <div class="alert alert--success"><lo-icon name="check" [size]="17" />{{ notice() }}</div> }
+@if (error()) { <div class="alert alert--error">{{ error() }}</div> }
+
+<section class="card route-card">
+  <div class="route-toolbar">
+    <form class="search" (submit)="$event.preventDefault(); searchRoutes()">
+      <lo-icon name="search" [size]="18" />
+      <input [(ngModel)]="search" name="search" placeholder="Buscar por código o nombre" aria-label="Buscar rutas">
+      @if (search) { <button type="button" (click)="search = ''; searchRoutes()" aria-label="Limpiar"><lo-icon name="close" [size]="16" /></button> }
+    </form>
+    <span>{{ routes()?.totalElements ?? 0 }} rutas</span>
+  </div>
+
+  @if (loading()) {
+    <div class="route-grid">@for (item of [1, 2, 3, 4]; track item) { <div class="route-tile skeleton">Cargando</div> }</div>
+  } @else if (!routes()?.content?.length) {
+    <div class="empty-state"><div><strong>No encontramos rutas</strong><span>{{ search ? 'Prueba con otra búsqueda.' : 'Crea la primera ruta para organizar vendedores.' }}</span></div></div>
+  } @else {
+    <div class="route-grid">
+      @for (route of routes()!.content; track route.id) {
+        <article class="route-tile" [class.route-tile--inactive]="!route.active">
+          <header>
+            <span class="route-mark"><lo-icon name="route" [size]="20" /></span>
+            <div><strong>{{ route.name }}</strong><small>{{ route.code }}</small></div>
+            <span class="status" [class.status--active]="route.active" [class.status--cancelled]="!route.active">{{ route.active ? 'Activa' : 'Inactiva' }}</span>
+          </header>
+          <div class="route-stats">
+            <span><small>Vendedores</small><strong>{{ route.sellerCount }}</strong></span>
+            <span><small>Supervisores</small><strong>{{ route.supervisorCount }}</strong></span>
+          </div>
+          <footer>
+            @if (route.active) {
+              <a [routerLink]="['/routes', route.id, 'limits']"><lo-icon name="table" [size]="16" /> Límites</a>
+              <button type="button" (click)="openEdit(route)"><lo-icon name="edit" [size]="16" /> Editar</button>
+              <button class="danger-action" type="button" (click)="deactivate(route)"><lo-icon name="trash" [size]="16" /> Desactivar</button>
+            } @else {
+              <span>Conservada en el histórico</span>
+              <button class="restore-action" type="button" (click)="restore(route)"><lo-icon name="check" [size]="16" /> Restaurar</button>
+            }
+          </footer>
+        </article>
+      }
+    </div>
+    @if ((routes()?.totalPages ?? 0) > 1) {
+      <nav class="pagination"><button class="button" [disabled]="page === 0" (click)="load(page - 1)">Anterior</button><span>Página {{ page + 1 }} de {{ routes()!.totalPages }}</span><button class="button" [disabled]="page + 1 >= routes()!.totalPages" (click)="load(page + 1)">Siguiente</button></nav>
+    }
+  }
+</section>
+
+@if (modalOpen()) {
+  <div class="modal-backdrop" (click)="closeModal()">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="route-modal-title" (click)="$event.stopPropagation()">
+      <header class="modal__header"><div><span class="eyebrow">{{ editingId() ? 'Editar' : 'Nueva' }}</span><h2 id="route-modal-title">{{ editingId() ? 'Editar ruta' : 'Crear ruta' }}</h2></div><button type="button" (click)="closeModal()" aria-label="Cerrar"><lo-icon name="close" /></button></header>
+      <form (submit)="$event.preventDefault(); save()">
+        <div class="field"><label for="routeCode">Código corto</label><input id="routeCode" class="input" name="routeCode" [(ngModel)]="draft.code" maxlength="30" placeholder="Ej. R-01" autocomplete="off"><small>Se muestra en listados y cierres.</small></div>
+        <div class="field"><label for="routeName">Nombre de la ruta</label><input id="routeName" class="input" name="routeName" [(ngModel)]="draft.name" maxlength="120" placeholder="Ej. Mercado Oriental"><small>Usa un nombre fácil de reconocer por el equipo.</small></div>
+        @if (formError()) { <div class="form-alert">{{ formError() }}</div> }
+        <footer class="modal__footer"><button class="button" type="button" (click)="closeModal()">Cancelar</button><button class="button button--primary" type="submit" [disabled]="saving()">{{ saving() ? 'Guardando…' : editingId() ? 'Guardar cambios' : 'Crear ruta' }}</button></footer>
+      </form>
+    </section>
+  </div>
+}

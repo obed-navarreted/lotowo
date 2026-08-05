@@ -1,0 +1,645 @@
+<header class="page-header">
+  <div class="page-header__copy">
+    <span class="eyebrow">Equipo</span>
+    <h1>Usuarios</h1>
+    <p class="page-subtitle">
+      Crea vendedores, organiza supervisores y controla quién accede a Suerte.
+    </p>
+  </div>
+  <button class="button button--primary" type="button" (click)="openCreate()">
+    <lo-icon name="plus" [size]="18" /> Nuevo usuario
+  </button>
+</header>
+
+<section class="setup-guide" aria-label="Guía para crear vendedores">
+  <span class="setup-guide__icon"><lo-icon name="help" [size]="20" /></span>
+  <div>
+    <strong>Para comenzar a vender</strong>
+    <p>
+      Todo vendedor necesita una ruta. Los pagos y límites se controlan desde las reglas del sistema.
+    </p>
+  </div>
+  <a routerLink="/settings/system">Ver reglas <lo-icon name="arrow" [size]="15" /></a>
+</section>
+
+@if (notice()) {
+  <div class="alert alert--success"><lo-icon name="check" [size]="17" />{{ notice() }}</div>
+}
+@if (error()) {
+  <div class="alert alert--error">{{ error() }}</div>
+}
+
+<section class="card users-card" (click)="openMenuUserId.set(null)">
+  <div class="users-toolbar">
+    <form class="search" (submit)="$event.preventDefault(); searchUsers()">
+      <lo-icon name="search" [size]="18" />
+      <input
+        [(ngModel)]="search"
+        name="search"
+        placeholder="Buscar por nombre o usuario"
+        aria-label="Buscar usuarios"
+      />
+      @if (search) {
+        <button type="button" (click)="search = ''; searchUsers()" aria-label="Limpiar búsqueda">
+          <lo-icon name="close" [size]="16" />
+        </button>
+      }
+    </form>
+    <span class="users-total">{{ users()?.totalElements ?? 0 }} usuarios registrados</span>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-list">
+      @for (row of [1, 2, 3, 4]; track row) {
+        <div class="user-row skeleton">Cargando</div>
+      }
+    </div>
+  } @else if (!users()?.content?.length) {
+    <div class="empty-state">
+      <div>
+        <strong>No encontramos usuarios</strong
+        ><span>{{
+          search ? 'Prueba con otra búsqueda.' : 'Crea el primer usuario para comenzar.'
+        }}</span>
+      </div>
+    </div>
+  } @else {
+    <div class="user-list">
+      @for (user of users()!.content; track user.id) {
+        <article class="user-row" [class.user-row--disabled]="!user.enabled">
+          <span class="user-avatar">{{ initials(user.fullName) }}</span>
+          <div class="user-main">
+            <strong>{{ user.fullName }}</strong>
+            <span>@{{ user.username }}</span>
+          </div>
+          <span class="role role--{{ user.role.toLowerCase() }}">{{ roleLabel(user.role) }}</span>
+          <div class="user-detail user-detail--assignments">
+            <small>Asignación</small
+            ><strong>{{
+              user.role === 'SELLER'
+                ? user.routeName || 'Sin ruta'
+                : user.role === 'SUPERVISOR'
+                  ? 'Supervisión de rutas'
+                  : 'Acceso global'
+            }}</strong
+            ><span>{{
+              user.role === 'SELLER'
+                ? 'Pago general y límites por número'
+                : user.role === 'SUPERVISOR'
+                  ? 'Consulta y controla sus vendedores asignados'
+                  : 'Administración completa de la plataforma'
+            }}</span>
+          </div>
+          <div class="user-detail user-detail--status">
+            <small>Estado</small><strong>{{ user.enabled ? 'Habilitado' : 'Desactivado' }}</strong
+            ><span
+              >{{ user.maxSessions }} {{ user.maxSessions === 1 ? 'sesión' : 'sesiones' }}</span
+            >
+          </div>
+          <div class="user-detail user-detail--days">
+            <small>Días vendiendo</small><strong>{{ user.activeSalesDays }}</strong>
+          </div>
+          <div class="user-menu-wrap" (click)="$event.stopPropagation()">
+            <button
+              class="manage-user"
+              type="button"
+              (click)="openMenuUserId.set(openMenuUserId() === user.id ? null : user.id)"
+              [attr.aria-expanded]="openMenuUserId() === user.id"
+              aria-haspopup="menu"
+            >
+              <lo-icon name="menu" [size]="17" /><span>Gestionar</span>
+            </button>
+            @if (openMenuUserId() === user.id) {
+              <div class="user-action-menu" role="menu">
+                <button type="button" role="menuitem" (click)="openAssignments(user)">
+                  <lo-icon name="edit" [size]="18" /><span
+                    ><strong>Rol y asignaciones</strong
+                    ><small>Cambiar rol, rutas o tablas</small></span
+                  >
+                </button>
+                <button type="button" role="menuitem" (click)="openAccess(user)">
+                  <lo-icon name="lock" [size]="18" /><span
+                    ><strong>Acceso y contraseña</strong
+                    ><small>Sesiones concurrentes y credenciales</small></span
+                  >
+                </button>
+                @if (user.role === 'SELLER') {
+                  <a
+                    role="menuitem"
+                    [routerLink]="['/users', user.id, 'limits']"
+                    (click)="openMenuUserId.set(null)"
+                    ><lo-icon name="table" [size]="18" /><span
+                      ><strong>Límites por número</strong
+                      ><small>Configurar ventas permitidas</small></span
+                    ></a
+                  >
+                }
+                <button
+                  type="button"
+                  role="menuitem"
+                  (click)="openUserAction(user, user.enabled ? 'DISABLE' : 'ENABLE')"
+                >
+                  <lo-icon [name]="user.enabled ? 'lock' : 'unlock'" [size]="18" /><span
+                    ><strong>{{ user.enabled ? 'Desactivar acceso' : 'Rehabilitar acceso' }}</strong
+                    ><small>{{
+                      user.enabled
+                        ? 'Impedir temporalmente el ingreso'
+                        : 'Permitir que vuelva a ingresar'
+                    }}</small></span
+                  >
+                </button>
+                <button
+                  class="menu-item--danger"
+                  type="button"
+                  role="menuitem"
+                  (click)="openUserAction(user, 'DELETE')"
+                >
+                  <lo-icon name="trash" [size]="18" /><span
+                    ><strong>Eliminar usuario</strong
+                    ><small>Conservar historial y auditoría</small></span
+                  >
+                </button>
+              </div>
+            }
+          </div>
+        </article>
+      }
+    </div>
+    @if ((users()?.totalPages ?? 0) > 1) {
+      <nav class="pagination" aria-label="Paginación de usuarios">
+        <button class="button" [disabled]="page === 0" (click)="loadUsers(page - 1)">
+          Anterior
+        </button>
+        <span>Página {{ page + 1 }} de {{ users()!.totalPages }}</span>
+        <button
+          class="button"
+          [disabled]="page + 1 >= users()!.totalPages"
+          (click)="loadUsers(page + 1)"
+        >
+          Siguiente
+        </button>
+      </nav>
+    }
+  }
+</section>
+
+@if (formOpen()) {
+  <div class="modal-backdrop" (click)="closeCreate()">
+    <section
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="new-user-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="modal__header">
+        <div>
+          <span class="eyebrow">Nuevo acceso</span>
+          <h2 id="new-user-title">Crear usuario</h2>
+        </div>
+        <button class="modal__close" type="button" (click)="closeCreate()" aria-label="Cerrar">
+          <lo-icon name="close" />
+        </button>
+      </header>
+
+      <form (submit)="$event.preventDefault(); saveUser()">
+        <div class="role-picker" role="radiogroup" aria-label="Rol del usuario">
+          @for (role of ['SELLER', 'SUPERVISOR', 'ADMIN']; track role) {
+            <label [class.role-picker__option--selected]="form.role === role">
+              <input type="radio" name="role" [(ngModel)]="form.role" [value]="role" />
+              <lo-icon [name]="role === 'SELLER' ? 'sell' : 'users'" [size]="19" />
+              <span
+                ><strong>{{ roleLabel($any(role)) }}</strong
+                ><small>{{
+                  role === 'SELLER'
+                    ? 'Registra ventas'
+                    : role === 'SUPERVISOR'
+                      ? 'Gestiona rutas'
+                      : 'Control total'
+                }}</small></span
+              >
+            </label>
+          }
+        </div>
+
+        <div class="form-grid">
+          <div class="field field--wide">
+            <label for="fullName">Nombre completo</label
+            ><input
+              id="fullName"
+              class="input"
+              name="fullName"
+              [(ngModel)]="form.fullName"
+              autocomplete="name"
+              placeholder="Ej. María López"
+              required
+            />
+          </div>
+          <div class="field">
+            <label for="username">Usuario</label
+            ><input
+              id="username"
+              class="input"
+              name="username"
+              [(ngModel)]="form.username"
+              autocomplete="off"
+              placeholder="mlopez"
+              required
+            />
+          </div>
+          <div class="initial-password-note">
+            <lo-icon name="lock" [size]="18" /><span
+              ><strong>Contraseña inicial: 1234567890</strong
+              ><small
+                >El usuario deberá cambiarla obligatoriamente al iniciar sesión por primera
+                vez.</small
+              ></span
+            >
+          </div>
+          <div class="field">
+            <label for="hiredOn">Fecha de ingreso</label
+            ><input
+              id="hiredOn"
+              class="input"
+              type="text"
+              inputmode="numeric"
+              maxlength="10"
+              name="hiredOn"
+              placeholder="DD/MM/AAAA"
+              [ngModel]="form.hiredOn"
+              (ngModelChange)="form.hiredOn = dateInput($event)"
+            />
+          </div>
+          <div class="field">
+            <label for="sessions">Sesiones simultáneas</label
+            ><input
+              id="sessions"
+              class="input"
+              type="number"
+              min="1"
+              max="20"
+              name="sessions"
+              [(ngModel)]="form.maxSessions"
+            />
+          </div>
+        </div>
+
+        @if (form.role === 'SELLER') {
+          <div class="assignment-panel">
+            <div class="assignment-panel__heading">
+              <div>
+                <strong>Configuración de ventas</strong
+                ><small>Estos datos determinan cómo puede vender.</small>
+              </div>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="route">Ruta</label
+                ><select id="route" class="select" name="route" [(ngModel)]="form.routeId">
+                  <option value="">Seleccione una ruta</option>
+                  @for (route of routes(); track route.id) {
+                    <option [value]="route.id">{{ route.code }} · {{ route.name }}</option>
+                  }</select
+                ><button
+                  class="inline-link"
+                  type="button"
+                  (click)="routeCreatorOpen.set(!routeCreatorOpen())"
+                >
+                  <lo-icon name="plus" [size]="14" /> Crear ruta
+                </button>
+              </div>
+              <div class="field">
+                <label for="commission">Comisión sobre ventas (%)</label
+                ><input
+                  id="commission"
+                  class="input"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  name="commission"
+                  [(ngModel)]="form.commissionRate"
+                />
+              </div>
+            </div>
+            @if (routeCreatorOpen()) {
+              <div class="route-creator">
+                <div class="field">
+                  <label for="routeCode">Código</label
+                  ><input
+                    id="routeCode"
+                    class="input"
+                    name="routeCode"
+                    [(ngModel)]="routeDraft.code"
+                    placeholder="R-01"
+                  />
+                </div>
+                <div class="field">
+                  <label for="routeName">Nombre de ruta</label
+                  ><input
+                    id="routeName"
+                    class="input"
+                    name="routeName"
+                    [(ngModel)]="routeDraft.name"
+                    placeholder="Mercado Oriental"
+                  />
+                </div>
+                <button
+                  class="button"
+                  type="button"
+                  (click)="createRoute()"
+                  [disabled]="creatingRoute()"
+                >
+                  {{ creatingRoute() ? 'Creando…' : 'Agregar' }}
+                </button>
+              </div>
+            }
+          </div>
+        } @else if (form.role === 'SUPERVISOR') {
+          <div class="assignment-panel">
+            <div class="assignment-panel__heading">
+              <div>
+                <strong>Rutas supervisadas</strong
+                ><small>Puede seleccionar una o varias; también podrás asignarlas después.</small>
+              </div>
+            </div>
+            <div class="route-options">
+              @for (route of routes(); track route.id) {
+                <label
+                  ><input
+                    type="checkbox"
+                    [checked]="isSupervisorRouteSelected(route.id)"
+                    (change)="toggleSupervisorRoute(route.id, $any($event.target).checked)"
+                  /><span
+                    ><strong>{{ route.code }}</strong
+                    >{{ route.name }}</span
+                  ></label
+                >
+              } @empty {
+                <span class="muted-copy"
+                  >Aún no existen rutas. Puedes crear una al configurar un vendedor.</span
+                >
+              }
+            </div>
+          </div>
+        }
+
+        @if (formError()) {
+          <div class="form-alert">{{ formError() }}</div>
+        }
+        <footer class="modal__footer">
+          <button class="button" type="button" (click)="closeCreate()">Cancelar</button
+          ><button class="button button--primary" type="submit" [disabled]="saving()">
+            {{ saving() ? 'Creando usuario…' : 'Crear usuario' }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (accessOpen() && accessUser()) {
+  <div class="modal-backdrop" (click)="closeAccess()">
+    <section
+      class="modal modal--access"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="access-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="modal__header">
+        <div>
+          <span class="eyebrow">Seguridad y sesiones</span>
+          <h2 id="access-title">{{ accessUser()!.fullName }}</h2>
+          <p>Configura el acceso sin modificar sus datos personales ni asignaciones.</p>
+        </div>
+        <button class="modal__close" type="button" (click)="closeAccess()">
+          <lo-icon name="close" />
+        </button>
+      </header>
+      <div class="access-form">
+        <div class="field">
+          <label for="accessSessions">Sesiones concurrentes</label
+          ><input
+            id="accessSessions"
+            class="input"
+            type="number"
+            min="1"
+            max="20"
+            [(ngModel)]="accessMaxSessions"
+          /><small class="muted-copy"
+            >Si reduces el límite, se cerrarán primero las sesiones menos recientes.</small
+          >
+        </div>
+        <div class="field password-field">
+          <label for="accessPassword">Nueva contraseña</label
+          ><input
+            id="accessPassword"
+            class="input"
+            [type]="accessShowPassword() ? 'text' : 'password'"
+            [(ngModel)]="accessPassword"
+            minlength="5"
+            maxlength="72"
+            autocomplete="new-password"
+            placeholder="Dejar vacío para no cambiar"
+          /><button type="button" (click)="accessShowPassword.set(!accessShowPassword())">
+            {{ accessShowPassword() ? 'Ocultar' : 'Ver' }}</button
+          ><small class="muted-copy"
+            >Mínimo 5 caracteres. Cambiarla cerrará todas sus sesiones activas.</small
+          >
+        </div>
+        @if (accessPassword) {
+          <label class="force-password-change"
+            ><input type="checkbox" [(ngModel)]="accessMustChangePassword" /><span
+              ><strong>Exigir cambio al próximo ingreso</strong
+              ><small>El usuario no podrá operar hasta elegir una contraseña personal.</small></span
+            ></label
+          >
+        }
+      </div>
+      @if (formError()) {
+        <div class="form-alert">{{ formError() }}</div>
+      }
+      <footer class="modal__footer">
+        <button class="button" type="button" (click)="closeAccess()">Cancelar</button
+        ><button
+          class="button button--primary"
+          type="button"
+          (click)="saveAccess()"
+          [disabled]="accessSaving()"
+        >
+          {{ accessSaving() ? 'Guardando…' : 'Guardar acceso' }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
+
+@if (actionUser() && actionKind()) {
+  <div class="modal-backdrop" (click)="closeUserAction()">
+    <section
+      class="modal modal--confirm"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="user-action-title"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="confirm-icon" [class.confirm-icon--danger]="actionKind() === 'DELETE'">
+        <lo-icon
+          [name]="
+            actionKind() === 'ENABLE' ? 'unlock' : actionKind() === 'DELETE' ? 'trash' : 'lock'
+          "
+          [size]="23"
+        />
+      </div>
+      <div class="confirm-copy">
+        <span class="eyebrow">Confirmar acción</span>
+        <h2 id="user-action-title">
+          {{
+            actionKind() === 'DELETE'
+              ? 'Eliminar usuario'
+              : actionKind() === 'ENABLE'
+                ? 'Rehabilitar usuario'
+                : 'Desactivar usuario'
+          }}
+        </h2>
+        <p>
+          @if (actionKind() === 'DELETE') {
+            <span
+              ><strong>{{ actionUser()!.fullName }}</strong> dejará de aparecer en los listados. Sus
+              ventas, cierres y auditoría se conservarán.</span
+            >
+          } @else if (actionKind() === 'ENABLE') {
+            <span
+              ><strong>{{ actionUser()!.fullName }}</strong> podrá iniciar sesión y operar
+              nuevamente.</span
+            >
+          } @else {
+            <span
+              ><strong>{{ actionUser()!.fullName }}</strong> no podrá iniciar sesión ni vender, pero
+              permanecerá registrado y podrá rehabilitarse.</span
+            >
+          }
+        </p>
+      </div>
+      @if (formError()) {
+        <div class="form-alert">{{ formError() }}</div>
+      }
+      <footer class="modal__footer">
+        <button class="button" type="button" (click)="closeUserAction()">Cancelar</button
+        ><button
+          class="button"
+          [class.button--primary]="actionKind() !== 'DELETE'"
+          [class.confirm-delete]="actionKind() === 'DELETE'"
+          type="button"
+          (click)="confirmUserAction()"
+          [disabled]="actionSaving()"
+        >
+          {{
+            actionSaving()
+              ? 'Procesando…'
+              : actionKind() === 'DELETE'
+                ? 'Sí, eliminar'
+                : actionKind() === 'ENABLE'
+                  ? 'Sí, rehabilitar'
+                  : 'Sí, desactivar'
+          }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
+
+@if (assignmentOpen()) {
+  <div class="modal-backdrop" (click)="closeAssignments()">
+    <section
+      class="modal modal--assignment"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="assignment-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="modal__header">
+        <div>
+          <span class="eyebrow">Rol y asignaciones</span>
+          <h2 id="assignment-title">{{ assignmentUser()?.fullName }}</h2>
+          <p>Los cambios se aplican de forma atómica y conservan todo el historial.</p>
+        </div>
+        <button class="modal__close" type="button" (click)="closeAssignments()">
+          <lo-icon name="close" />
+        </button>
+      </header>
+      @if (assignmentLoading()) {
+        <div class="assignment-loading">Cargando asignaciones…</div>
+      } @else {
+        <div class="field role-change-field">
+          <label for="assignmentRole">Rol</label
+          ><select
+            id="assignmentRole"
+            class="select"
+            [ngModel]="assignmentRole()"
+            (ngModelChange)="assignmentRole.set($event)"
+            [disabled]="assignmentUser()?.id === auth.user()?.id"
+          >
+            <option value="SELLER">Vendedor</option>
+            <option value="SUPERVISOR">Supervisor</option>
+            <option value="ADMIN">Administrador</option>
+          </select>
+          @if (assignmentUser()?.id === auth.user()?.id) {
+            <small class="muted-copy"
+              >Por seguridad, no puedes cambiar tu propio rol durante esta sesión.</small
+            >
+          }
+        </div>
+      }
+      @if (!assignmentLoading() && assignmentRole() === 'SELLER') {
+        <div class="form-grid">
+          <div class="field">
+            <label for="assignmentRoute">Ruta</label
+            ><select id="assignmentRoute" class="select" [(ngModel)]="assignmentRouteId">
+              <option value="">Seleccione una ruta</option>
+              @for (route of routes(); track route.id) {
+                <option [value]="route.id">{{ route.code }} · {{ route.name }}</option>
+              }
+            </select>
+          </div>
+        </div>
+      } @else if (!assignmentLoading() && assignmentRole() === 'SUPERVISOR') {
+        <div class="route-options">
+          @for (route of routes(); track route.id) {
+            <label
+              ><input
+                type="checkbox"
+                [checked]="isSupervisorRouteSelected(route.id)"
+                (change)="toggleSupervisorRoute(route.id, $any($event.target).checked)"
+              /><span
+                ><strong>{{ route.code }}</strong
+                >{{ route.name }}</span
+              ></label
+            >
+          }
+        </div>
+      } @else if (!assignmentLoading()) {
+        <div class="admin-role-note">
+          <lo-icon name="info" [size]="18" /><span
+            >Los administradores no requieren rutas ni tablas asignadas.</span
+          >
+        </div>
+      }
+      @if (formError()) {
+        <div class="form-alert">{{ formError() }}</div>
+      }
+      <footer class="modal__footer">
+        <button class="button" type="button" (click)="closeAssignments()">Cancelar</button
+        ><button
+          class="button button--primary"
+          type="button"
+          (click)="saveAssignments()"
+          [disabled]="assignmentLoading() || assignmentSaving()"
+        >
+          {{ assignmentSaving() ? 'Guardando…' : 'Guardar rol y asignaciones' }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
