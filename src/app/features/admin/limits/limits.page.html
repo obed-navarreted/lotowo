@@ -80,7 +80,10 @@
       <div>
         <span class="eyebrow">Regla base</span>
         <h2>Límite general</h2>
-        <p>Se usa cuando una ruta o un vendedor no tienen una decisión propia.</p>
+        <p>
+          Se usa cuando una ruta o un vendedor no tienen una decisión propia. El tope se consume por
+          vendedor: las ventas de uno no reducen el cupo de los demás.
+        </p>
       </div>
       <span class="status-pill" [class.status-pill--limited]="current().enabled">
         {{ current().enabled ? 'Con límites' : 'Sin límites' }}

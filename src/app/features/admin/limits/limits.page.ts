@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { catchError, finalize, forkJoin, of } from 'rxjs';
+import { EMPTY, Observable, catchError, expand, finalize, forkJoin, map, of, reduce } from 'rxjs';
 import { LotoApiService } from '../../../core/api/loto-api.service';
 import {
   LimitDrawType,
@@ -22,6 +22,8 @@ import { apiErrorMessage } from '../../../shared/api-error';
 import { Icon } from '../../../shared/icon/icon';
 
 type LimitScope = 'GENERAL' | 'ROUTES' | 'SELLERS';
+
+const PAGE_SIZE = 100;
 
 interface GeneralLimitDraft {
   enabled: boolean;
@@ -78,12 +80,8 @@ export class LimitsPage implements OnInit {
   ngOnInit(): void {
     forkJoin({
       limits: this.api.getSystemNumberLimits(),
-      routes: this.api
-        .getManagedRoutes(0, 200)
-        .pipe(catchError((error: unknown) => this.emptyPage<ManagedRoute>(error))),
-      users: this.api
-        .getUsers(0, 500)
-        .pipe(catchError((error: unknown) => this.emptyPage<ManagedUser>(error))),
+      routes: this.loadAll((page) => this.api.getManagedRoutes(page, PAGE_SIZE)),
+      users: this.loadAll((page) => this.api.getUsers(page, PAGE_SIZE)),
     })
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
@@ -96,12 +94,12 @@ export class LimitsPage implements OnInit {
             NATIONAL_LOTTERY: policies.NATIONAL_LOTTERY ?? this.emptyDraft(),
           });
           this.routes.set(
-            [...routes.content].sort((left, right) =>
+            [...routes].sort((left, right) =>
               `${left.code} ${left.name}`.localeCompare(`${right.code} ${right.name}`, 'es'),
             ),
           );
           this.sellers.set(
-            users.content
+            users
               .filter((user) => user.role === 'SELLER')
               .sort((left, right) => left.fullName.localeCompare(right.fullName, 'es')),
           );
@@ -260,15 +258,20 @@ export class LimitsPage implements OnInit {
     return { enabled: false, defaultLimit: null, overrides: {}, excludedSellerIds: new Set() };
   }
 
-  private emptyPage<T>(error: unknown) {
-    if (!(error instanceof HttpErrorResponse) || error.status !== 404) throw error;
-    return of<PageResponse<T>>({
-      content: [],
-      page: 0,
-      size: 0,
-      totalElements: 0,
-      totalPages: 0,
-    });
+  // El backend limita el tamaño de página a 100 y responde 404 cuando no hay resultados:
+  // se recorren todas las páginas y un fallo aquí no debe impedir cargar la regla general.
+  private loadAll<T>(fetchPage: (page: number) => Observable<PageResponse<T>>): Observable<T[]> {
+    return fetchPage(0).pipe(
+      expand((page) => (page.page + 1 < page.totalPages ? fetchPage(page.page + 1) : EMPTY)),
+      map((page) => page.content),
+      reduce((all, content) => [...all, ...content], [] as T[]),
+      catchError((error: unknown) => {
+        if (!(error instanceof HttpErrorResponse) || error.status !== 404) {
+          this.error.set('No pudimos cargar rutas y vendedores. Solo verás la regla general.');
+        }
+        return of<T[]>([]);
+      }),
+    );
   }
 
   private normalize(value: number | null): number | null {
