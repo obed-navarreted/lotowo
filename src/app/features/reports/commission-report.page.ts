@@ -2,11 +2,12 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { catchError, finalize, of } from 'rxjs';
+import { catchError, finalize, map, of } from 'rxjs';
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { ManagedUser } from '../../core/models/admin.models';
-import { ApiProblem, SellerCommissionReport } from '../../core/models/api.models';
+import { ApiProblem, CommissionPayroll, SellerCommissionReport } from '../../core/models/api.models';
 import { OperationalReportPdfService } from '../../core/reports/operational-report-pdf.service';
+import { CommissionDay, groupCommissionsByDay } from '../../shared/commission-days';
 import { drawLabel } from '../../shared/draw-label';
 import { Icon } from '../../shared/icon/icon';
 
@@ -22,7 +23,7 @@ export class CommissionReportPage {
   private readonly pdf = inject(OperationalReportPdfService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly sellers = signal<ManagedUser[]>([]);
-  protected readonly report = signal<SellerCommissionReport | null>(null);
+  protected readonly report = signal<CommissionPayroll | null>(null);
   protected readonly loading = signal(false);
   protected readonly exporting = signal(false);
   protected readonly error = signal('');
@@ -30,6 +31,7 @@ export class CommissionReportPage {
   protected from: string;
   protected to: string;
   protected includeProfit = true;
+  protected includeDraws = true;
 
   constructor() {
     const today = new Date();
@@ -51,24 +53,24 @@ export class CommissionReportPage {
   }
 
   protected generate(): void {
-    if (!this.sellerId) {
-      this.error.set('Selecciona un vendedor.');
-      return;
-    }
     if (!this.from || !this.to || this.to < this.from) {
       this.error.set('Selecciona un rango de fechas válido.');
       return;
     }
     this.loading.set(true);
     this.error.set('');
-    this.api
-      .getSellerCommissionReport(this.sellerId, this.from, this.to)
+    const request = this.sellerId
+      ? this.api
+          .getSellerCommissionReport(this.sellerId, this.from, this.to)
+          .pipe(map((seller) => this.singleSellerPayroll(seller)))
+      : this.api.getCommissionPayroll(this.from, this.to);
+    request
       .pipe(
         finalize(() => this.loading.set(false)),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (report) => this.report.set(report),
+        next: (payroll) => this.report.set(payroll),
         error: (error: HttpErrorResponse) => {
           this.report.set(null);
           this.error.set(this.message(error, 'No pudimos generar el reporte.'));
@@ -77,18 +79,38 @@ export class CommissionReportPage {
   }
 
   protected export(): void {
-    const report = this.report();
-    if (!report || this.exporting()) return;
+    const payroll = this.report();
+    if (!payroll || this.exporting()) return;
     this.exporting.set(true);
     this.error.set('');
     void this.pdf
-      .exportCommissions(report, this.includeProfit)
+      .exportCommissions(payroll, {
+        includeProfit: this.includeProfit,
+        includeDraws: this.includeDraws,
+      })
       .catch(() => this.error.set('No pudimos generar el PDF.'))
       .finally(() => this.exporting.set(false));
   }
 
+  private singleSellerPayroll(seller: SellerCommissionReport): CommissionPayroll {
+    return {
+      from: seller.from,
+      to: seller.to,
+      grossSales: seller.grossSales,
+      prizesDue: seller.prizesDue,
+      commissionAmount: seller.commissionAmount,
+      netBeforeCommission: seller.netBeforeCommission,
+      netAfterCommission: seller.netAfterCommission,
+      sellers: [seller],
+    };
+  }
+
   protected draw(entry: SellerCommissionReport['entries'][number]): string {
     return drawLabel(entry);
+  }
+
+  protected days(report: SellerCommissionReport): CommissionDay[] {
+    return groupCommissionsByDay(report);
   }
 
   protected date(value: string): string {

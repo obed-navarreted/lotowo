@@ -20,10 +20,12 @@ import {
   PushSubscriptionPayload,
   UserNotification,
   NotificationSettings,
+  CommissionPayroll,
   SellerCommissionReport,
   WinnerDrawSummary,
 } from '../models/api.models';
 import {
+  CommissionUpdate,
   CreateUserRequest,
   CreateNationalDrawRequest,
   ManagedRoute,
@@ -38,6 +40,7 @@ import {
   UpdateSystemSalesSettingsRequest,
   RouteNumberLimits,
   SellerNumberLimits,
+  UpdateCommissionRequest,
   UpdateUserRoleRequest,
   UserAssignments,
 } from '../models/admin.models';
@@ -192,6 +195,10 @@ export class LotoApiService {
     return this.http.put<ManagedUser>(`/api/v1/users/${userId}/sessions`, { maxSessions });
   }
 
+  updateUserCommission(userId: string, request: UpdateCommissionRequest) {
+    return this.http.put<CommissionUpdate>(`/api/v1/users/${userId}/commission`, request);
+  }
+
   resetUserPassword(userId: string, newPassword: string, mustChangePassword: boolean) {
     return this.http.put<void>(`/api/v1/users/${userId}/password`, {
       newPassword,
@@ -286,6 +293,11 @@ export class LotoApiService {
   getSellerCommissionReport(sellerId: string, from: string, to: string) {
     const params = new HttpParams().set('sellerId', sellerId).set('from', from).set('to', to);
     return this.http.get<SellerCommissionReport>('/api/v1/reports/commissions', { params });
+  }
+
+  getCommissionPayroll(from: string, to: string) {
+    const params = new HttpParams().set('from', from).set('to', to);
+    return this.http.get<CommissionPayroll>('/api/v1/reports/commissions/payroll', { params });
   }
 
   getRoutes() {

@@ -293,3 +293,14 @@ export interface SellerCommissionReport {
   netAfterCommission: number;
   entries: SellerCommissionEntry[];
 }
+
+export interface CommissionPayroll {
+  from: string;
+  to: string;
+  grossSales: number;
+  prizesDue: number;
+  commissionAmount: number;
+  netBeforeCommission: number;
+  netAfterCommission: number;
+  sellers: SellerCommissionReport[];
+}

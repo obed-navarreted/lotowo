@@ -1,14 +1,27 @@
 import { Injectable } from '@angular/core';
 import {
+  CommissionPayroll,
   DrawNumberReport,
   DrawSettlementReport,
+  SellerCommissionEntry,
   SellerCommissionReport,
 } from '../models/api.models';
+import { groupCommissionsByDay } from '../../shared/commission-days';
 import { drawLabel } from '../../shared/draw-label';
+
+/** La planilla usa casi todo el ancho A4 para caber en la menor cantidad de hojas posible. */
+const PAYROLL_LEFT = 10;
+const PAYROLL_RIGHT = 200;
 
 interface DrawPdfContext {
   scopeLabel: string;
   dateLabel: string;
+}
+
+export interface PayrollPdfOptions {
+  includeProfit: boolean;
+  /** Sin el detalle por sorteo la planilla cabe en cerca de un tercio de las hojas. */
+  includeDraws: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -146,54 +159,212 @@ export class OperationalReportPdfService {
     document.save(`suerte-ganadores-${this.fileDate(report.scheduledAt)}.pdf`);
   }
 
-  async exportCommissions(report: SellerCommissionReport, includeProfit: boolean): Promise<void> {
-    const document = await this.createDocument('Reporte de comisiones');
-    let y = this.heading(
-      document,
-      'REPORTE DE COMISIONES',
-      this.clean(report.sellerName),
-      `${this.date(report.from)} al ${this.date(report.to)}`,
-    );
+  /**
+   * Planilla de pago. Cada vendedor ocupa sus propias hojas y la siguiente empieza en página
+   * nueva: quien firma no debe leer lo que se le paga a otro, ni con qué porcentaje. Por eso
+   * el resumen de todos vive en su propia portada, que solo conserva el administrador.
+   */
+  async exportCommissions(payroll: CommissionPayroll, options: PayrollPdfOptions): Promise<void> {
+    const document = await this.createDocument('Planilla de comisiones');
+    const period = `${this.date(payroll.from)} al ${this.date(payroll.to)}`;
+    const shared = payroll.sellers.length > 1;
+    if (shared) this.payrollCover(document, period, payroll, options.includeProfit);
+    payroll.sellers.forEach((seller, index) => {
+      if (shared || index > 0) document.addPage();
+      this.sellerPayrollBlock(document, this.sellerPageTop(document, period, seller), seller, options);
+    });
+    const single = shared ? 'todos' : this.safeFile(payroll.sellers[0].sellerName);
+    document.save(`suerte-comisiones-${single}-${payroll.from}-${payroll.to}.pdf`);
+  }
+
+  private payrollCover(
+    document: import('jspdf').jsPDF,
+    period: string,
+    payroll: CommissionPayroll,
+    includeProfit: boolean,
+  ): void {
+    this.payrollBrand(document, 'PLANILLA DE COMISIONES', period);
     const totals: Array<[string, string]> = [
-      ['Vendido', this.amount(report.grossSales)],
-      ['Premios', this.amount(report.prizesDue)],
-      ['Comisión', this.amount(report.commissionAmount)],
+      ['Vendido', this.amount(payroll.grossSales)],
+      ['Premio total pagado', this.amount(payroll.prizesDue)],
+      ['Comisión', this.amount(payroll.commissionAmount)],
     ];
-    if (includeProfit) totals.push(['Utilidad neta', this.amount(report.netAfterCommission)]);
-    y = this.summary(document, y, totals);
-    y += 7;
-    this.sectionTitle(document, 'Detalle por sorteo', y);
-    y += 7;
-    const columns: Array<[string, number]> = [
-      ['Fecha', 15],
-      ['Sorteo', 40],
-      ['Vendido', 91],
-      ['Premios', 119],
-      ['Comisión', 147],
-    ];
-    if (includeProfit) columns.push(['Utilidad', 178]);
-    this.tableHeader(document, y, columns);
+    if (includeProfit) totals.push(['Utilidad neta', this.amount(payroll.netAfterCommission)]);
+    let y = this.summary(document, 30, totals);
+    y += 9;
+    this.sectionTitle(document, `Vendedores por pagar (${payroll.sellers.length})`, y);
     y += 6;
-    for (const entry of report.entries) {
-      y = this.ensureSpace(document, y, 8, 'Detalle por sorteo');
+    for (const seller of payroll.sellers) {
+      y = this.ensureSpace(document, y, 6, 'Vendedores por pagar');
       document.setFont('helvetica', 'normal');
-      document.setFontSize(7.8);
-      document.setTextColor(35, 35, 35);
-      document.text(this.dateTimeDate(entry.scheduledAt), 15, y);
-      document.text(drawLabel(entry), 40, y, { maxWidth: 47 });
-      document.text(this.amount(entry.grossSales), 91, y);
-      document.text(this.amount(entry.prizesDue), 119, y);
-      document.text(
-        `${this.amount(entry.commissionAmount)} (${this.amount(entry.commissionRate)}%)`,
-        147,
-        y,
-      );
-      if (includeProfit) document.text(this.amount(entry.netAfterCommission), 178, y);
-      this.line(document, y + 2.8, 228);
-      y += 8;
+      document.setFontSize(7.5);
+      document.setTextColor(45, 45, 45);
+      document.text(this.clean(seller.sellerName), PAYROLL_LEFT, y);
+      document.text(this.amount(seller.commissionAmount), PAYROLL_RIGHT, y, { align: 'right' });
+      y += 4.6;
     }
-    const suffix = includeProfit ? 'con-utilidad' : 'sin-utilidad';
-    document.save(`suerte-comisiones-${this.safeFile(report.sellerName)}-${suffix}.pdf`);
+    document.setFont('helvetica', 'italic');
+    document.setFontSize(6.8);
+    document.setTextColor(120, 120, 120);
+    document.text(
+      'Hoja de control: cada vendedor firma únicamente su propia hoja.',
+      PAYROLL_LEFT,
+      y + 3,
+    );
+  }
+
+  private sellerPageTop(
+    document: import('jspdf').jsPDF,
+    period: string,
+    seller: SellerCommissionReport,
+  ): number {
+    this.payrollBrand(document, this.clean(seller.sellerName).toUpperCase(), period);
+    this.payrollRule(document, 18);
+    return 24;
+  }
+
+  private payrollBrand(document: import('jspdf').jsPDF, eyebrow: string, period: string): void {
+    document.setFont('helvetica', 'bold');
+    document.setTextColor(25, 25, 25);
+    document.setFontSize(13);
+    document.text('suerte', PAYROLL_LEFT, 14);
+    document.setFontSize(8);
+    document.setTextColor(100, 80, 195);
+    document.text(eyebrow, PAYROLL_LEFT + 22, 14, { maxWidth: 120 });
+    document.setFont('helvetica', 'normal');
+    document.setFontSize(8);
+    document.setTextColor(90, 90, 90);
+    document.text(period, PAYROLL_RIGHT, 14, { align: 'right' });
+  }
+
+  private sellerPayrollBlock(
+    document: import('jspdf').jsPDF,
+    top: number,
+    seller: SellerCommissionReport,
+    options: PayrollPdfOptions,
+  ): number {
+    const { includeProfit, includeDraws } = options;
+    const days = groupCommissionsByDay(seller);
+    const columns = this.payrollColumns(includeProfit);
+    // Si el bloque desborda, la hoja siguiente sigue siendo de este vendedor y de nadie más.
+    const continuation = `${this.clean(seller.sellerName)} (continuación)`;
+    let y = this.ensureSpace(document, top, 22, continuation);
+
+    document.setFillColor(243, 242, 240);
+    document.rect(PAYROLL_LEFT - 2, y - 3.6, PAYROLL_RIGHT - PAYROLL_LEFT + 4, 6, 'F');
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(8);
+    document.setTextColor(25, 25, 25);
+    document.text(this.clean(seller.sellerName), PAYROLL_LEFT, y);
+    document.setFont('helvetica', 'normal');
+    document.setFontSize(6.5);
+    document.setTextColor(95, 95, 95);
+    for (const [label, x] of columns) document.text(label.toUpperCase(), x, y, { align: 'right' });
+    y += 5;
+
+    for (const day of days) {
+      y = this.ensureSpace(document, y, 6, continuation);
+      const values = [day.grossSales, day.prizesDue, day.commissionAmount];
+      if (includeProfit) values.push(day.netAfterCommission);
+      document.setFont('helvetica', 'bold');
+      document.setFontSize(7);
+      document.setTextColor(35, 35, 35);
+      document.text(this.date(day.date), PAYROLL_LEFT, y);
+      values.forEach((value, index) =>
+        document.text(this.amount(value), columns[index][1], y, { align: 'right' }),
+      );
+      y += 4.2;
+      if (!includeDraws) continue;
+      for (const entry of day.entries) {
+        y = this.ensureSpace(document, y, 6, continuation);
+        const detail = [entry.grossSales, entry.prizesDue, entry.commissionAmount];
+        if (includeProfit) detail.push(entry.netAfterCommission);
+        document.setFont('helvetica', 'normal');
+        document.setFontSize(6.5);
+        document.setTextColor(105, 105, 105);
+        // La fecha ya la lleva la fila del día: repetirla sólo gastaría renglón.
+        document.text(
+          `${this.drawTime(entry)} · ganador ${entry.winningNumber} · ${this.amount(entry.commissionRate)}%`,
+          PAYROLL_LEFT + 4,
+          y,
+        );
+        detail.forEach((value, index) =>
+          document.text(this.amount(value), columns[index][1], y, { align: 'right' }),
+        );
+        y += 3.8;
+      }
+      y += 0.6;
+    }
+
+    return this.signatureReceipt(document, y, seller, continuation);
+  }
+
+  private signatureReceipt(
+    document: import('jspdf').jsPDF,
+    top: number,
+    seller: SellerCommissionReport,
+    continuation: string,
+  ): number {
+    // Recibo en una sola línea: firmar no debe costar un tercio de la hoja.
+    let y = this.ensureSpace(document, top, 10, continuation);
+    y += 4;
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(6.8);
+    document.setTextColor(35, 35, 35);
+    document.text(
+      `Recibí conforme C$ ${this.amount(seller.commissionAmount)} por comisión del período.`,
+      PAYROLL_LEFT,
+      y,
+    );
+    const slots: Array<[string, number, number]> = [
+      ['Firma', 76, 46],
+      ['Cédula', 132, 28],
+      ['Fecha', 170, 30],
+    ];
+    document.setDrawColor(130, 130, 130);
+    document.setLineWidth(0.2);
+    document.setFont('helvetica', 'normal');
+    document.setFontSize(6.5);
+    document.setTextColor(110, 110, 110);
+    for (const [label, x, width] of slots) {
+      document.text(label, x, y);
+      document.line(x + 10, y + 0.6, x + 10 + width, y + 0.6);
+    }
+    y += 3.5;
+    this.payrollRule(document, y);
+    return y + 5;
+  }
+
+  private payrollColumns(includeProfit: boolean): Array<[string, number]> {
+    return includeProfit
+      ? [
+          ['Vendido', 128],
+          ['Premio pagado', 152],
+          ['Comisión', 176],
+          ['Utilidad', PAYROLL_RIGHT],
+        ]
+      : [
+          ['Vendido', 148],
+          ['Premio pagado', 175],
+          ['Comisión', PAYROLL_RIGHT],
+        ];
+  }
+
+  private drawTime(entry: SellerCommissionEntry): string {
+    const time = new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      hour12: true,
+      timeZone: 'America/Managua',
+    })
+      .format(new Date(entry.scheduledAt))
+      .replace(/\s/g, '');
+    return entry.drawType === 'DAILY' ? time : `Lotería ${time}`;
+  }
+
+  private payrollRule(document: import('jspdf').jsPDF, y: number): void {
+    document.setDrawColor(205, 205, 205);
+    document.setLineWidth(0.2);
+    document.line(PAYROLL_LEFT, y, PAYROLL_RIGHT, y);
   }
 
   private async createDocument(title: string): Promise<import('jspdf').jsPDF> {

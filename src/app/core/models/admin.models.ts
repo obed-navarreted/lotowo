@@ -33,6 +33,18 @@ export interface UserAssignments {
   routeIds: string[];
 }
 
+export interface UpdateCommissionRequest {
+  commissionRate: number;
+  recalculateFrom: string | null;
+  recalculateTo: string | null;
+}
+
+export interface CommissionUpdate {
+  user: ManagedUser;
+  previousCommissionRate: number;
+  recalculatedClosures: number;
+}
+
 export interface UpdateUserRoleRequest {
   role: UserRole;
   routeId: string | null;

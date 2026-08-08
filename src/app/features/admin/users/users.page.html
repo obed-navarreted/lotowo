@@ -84,7 +84,7 @@
             }}</strong
             ><span>{{
               user.role === 'SELLER'
-                ? 'Pago general y límites por número'
+                ? 'Comisión ' + user.commissionRate + '% · límites por número'
                 : user.role === 'SUPERVISOR'
                   ? 'Consulta y controla sus vendedores asignados'
                   : 'Administración completa de la plataforma'
@@ -124,6 +124,12 @@
                   >
                 </button>
                 @if (user.role === 'SELLER') {
+                  <button type="button" role="menuitem" (click)="openCommission(user)">
+                    <lo-icon name="table" [size]="18" /><span
+                      ><strong>Comisión</strong
+                      ><small>Actualmente {{ user.commissionRate }}% sobre ventas</small></span
+                    >
+                  </button>
                   <a
                     role="menuitem"
                     [routerLink]="['/users', user.id, 'limits']"
@@ -469,6 +475,79 @@
           [disabled]="accessSaving()"
         >
           {{ accessSaving() ? 'Guardando…' : 'Guardar acceso' }}
+        </button>
+      </footer>
+    </section>
+  </div>
+}
+
+@if (commissionOpen() && commissionUser()) {
+  <div class="modal-backdrop" (click)="closeCommission()">
+    <section
+      class="modal modal--access"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="commission-title"
+      (click)="$event.stopPropagation()"
+    >
+      <header class="modal__header">
+        <div>
+          <span class="eyebrow">Pago al vendedor</span>
+          <h2 id="commission-title">{{ commissionUser()!.fullName }}</h2>
+          <p>Porcentaje que se le paga sobre lo vendido.</p>
+        </div>
+        <button class="modal__close" type="button" (click)="closeCommission()">
+          <lo-icon name="close" />
+        </button>
+      </header>
+      <div class="access-form">
+        <div class="field">
+          <label for="commissionRate">Comisión sobre ventas (%)</label
+          ><input
+            id="commissionRate"
+            class="input"
+            type="number"
+            min="0"
+            max="100"
+            step="0.5"
+            [(ngModel)]="commissionRate"
+          /><small class="muted-copy"
+            >Actual: {{ commissionUser()!.commissionRate }}%. El nuevo porcentaje se aplica a los
+            sorteos que se cierren de aquí en adelante.</small
+          >
+        </div>
+        <label class="force-password-change"
+          ><input type="checkbox" [(ngModel)]="commissionRecalculate" /><span
+            ><strong>Recalcular cierres ya registrados</strong
+            ><small
+              >Corrige la comisión guardada en los sorteos ya cerrados dentro del rango, para pagar
+              todo al nuevo porcentaje.</small
+            ></span
+          ></label
+        >
+        @if (commissionRecalculate) {
+          <div class="field">
+            <label for="commissionFrom">Desde</label
+            ><input id="commissionFrom" class="input" type="date" [(ngModel)]="commissionFrom" />
+          </div>
+          <div class="field">
+            <label for="commissionTo">Hasta</label
+            ><input id="commissionTo" class="input" type="date" [(ngModel)]="commissionTo" />
+          </div>
+        }
+      </div>
+      @if (formError()) {
+        <div class="form-alert">{{ formError() }}</div>
+      }
+      <footer class="modal__footer">
+        <button class="button" type="button" (click)="closeCommission()">Cancelar</button
+        ><button
+          class="button button--primary"
+          type="button"
+          (click)="saveCommission()"
+          [disabled]="commissionSaving()"
+        >
+          {{ commissionSaving() ? 'Guardando…' : 'Guardar comisión' }}
         </button>
       </footer>
     </section>

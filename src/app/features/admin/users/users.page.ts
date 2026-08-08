@@ -59,9 +59,16 @@ export class UsersPage implements OnInit {
   protected readonly accessOpen = signal(false);
   protected readonly accessSaving = signal(false);
   protected readonly accessShowPassword = signal(false);
+  protected readonly commissionUser = signal<ManagedUser | null>(null);
+  protected readonly commissionOpen = signal(false);
+  protected readonly commissionSaving = signal(false);
   protected accessMaxSessions = 1;
   protected accessPassword = '';
   protected accessMustChangePassword = true;
+  protected commissionRate = 0;
+  protected commissionRecalculate = false;
+  protected commissionFrom = '';
+  protected commissionTo = '';
   protected search = '';
   protected page = 0;
   protected routeDraft = { code: '', name: '' };
@@ -284,6 +291,65 @@ export class UsersPage implements OnInit {
     });
   }
 
+  protected openCommission(user: ManagedUser): void {
+    this.openMenuUserId.set(null);
+    this.commissionUser.set(user);
+    this.commissionRate = Number(user.commissionRate);
+    this.commissionRecalculate = false;
+    const today = this.isoToday();
+    this.commissionTo = today;
+    this.commissionFrom = `${today.slice(0, 8)}01`;
+    this.formError.set('');
+    this.commissionOpen.set(true);
+  }
+
+  protected closeCommission(): void {
+    if (!this.commissionSaving()) this.commissionOpen.set(false);
+  }
+
+  protected saveCommission(): void {
+    const user = this.commissionUser();
+    if (!user) return;
+    const rate = Number(this.commissionRate);
+    if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+      this.formError.set('La comisión debe estar entre 0% y 100%.');
+      return;
+    }
+    if (this.commissionRecalculate) {
+      if (!this.commissionFrom || !this.commissionTo) {
+        this.formError.set('Indica el rango de fechas a recalcular.');
+        return;
+      }
+      if (this.commissionTo < this.commissionFrom) {
+        this.formError.set('La fecha final debe ser igual o posterior a la inicial.');
+        return;
+      }
+    }
+    this.commissionSaving.set(true);
+    this.formError.set('');
+    this.api
+      .updateUserCommission(user.id, {
+        commissionRate: rate,
+        recalculateFrom: this.commissionRecalculate ? this.commissionFrom : null,
+        recalculateTo: this.commissionRecalculate ? this.commissionTo : null,
+      })
+      .pipe(finalize(() => this.commissionSaving.set(false)))
+      .subscribe({
+        next: (result) => {
+          this.commissionOpen.set(false);
+          this.notice.set(
+            `${user.fullName} ahora tiene ${rate}% de comisión.` +
+              (result.recalculatedClosures
+                ? ` Se recalcularon ${result.recalculatedClosures} cierres del rango.`
+                : ''),
+          );
+          this.loadUsers();
+        },
+        error: (apiError: unknown) =>
+          this.formError.set(apiErrorMessage(apiError, 'No fue posible actualizar la comisión.')),
+      });
+  }
+
   protected closeAssignments(): void {
     if (!this.assignmentSaving()) this.assignmentOpen.set(false);
   }
@@ -396,6 +462,11 @@ export class UsersPage implements OnInit {
       maxSessions: 1,
       routeId: '',
     };
+  }
+
+  private isoToday(): string {
+    const [day, month, year] = this.todayInNicaragua().split('/');
+    return `${year}-${month}-${day}`;
   }
 
   private todayInNicaragua(): string {

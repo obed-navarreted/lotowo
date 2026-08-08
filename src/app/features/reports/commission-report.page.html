@@ -20,7 +20,7 @@
   <label class="seller-field"
     ><span>Vendedor</span
     ><select class="select" [(ngModel)]="sellerId">
-      <option value="">Seleccionar vendedor</option>
+      <option value="">Todos los vendedores</option>
       @for (seller of sellers(); track seller.id) {
         <option [value]="seller.id">{{ seller.fullName }}</option>
       }
@@ -40,22 +40,35 @@
 @if (report(); as detail) {
   <section class="commission-heading card">
     <div>
-      <small>Vendedor</small><strong>{{ detail.sellerName }}</strong
+      <small>{{ detail.sellers.length === 1 ? 'Vendedor' : 'Planilla' }}</small
+      ><strong>{{
+        detail.sellers.length === 1
+          ? detail.sellers[0].sellerName
+          : detail.sellers.length + ' vendedores'
+      }}</strong
       ><span>{{ date(detail.from) }} al {{ date(detail.to) }}</span>
     </div>
-    <label class="profit-toggle"
-      ><span
-        ><strong>Incluir utilidad</strong
-        ><small>Agrega el resultado después de premios y comisión al PDF.</small></span
-      ><input type="checkbox" [(ngModel)]="includeProfit"
-    /></label>
+    <div class="pdf-toggles">
+      <label class="profit-toggle"
+        ><span
+          ><strong>Incluir utilidad</strong
+          ><small>Agrega el resultado después de premios y comisión al PDF.</small></span
+        ><input type="checkbox" [(ngModel)]="includeProfit"
+      /></label>
+      <label class="profit-toggle"
+        ><span
+          ><strong>Detalle por sorteo</strong
+          ><small>Sin él, el PDF solo lleva el total de cada día y ocupa un tercio de las hojas.</small></span
+        ><input type="checkbox" [(ngModel)]="includeDraws"
+      /></label>
+    </div>
   </section>
   <section class="commission-metrics">
     <article class="card">
       <small>Vendido</small><strong>{{ money(detail.grossSales) }}</strong>
     </article>
     <article class="card">
-      <small>Premios</small><strong>{{ money(detail.prizesDue) }}</strong>
+      <small>Premio total pagado</small><strong>{{ money(detail.prizesDue) }}</strong>
     </article>
     <article class="card metric--commission">
       <small>Comisión</small><strong>{{ money(detail.commissionAmount) }}</strong>
@@ -68,37 +81,69 @@
     <header>
       <div>
         <span class="eyebrow">Detalle</span>
-        <h2>Actividad por sorteo</h2>
+        <h2>Actividad por día y sorteo</h2>
       </div>
-      <span>{{ detail.entries.length }} cierres</span>
+      <span>{{ detail.sellers.length }} vendedores</span>
     </header>
-    <div class="commission-list">
-      @for (entry of detail.entries; track entry.drawId) {
-        <article>
-          <div class="entry-draw">
-            <small>{{ date(entry.scheduledAt) }}</small
-            ><strong>{{ draw(entry) }}</strong
-            ><span>Ganador {{ entry.winningNumber }}</span>
-          </div>
+    @for (seller of detail.sellers; track seller.sellerId) {
+      <header class="seller-heading">
+        <strong>{{ seller.sellerName }}</strong>
+        <span
+          ><small>Vendido</small><strong>{{ money(seller.grossSales) }}</strong></span
+        ><span
+          ><small>Premio pagado</small><strong>{{ money(seller.prizesDue) }}</strong></span
+        ><span
+          ><small>Comisión a pagar</small><strong>{{ money(seller.commissionAmount) }}</strong></span
+        >
+      </header>
+      @for (day of days(seller); track day.date) {
+      <div class="commission-day">
+        <header class="day-heading">
+          <strong class="day-date">{{ date(day.date) }}</strong>
           <span
-            ><small>Vendido</small><strong>{{ money(entry.grossSales) }}</strong></span
+            ><small>Vendido</small><strong>{{ money(day.grossSales) }}</strong></span
           ><span
-            ><small>Premios</small><strong>{{ money(entry.prizesDue) }}</strong></span
+            ><small>Premios</small><strong>{{ money(day.prizesDue) }}</strong></span
           ><span
-            ><small>Comisión · {{ money(entry.commissionRate) }}%</small
-            ><strong>{{ money(entry.commissionAmount) }}</strong></span
-          ><span class="entry-result" [class.loss]="entry.netAfterCommission < 0"
-            ><small>Utilidad neta</small
-            ><strong>{{ money(entry.netAfterCommission) }}</strong></span
+            ><small>Comisión</small><strong>{{ money(day.commissionAmount) }}</strong></span
+          ><span class="entry-result" [class.loss]="day.netAfterCommission < 0"
+            ><small>Utilidad neta</small><strong>{{ money(day.netAfterCommission) }}</strong></span
           >
-        </article>
+        </header>
+        <div class="commission-list">
+          @for (entry of day.entries; track entry.drawId) {
+            <article>
+              <div class="entry-draw">
+                <strong>{{ draw(entry) }}</strong
+                ><span>Ganador {{ entry.winningNumber }}</span>
+              </div>
+              <span
+                ><small>Vendido</small><strong>{{ money(entry.grossSales) }}</strong></span
+              ><span
+                ><small>Premio pagado</small><strong>{{ money(entry.prizesDue) }}</strong></span
+              ><span
+                ><small>Comisión · {{ money(entry.commissionRate) }}%</small
+                ><strong>{{ money(entry.commissionAmount) }}</strong></span
+              ><span class="entry-result" [class.loss]="entry.netAfterCommission < 0"
+                ><small>Utilidad neta</small
+                ><strong>{{ money(entry.netAfterCommission) }}</strong></span
+              >
+            </article>
+          }
+        </div>
+      </div>
       }
-    </div>
+      <p class="signature-note">
+        En el PDF, {{ seller.sellerName }} firma aquí el recibo de su comisión de
+        {{ money(seller.commissionAmount) }}.
+      </p>
+    }
   </section>
 } @else if (!loading()) {
   <section class="card empty-state">
     <div>
-      <strong>Selecciona un vendedor</strong>Elige el rango y consulta para preparar su reporte.
+      <strong>Elige el período</strong>Consulta el rango para preparar la planilla de todos los
+      vendedores o de uno en particular.
     </div>
   </section>
 }

@@ -1,13 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { OperationalReportPdfService } from './operational-report-pdf.service';
 
-const pdf = vi.hoisted(() => ({ texts: [] as string[], savedAs: '' }));
+const pdf = vi.hoisted(() => ({ texts: [] as string[], savedAs: '', pages: 1 }));
 
 vi.mock('jspdf', () => ({
   jsPDF: class {
     constructor() {
       pdf.texts = [];
       pdf.savedAs = '';
+      pdf.pages = 1;
     }
     setProperties(): void {}
     setFont(): void {}
@@ -18,7 +19,9 @@ vi.mock('jspdf', () => ({
     setLineWidth(): void {}
     line(): void {}
     rect(): void {}
-    addPage(): void {}
+    addPage(): void {
+      pdf.pages += 1;
+    }
     text(value: string | string[]): void {
       pdf.texts.push(...(Array.isArray(value) ? value : [value]));
     }
@@ -97,38 +100,59 @@ describe('OperationalReportPdfService', () => {
     expect(pdf.savedAs).toBe('suerte-ganadores-05-08-26.pdf');
   });
 
-  it('can export commissions without exposing the utility', async () => {
+  it('lays out one signed block per seller and keeps the utility out when asked', async () => {
+    const entry = {
+      drawId: 'draw',
+      drawType: 'DAILY' as const,
+      scheduledAt: '2026-08-05T17:00:00Z',
+      winningNumber: '11',
+      grossSales: 1000,
+      prizesDue: 200,
+      commissionRate: 10,
+      commissionAmount: 100,
+      netBeforeCommission: 800,
+      netAfterCommission: 700,
+    };
+    const seller = (sellerId: string, sellerName: string) => ({
+      sellerId,
+      sellerName,
+      from: '2026-08-01',
+      to: '2026-08-05',
+      grossSales: 1000,
+      prizesDue: 200,
+      commissionAmount: 100,
+      netBeforeCommission: 800,
+      netAfterCommission: 700,
+      entries: [entry],
+    });
+
     await new OperationalReportPdfService().exportCommissions(
       {
-        sellerId: 'seller',
-        sellerName: 'Ana López',
         from: '2026-08-01',
         to: '2026-08-05',
-        grossSales: 1000,
-        prizesDue: 200,
-        commissionAmount: 100,
-        netBeforeCommission: 800,
-        netAfterCommission: 700,
-        entries: [
-          {
-            drawId: 'draw',
-            drawType: 'DAILY',
-            scheduledAt: '2026-08-05T17:00:00Z',
-            winningNumber: '11',
-            grossSales: 1000,
-            prizesDue: 200,
-            commissionRate: 10,
-            commissionAmount: 100,
-            netBeforeCommission: 800,
-            netAfterCommission: 700,
-          },
-        ],
+        grossSales: 2000,
+        prizesDue: 400,
+        commissionAmount: 200,
+        netBeforeCommission: 1600,
+        netAfterCommission: 1400,
+        sellers: [seller('one', 'Ana López'), seller('two', 'Telma Ruiz')],
       },
-      false,
+      { includeProfit: false, includeDraws: true },
     );
 
-    expect(pdf.texts).toContain('REPORTE DE COMISIONES');
-    expect(pdf.texts).not.toContain('UTILIDAD NETA');
-    expect(pdf.savedAs).toBe('suerte-comisiones-ana-lopez-sin-utilidad.pdf');
+    expect(pdf.texts).toContain('PLANILLA DE COMISIONES');
+    expect(pdf.texts).toContain('PREMIO TOTAL PAGADO');
+    // Portada de control más una hoja por vendedor: nadie firma en la hoja de otro.
+    expect(pdf.pages).toBe(3);
+    expect(pdf.texts).toContain('Ana López');
+    expect(pdf.texts).toContain('Telma Ruiz');
+    // Un recibo firmable por vendedor, no uno solo al final del documento.
+    expect(pdf.texts.filter((text) => text.startsWith('Recibí conforme'))).toEqual([
+      'Recibí conforme C$ 100 por comisión del período.',
+      'Recibí conforme C$ 100 por comisión del período.',
+    ]);
+    expect(pdf.texts.filter((text) => text === 'Firma')).toHaveLength(2);
+    expect(pdf.texts).not.toContain('UTILIDAD');
+    expect(pdf.savedAs).toBe('suerte-comisiones-todos-2026-08-01-2026-08-05.pdf');
   });
 });

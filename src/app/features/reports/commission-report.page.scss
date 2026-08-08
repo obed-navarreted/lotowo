@@ -122,6 +122,71 @@
   color: var(--muted);
   font-size: 12px;
 }
+.seller-heading {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 13px 15px;
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+}
+.seller-heading > strong {
+  grid-column: 1 / -1;
+  font-size: 15px;
+}
+.seller-heading > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.seller-heading small {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.seller-heading > span strong {
+  margin-top: 2px;
+  font-size: 14px;
+}
+.pdf-toggles {
+  display: grid;
+  gap: 8px;
+}
+.signature-note {
+  margin: 0;
+  padding: 11px 15px;
+  color: var(--muted-strong);
+  font-size: 12px;
+}
+.day-heading {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 11px;
+  padding: 12px 14px;
+  background: rgba(120, 120, 140, 0.07);
+  border-bottom: 1px solid var(--line-soft);
+}
+.day-heading > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.day-heading small {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.day-heading > span strong {
+  margin-top: 2px;
+  font-size: 14px;
+}
+.day-date {
+  grid-column: 1 / -1;
+  font-size: 14px;
+}
+.commission-day + .commission-day .day-heading {
+  border-top: 1px solid var(--line-soft);
+}
 .commission-list article {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -179,9 +244,18 @@
   .commission-metrics {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
-  .commission-list article {
+  .commission-list article,
+  .day-heading {
     grid-template-columns: 1.4fr repeat(4, minmax(100px, 0.7fr));
     align-items: center;
+  }
+  .seller-heading {
+    grid-template-columns: 1.4fr repeat(3, minmax(100px, 0.7fr));
+    align-items: center;
+  }
+  .day-date,
+  .seller-heading > strong {
+    grid-column: auto;
   }
   .entry-draw,
   .entry-result {
