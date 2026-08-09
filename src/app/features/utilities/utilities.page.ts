@@ -8,6 +8,7 @@ import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ManagedUser } from '../../core/models/admin.models';
 import { Draw, UtilitySummary } from '../../core/models/api.models';
+import { OperationalReportPdfService } from '../../core/reports/operational-report-pdf.service';
 import { apiErrorMessage } from '../../shared/api-error';
 import { drawLabel } from '../../shared/draw-label';
 import { Icon } from '../../shared/icon/icon';
@@ -23,16 +24,18 @@ import { newestDrawFirst } from '../../shared/result-order';
 export class UtilitiesPage {
   protected readonly auth = inject(AuthService);
   private readonly api = inject(LotoApiService);
+  private readonly pdf = inject(OperationalReportPdfService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly draws = signal<Draw[]>([]);
   protected readonly sellers = signal<ManagedUser[]>([]);
   protected readonly summary = signal<UtilitySummary | null>(null);
   protected readonly loading = signal(true);
+  protected readonly exporting = signal(false);
   protected readonly filterLoading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly historyMinDate: string;
   protected readonly today = this.localDate(new Date());
-  protected fromDate = this.today;
+  protected fromDate = this.weekStart(this.today);
   protected toDate = this.today;
   protected selectedDrawId = '';
   protected selectedSellerId = '';
@@ -71,8 +74,19 @@ export class UtilitiesPage {
     this.loadSummary();
   }
 
+  protected exportReport(): void {
+    const report = this.summary();
+    if (!report || this.exporting()) return;
+    this.exporting.set(true);
+    this.errorMessage.set(null);
+    void this.pdf
+      .exportUtilities(report)
+      .catch(() => this.errorMessage.set('No pudimos generar el reporte PDF.'))
+      .finally(() => this.exporting.set(false));
+  }
+
   protected clearFilters(): void {
-    this.fromDate = this.today;
+    this.fromDate = this.weekStart(this.today);
     this.toDate = this.today;
     this.selectedDrawId = '';
     this.selectedSellerId = '';
@@ -204,5 +218,11 @@ export class UtilitiesPage {
     }).formatToParts(date);
     const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
     return `${value['year']}-${value['month']}-${value['day']}`;
+  }
+
+  private weekStart(today: string): string {
+    const date = new Date(`${today}T12:00:00-06:00`);
+    date.setUTCDate(date.getUTCDate() - date.getUTCDay());
+    return date.toISOString().slice(0, 10);
   }
 }

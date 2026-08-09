@@ -5,6 +5,7 @@ import {
   DrawSettlementReport,
   SellerCommissionEntry,
   SellerCommissionReport,
+  UtilitySummary,
 } from '../models/api.models';
 import { groupCommissionsByDay } from '../../shared/commission-days';
 import { drawLabel } from '../../shared/draw-label';
@@ -26,6 +27,99 @@ export interface PayrollPdfOptions {
 
 @Injectable({ providedIn: 'root' })
 export class OperationalReportPdfService {
+  async exportUtilities(report: UtilitySummary): Promise<void> {
+    const document = await this.createDocument('Reporte de utilidades');
+    const period = `${this.date(report.from)} al ${this.date(report.to)}`;
+    let y = this.heading(
+      document,
+      'REPORTE DE UTILIDADES',
+      'Resultado del período',
+      `${period} · utilidad después de premios y comisión`,
+    );
+    y = this.summary(document, y, [
+      ['Vendido', this.amount(report.grossSales)],
+      ['Premios pagados', this.amount(report.prizesPaid)],
+      ['Comisión', this.amount(report.commissionAmount)],
+      ['Utilidad neta', this.amount(report.netAfterCommission)],
+    ]);
+
+    y += 7;
+    document.setFillColor(
+      report.commissionProvisional ? 255 : 239,
+      report.commissionProvisional ? 248 : 248,
+      report.commissionProvisional ? 226 : 245,
+    );
+    document.rect(13, y - 4, 184, 13, 'F');
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(7.5);
+    document.setTextColor(55, 55, 55);
+    document.text(
+      report.commissionProvisional ? 'RESULTADO PROVISIONAL' : 'COMISIÓN HISTÓRICA APLICADA',
+      16,
+      y,
+    );
+    document.setFont('helvetica', 'normal');
+    document.setFontSize(7);
+    document.setTextColor(90, 90, 90);
+    document.text(
+      report.commissionProvisional
+        ? 'Los sorteos pendientes usan la comisión vigente; el monto queda congelado al registrar su ganador.'
+        : 'Cada sorteo conserva el porcentaje de comisión con el que fue cerrado.',
+      16,
+      y + 5,
+    );
+    y += 19;
+    this.sectionTitle(document, `Detalle por vendedor (${report.sellers.length})`, y);
+    y += 8;
+
+    const sellers = [...report.sellers].sort((left, right) =>
+      left.sellerName.localeCompare(right.sellerName, 'es'),
+    );
+    for (const seller of sellers) {
+      y = this.ensureSpace(document, y, 23, 'Detalle por vendedor');
+      document.setFillColor(247, 246, 244);
+      document.rect(13, y - 4, 184, 19, 'F');
+      document.setFont('helvetica', 'bold');
+      document.setFontSize(9);
+      document.setTextColor(30, 30, 30);
+      document.text(this.clean(seller.sellerName), 16, y, { maxWidth: 105 });
+      document.setFont('helvetica', 'normal');
+      document.setFontSize(7);
+      document.setTextColor(105, 105, 105);
+      document.text(`${seller.ticketCount} boletos`, 194, y, { align: 'right' });
+
+      const values: Array<[string, number, number]> = [
+        ['Vendido', seller.grossSales, 16],
+        ['Premios', seller.prizesPaid, 53],
+        ['Comisión', seller.commissionAmount, 90],
+        ['Antes de comisión', seller.netBeforeCommission, 127],
+        ['Utilidad neta', seller.netAfterCommission, 194],
+      ];
+      values.forEach(([label, value, x], index) => {
+        const align = index === values.length - 1 ? 'right' : 'left';
+        document.setFont('helvetica', 'normal');
+        document.setFontSize(6.3);
+        document.setTextColor(105, 105, 105);
+        document.text(label.toUpperCase(), x, y + 6, { align });
+        document.setFont('helvetica', 'bold');
+        document.setFontSize(8);
+        document.setTextColor(
+          label === 'Utilidad neta' && value < 0 ? 175 : 40,
+          label === 'Utilidad neta' && value < 0 ? 65 : 40,
+          label === 'Utilidad neta' && value < 0 ? 65 : 40,
+        );
+        document.text(this.amount(value), x, y + 11, { align });
+      });
+      y += 23;
+    }
+
+    document.setFont('helvetica', 'italic');
+    document.setFontSize(7);
+    document.setTextColor(110, 110, 110);
+    document.text('Utilidad neta = ventas - premios pagados - comisión.', 15, Math.min(y + 2, 286));
+    document.save(`suerte-utilidades-${report.from}-${report.to}.pdf`);
+  }
+
   async exportDraw(
     report: DrawNumberReport,
     settlement: DrawSettlementReport | null,
@@ -171,7 +265,12 @@ export class OperationalReportPdfService {
     if (shared) this.payrollCover(document, period, payroll, options.includeProfit);
     payroll.sellers.forEach((seller, index) => {
       if (shared || index > 0) document.addPage();
-      this.sellerPayrollBlock(document, this.sellerPageTop(document, period, seller), seller, options);
+      this.sellerPayrollBlock(
+        document,
+        this.sellerPageTop(document, period, seller),
+        seller,
+        options,
+      );
     });
     const single = shared ? 'todos' : this.safeFile(payroll.sellers[0].sellerName);
     document.save(`suerte-comisiones-${single}-${payroll.from}-${payroll.to}.pdf`);

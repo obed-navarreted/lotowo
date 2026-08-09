@@ -14,6 +14,12 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
+  it('should not mark the browser shell as native', () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.classList.contains('app-native')).toBe(false);
+  });
+
   it('should host the application router', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();

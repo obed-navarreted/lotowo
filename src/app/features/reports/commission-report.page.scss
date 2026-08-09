@@ -265,3 +265,19 @@
     padding: 9px 11px;
   }
 }
+
+/*
+ * Some Android WebViews expose a wide CSS viewport even on a physically narrow
+ * screen. Keep the APK summary touch-friendly without changing the web layout.
+ */
+:host-context(app-root.app-native) .seller-heading {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+:host-context(app-root.app-native) .seller-heading > strong {
+  grid-column: 1 / -1;
+  overflow-wrap: anywhere;
+}
+:host-context(app-root.app-native) .seller-heading > span:last-child {
+  grid-column: 1 / -1;
+}

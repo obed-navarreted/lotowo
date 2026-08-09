@@ -6,6 +6,16 @@
       Revisa ventas, premios y resultado neto por período, sorteo o vendedor.
     </p>
   </div>
+  @if (summary()) {
+    <button
+      class="button button--primary utility-export"
+      type="button"
+      (click)="exportReport()"
+      [disabled]="exporting()"
+    >
+      <lo-icon name="download" [size]="17" />{{ exporting() ? 'Generando…' : 'PDF' }}
+    </button>
+  }
 </header>
 
 <section class="utility-filters card">
@@ -91,6 +101,7 @@
     <article class="card skeleton"></article>
     <article class="card skeleton"></article>
     <article class="card skeleton"></article>
+    <article class="card skeleton"></article>
   </section>
 } @else if (summary(); as result) {
   <section class="utility-overview card">
@@ -119,16 +130,26 @@
           <p>Premios de números ganadores</p>
         </div>
       </article>
-      <article class="utility-metric card" [class.utility-metric--loss]="result.netResult < 0">
+      <article class="utility-metric card">
+        <span class="metric-icon metric-icon--commission"><lo-icon name="wallet" /></span>
+        <div>
+          <small>Comisión</small><strong>{{ money(result.commissionAmount) }}</strong>
+          <p>Porcentajes históricos por sorteo</p>
+        </div>
+      </article>
+      <article
+        class="utility-metric card"
+        [class.utility-metric--loss]="result.netAfterCommission < 0"
+      >
         <span class="metric-icon"><lo-icon name="trend" /></span>
         <div>
-          <small>{{ result.netResult < 0 ? 'Pérdida' : 'Utilidad' }}</small
-          ><strong>{{ money(result.netResult) }}</strong>
-          <p>Ventas menos premios</p>
+          <small>{{ result.netAfterCommission < 0 ? 'Pérdida neta' : 'Utilidad neta' }}</small
+          ><strong>{{ money(result.netAfterCommission) }}</strong>
+          <p>Ventas menos premios y comisión</p>
         </div>
       </article>
     </div>
-    @if (result.pendingResults > 0) {
+    @if (result.commissionProvisional) {
       <div class="pending-note">
         <lo-icon name="clock" [size]="18" /><span
           ><strong>Resultado todavía provisional</strong>{{ result.pendingResults }}
@@ -136,7 +157,14 @@
             result.pendingResults === 1
               ? 'sorteo aún no tiene ganador registrado'
               : 'sorteos aún no tienen ganador registrado'
-          }}.</span
+          }}. La comisión de esos sorteos usa temporalmente el porcentaje vigente.</span
+        >
+      </div>
+    } @else {
+      <div class="commission-note">
+        <lo-icon name="check" [size]="18" /><span
+          ><strong>La utilidad ya incluye comisión</strong>Cada cierre conserva el porcentaje
+          histórico que correspondía al vendedor.</span
         >
       </div>
     }
@@ -149,6 +177,56 @@
         /></a>
       }
     </footer>
+  </section>
+  <section class="seller-utilities card">
+    <header>
+      <div>
+        <span class="eyebrow">Detalle por vendedor</span>
+        <h2>
+          {{ result.sellers.length === 1 ? 'Resultado individual' : 'Comparativo del período' }}
+        </h2>
+      </div>
+      <span
+        >{{ result.sellers.length }}
+        {{ result.sellers.length === 1 ? 'vendedor' : 'vendedores' }}</span
+      >
+    </header>
+    <div class="seller-utility-list">
+      @for (seller of result.sellers; track seller.sellerId) {
+        <article [class.seller-utility--loss]="seller.netAfterCommission < 0">
+          <header>
+            <div>
+              <strong>{{ seller.sellerName }}</strong>
+              <small
+                >{{ seller.ticketCount }}
+                {{ seller.ticketCount === 1 ? 'boleto' : 'boletos' }}</small
+              >
+            </div>
+            @if (seller.commissionProvisional) {
+              <span class="provisional-badge">Provisional</span>
+            }
+          </header>
+          <dl>
+            <div>
+              <dt>Vendido</dt>
+              <dd>{{ money(seller.grossSales) }}</dd>
+            </div>
+            <div>
+              <dt>Premios</dt>
+              <dd>{{ money(seller.prizesPaid) }}</dd>
+            </div>
+            <div>
+              <dt>Comisión</dt>
+              <dd>{{ money(seller.commissionAmount) }}</dd>
+            </div>
+            <div class="seller-net">
+              <dt>Utilidad neta</dt>
+              <dd>{{ money(seller.netAfterCommission) }}</dd>
+            </div>
+          </dl>
+        </article>
+      }
+    </div>
   </section>
 } @else {
   <section class="card empty-state">

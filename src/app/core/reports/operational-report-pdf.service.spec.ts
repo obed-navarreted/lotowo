@@ -32,6 +32,39 @@ vi.mock('jspdf', () => ({
 }));
 
 describe('OperationalReportPdfService', () => {
+  it('exports a styled utility report with historical commission and sellers in alphabetical order', async () => {
+    const seller = (sellerId: string, sellerName: string) => ({
+      sellerId,
+      sellerName,
+      ticketCount: 3,
+      grossSales: 500,
+      prizesPaid: 100,
+      commissionAmount: 50,
+      netBeforeCommission: 400,
+      netAfterCommission: 350,
+      pendingResults: 0,
+      commissionProvisional: false,
+    });
+    await new OperationalReportPdfService().exportUtilities({
+      from: '2026-08-02',
+      to: '2026-08-08',
+      ticketCount: 6,
+      grossSales: 1000,
+      prizesPaid: 200,
+      commissionAmount: 100,
+      netResult: 800,
+      netAfterCommission: 700,
+      pendingResults: 0,
+      commissionProvisional: false,
+      sellers: [seller('z', 'Zoe'), seller('a', 'Ana')],
+    });
+
+    expect(pdf.texts).toContain('REPORTE DE UTILIDADES');
+    expect(pdf.texts).toContain('COMISIÓN HISTÓRICA APLICADA');
+    expect(pdf.texts.indexOf('Ana')).toBeLessThan(pdf.texts.indexOf('Zoe'));
+    expect(pdf.savedAs).toBe('suerte-utilidades-2026-08-02-2026-08-08.pdf');
+  });
+
   it('builds the winner A4 detail grouped in route and seller order with customer receipts', async () => {
     await new OperationalReportPdfService().exportWinnerDetail({
       drawId: 'draw-id',

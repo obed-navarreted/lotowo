@@ -1,6 +1,9 @@
 :host {
   display: block;
 }
+.utility-export {
+  flex: 0 0 auto;
+}
 .utility-filters {
   margin-bottom: 16px;
   padding: 15px;
@@ -105,6 +108,10 @@
   color: #9a6800;
   background: var(--sun-soft);
 }
+.metric-icon--commission {
+  color: #3f6f65;
+  background: #e7f4f0;
+}
 .utility-metric div {
   display: flex;
   min-width: 0;
@@ -159,6 +166,31 @@
   color: #795300;
   font-size: 13px;
 }
+.commission-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 13px;
+  color: var(--mint-dark);
+  background: var(--mint-soft);
+  border-radius: 13px;
+}
+.commission-note lo-icon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+.commission-note span {
+  display: flex;
+  flex-direction: column;
+  color: var(--muted-strong);
+  font-size: 12px;
+}
+.commission-note strong {
+  margin-bottom: 2px;
+  color: var(--mint-dark);
+  font-size: 13px;
+}
 .utility-overview > footer {
   display: flex;
   flex-direction: column;
@@ -175,6 +207,98 @@
 .utility-overview > footer .button {
   width: 100%;
 }
+.seller-utilities {
+  margin-top: 14px;
+  overflow: hidden;
+  padding: 0;
+}
+.seller-utilities > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 17px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.seller-utilities > header h2 {
+  margin: 1px 0 0;
+}
+.seller-utilities > header > span {
+  flex: 0 0 auto;
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 750;
+}
+.seller-utility-list {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+.seller-utility-list > article {
+  min-width: 0;
+  padding: 14px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+}
+.seller-utility-list article > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.seller-utility-list article > header > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.seller-utility-list article > header strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.seller-utility-list article > header small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.provisional-badge {
+  padding: 5px 7px;
+  color: #865d00;
+  background: var(--sun-soft);
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.seller-utility-list dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 0;
+}
+.seller-utility-list dl > div {
+  min-width: 0;
+}
+.seller-utility-list dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+.seller-utility-list dd {
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+}
+.seller-net dd {
+  color: var(--mint-dark);
+}
+.seller-utility--loss .seller-net dd {
+  color: var(--danger);
+}
 
 @media (max-width: 520px) {
   .filter-actions {
@@ -188,6 +312,10 @@
     align-items: flex-start;
     flex-direction: column;
   }
+  .seller-utilities > header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 @media (min-width: 700px) {
@@ -198,7 +326,7 @@
     padding: 22px;
   }
   .utility-metrics {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .utility-metric {
     align-items: flex-start;
@@ -217,5 +345,15 @@
   }
   .utility-overview > footer .button {
     width: auto;
+  }
+  .seller-utility-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 16px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .utility-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

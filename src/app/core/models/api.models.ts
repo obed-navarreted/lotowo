@@ -170,8 +170,26 @@ export interface UtilitySummary {
   ticketCount: number;
   grossSales: number;
   prizesPaid: number;
+  commissionAmount: number;
+  /** Resultado antes de comisión; se conserva para clientes anteriores. */
   netResult: number;
+  netAfterCommission: number;
   pendingResults: number;
+  commissionProvisional: boolean;
+  sellers: UtilitySellerSummary[];
+}
+
+export interface UtilitySellerSummary {
+  sellerId: string;
+  sellerName: string;
+  ticketCount: number;
+  grossSales: number;
+  prizesPaid: number;
+  commissionAmount: number;
+  netBeforeCommission: number;
+  netAfterCommission: number;
+  pendingResults: number;
+  commissionProvisional: boolean;
 }
 
 export interface DrawClosure {

@@ -2,12 +2,15 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { vi } from 'vitest';
 import { UtilitiesPage } from './utilities.page';
 
 describe('UtilitiesPage', () => {
   let http: HttpTestingController;
 
   beforeEach(async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-08T18:00:00-06:00'));
     sessionStorage.setItem('lotowo.access-token', 'admin-token');
     sessionStorage.setItem(
       'lotowo.user',
@@ -30,6 +33,7 @@ describe('UtilitiesPage', () => {
   afterEach(() => {
     http.verify();
     sessionStorage.clear();
+    vi.useRealTimers();
   });
 
   it('uses the selected one-day range, draw and seller in the summary and ticket link', () => {
@@ -52,10 +56,12 @@ describe('UtilitiesPage', () => {
         totalElements: 0,
         totalPages: 0,
       });
-    http.expectOne((request) => request.url === '/api/v1/draws').flush([]);
-    http
-      .expectOne((request) => request.url === '/api/v1/reports/utilities/summary')
-      .flush({ detail: 'No hay ventas' }, { status: 404, statusText: 'Not Found' });
+    const initial = http.expectOne(
+      (request) => request.url === '/api/v1/reports/utilities/summary',
+    );
+    expect(initial.request.params.get('from')).toBe('2026-08-02');
+    expect(initial.request.params.get('to')).toBe('2026-08-08');
+    initial.flush({ detail: 'No hay ventas' }, { status: 404, statusText: 'Not Found' });
 
     component.fromDate = '2026-08-01';
     component.toDate = '2026-08-01';
@@ -76,8 +82,12 @@ describe('UtilitiesPage', () => {
       ticketCount: 4,
       grossSales: 100,
       prizesPaid: 40,
+      commissionAmount: 10,
       netResult: 60,
+      netAfterCommission: 50,
       pendingResults: 0,
+      commissionProvisional: false,
+      sellers: [],
     });
 
     expect(component.ticketsQuery()).toEqual({

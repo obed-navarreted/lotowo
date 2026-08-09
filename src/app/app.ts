@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Capacitor } from '@capacitor/core';
 import { RouterOutlet } from '@angular/router';
 
 @Component({
@@ -6,6 +7,11 @@ import { RouterOutlet } from '@angular/router';
   imports: [RouterOutlet],
   templateUrl: './app.html',
   styleUrl: './app.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  host: {
+    '[class.app-native]': 'nativePlatform',
+  },
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class App {}
+export class App {
+  protected readonly nativePlatform = Capacitor.isNativePlatform();
+}
