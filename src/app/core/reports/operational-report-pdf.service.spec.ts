@@ -1,14 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 import { OperationalReportPdfService } from './operational-report-pdf.service';
 
-const pdf = vi.hoisted(() => ({ texts: [] as string[], savedAs: '', pages: 1 }));
+const pdf = vi.hoisted(() => ({
+  texts: [] as string[],
+  savedAs: '',
+  pages: 1,
+  orientation: '',
+}));
 
 vi.mock('jspdf', () => ({
   jsPDF: class {
-    constructor() {
+    constructor(options?: { orientation?: string }) {
       pdf.texts = [];
       pdf.savedAs = '';
       pdf.pages = 1;
+      pdf.orientation = options?.orientation ?? '';
     }
     setProperties(): void {}
     setFont(): void {}
@@ -32,6 +38,33 @@ vi.mock('jspdf', () => ({
 }));
 
 describe('OperationalReportPdfService', () => {
+  it('creates the weekend follow-up sheet in landscape with sellers in alphabetical order', async () => {
+    await new OperationalReportPdfService().exportFollowUpSheet({
+      date: '2026-08-08',
+      routeId: 'route-id',
+      routeCode: 'R-06',
+      routeName: 'Ruta seis',
+      sellers: [
+        { id: 'z', fullName: 'Zoe Ruiz' },
+        { id: 'a', fullName: 'Ana López' },
+        { id: 'b', fullName: 'Beatriz Cruz' },
+        { id: 'c', fullName: 'Carla Díaz' },
+        { id: 'd', fullName: 'Diana Solís' },
+        { id: 'e', fullName: 'Elena Pérez' },
+        { id: 'f', fullName: 'Fátima Mena' },
+        { id: 'g', fullName: 'Gloria Ríos' },
+        { id: 'h', fullName: 'Helena Paz' },
+      ],
+    });
+
+    expect(pdf.orientation).toBe('landscape');
+    expect(pdf.texts).toContain('SEGUIMIENTO · RUTA R-06');
+    expect(pdf.texts).toContain('6:00 p. m.');
+    expect(pdf.texts.indexOf('Ana López')).toBeLessThan(pdf.texts.indexOf('Zoe Ruiz'));
+    expect(pdf.pages).toBe(2);
+    expect(pdf.savedAs).toBe('suerte-seguimiento-r-06-2026-08-08.pdf');
+  });
+
   it('exports a styled utility report with historical commission and sellers in alphabetical order', async () => {
     const seller = (sellerId: string, sellerName: string) => ({
       sellerId,

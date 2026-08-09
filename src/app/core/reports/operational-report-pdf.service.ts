@@ -3,12 +3,14 @@ import {
   CommissionPayroll,
   DrawNumberReport,
   DrawSettlementReport,
+  FollowUpSheet,
   SellerCommissionEntry,
   SellerCommissionReport,
   UtilitySummary,
 } from '../models/api.models';
 import { groupCommissionsByDay } from '../../shared/commission-days';
 import { drawLabel } from '../../shared/draw-label';
+import { followUpDrawTimes, followUpTurns } from '../../shared/follow-up-sheet';
 
 /** La planilla usa casi todo el ancho A4 para caber en la menor cantidad de hojas posible. */
 const PAYROLL_LEFT = 10;
@@ -27,6 +29,30 @@ export interface PayrollPdfOptions {
 
 @Injectable({ providedIn: 'root' })
 export class OperationalReportPdfService {
+  async exportFollowUpSheet(sheet: FollowUpSheet): Promise<void> {
+    const document = await this.createLandscapeDocument('Hoja de seguimiento');
+    const turns = followUpTurns(sheet.date);
+    const sellers = [...sheet.sellers].sort((left, right) =>
+      left.fullName.localeCompare(right.fullName, 'es'),
+    );
+    const sellersPerPage = turns.length === 3 ? 8 : 12;
+    const pages = Math.ceil(sellers.length / sellersPerPage);
+    for (let page = 0; page < pages; page += 1) {
+      if (page > 0) document.addPage();
+      const first = page * sellersPerPage;
+      this.followUpPage(
+        document,
+        sheet,
+        sellers.slice(first, first + sellersPerPage),
+        turns,
+        first,
+        page + 1,
+        pages,
+      );
+    }
+    document.save(`suerte-seguimiento-${this.safeFile(sheet.routeCode)}-${sheet.date}.pdf`);
+  }
+
   async exportUtilities(report: UtilitySummary): Promise<void> {
     const document = await this.createDocument('Reporte de utilidades');
     const period = `${this.date(report.from)} al ${this.date(report.to)}`;
@@ -449,6 +475,129 @@ export class OperationalReportPdfService {
         ];
   }
 
+  private followUpPage(
+    document: import('jspdf').jsPDF,
+    sheet: FollowUpSheet,
+    sellers: FollowUpSheet['sellers'],
+    turns: string[],
+    sellerOffset: number,
+    page: number,
+    pages: number,
+  ): void {
+    const left = 7;
+    const right = 290;
+    const columns = [left, 16, 64, 92, 117, 143, 169, 197, 222, right];
+    const labels = [
+      'N.º',
+      'NOMBRE',
+      'P. ANTERIOR',
+      'TURNO',
+      'VENTA',
+      'PREMIO',
+      'ENTREGADO',
+      'TOTAL',
+      'OBSERVACIÓN',
+    ];
+    const rowHeight = 6.2;
+    const headerTop = 29;
+    const headerHeight = 8;
+    const rowsTop = headerTop + headerHeight;
+    const rowsBottom = rowsTop + sellers.length * turns.length * rowHeight;
+    const totalBottom = rowsBottom + 8;
+
+    document.setTextColor(25, 25, 25);
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(8);
+    document.text('MÁQUINA: __________________', left, 9);
+    document.text('PAPEL: ______________', 70, 9);
+    document.text('CAPITAL: __________________', 203, 9);
+    document.setFontSize(12);
+    document.text(`SEGUIMIENTO · RUTA ${this.clean(sheet.routeCode)}`, 148.5, 17, {
+      align: 'center',
+    });
+    document.setFont('helvetica', 'normal');
+    document.setFontSize(7.5);
+    document.text(this.clean(sheet.routeName), 148.5, 22, { align: 'center' });
+    document.setFont('helvetica', 'bold');
+    document.text(`FECHA: ${this.followUpDate(sheet.date)}`, left, 26);
+    document.setFont('helvetica', 'normal');
+    document.text(`SORTEOS: ${followUpDrawTimes(sheet.date).join('  ·  ')}`, 148.5, 26, {
+      align: 'center',
+    });
+    if (pages > 1) document.text(`PÁGINA ${page}/${pages}`, right, 26, { align: 'right' });
+
+    document.setFillColor(246, 240, 174);
+    document.rect(left, headerTop, right - left, headerHeight, 'F');
+    document.setDrawColor(35, 35, 35);
+    document.setLineWidth(0.35);
+    document.rect(left, headerTop, right - left, totalBottom - headerTop);
+    for (const x of columns.slice(1, -1)) document.line(x, headerTop, x, totalBottom);
+    document.line(left, rowsTop, right, rowsTop);
+
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(6.2);
+    labels.forEach((label, index) => {
+      document.text(label, (columns[index] + columns[index + 1]) / 2, headerTop + 5, {
+        align: 'center',
+      });
+    });
+
+    let y = rowsTop;
+    sellers.forEach((seller, sellerIndex) => {
+      const groupTop = y;
+      const groupBottom = groupTop + turns.length * rowHeight;
+      const center = (groupTop + groupBottom) / 2;
+      document.setFont('helvetica', 'normal');
+      document.setFontSize(7.2);
+      document.text(String(sellerOffset + sellerIndex + 1), (columns[0] + columns[1]) / 2, center, {
+        align: 'center',
+        baseline: 'middle',
+      });
+      document.setFont('helvetica', 'bold');
+      document.text(this.clean(seller.fullName), columns[1] + 2, center, {
+        maxWidth: columns[2] - columns[1] - 4,
+        baseline: 'middle',
+      });
+      document.setFont('helvetica', 'normal');
+      document.setFontSize(6.8);
+      turns.forEach((turn, turnIndex) => {
+        const turnY = groupTop + rowHeight * turnIndex + rowHeight / 2;
+        document.text(turn, (columns[3] + columns[4]) / 2, turnY, {
+          align: 'center',
+          baseline: 'middle',
+        });
+        if (turnIndex > 0) {
+          const divider = groupTop + rowHeight * turnIndex;
+          document.setLineWidth(0.18);
+          document.line(columns[3], divider, columns[7], divider);
+        }
+      });
+      document.setLineWidth(0.35);
+      document.line(left, groupBottom, right, groupBottom);
+      y = groupBottom;
+    });
+
+    document.setFillColor(246, 246, 244);
+    document.rect(left, rowsBottom, right - left, 8, 'F');
+    document.line(left, rowsBottom, right, rowsBottom);
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(8);
+    document.text('TOTAL', (columns[0] + columns[3]) / 2, rowsBottom + 5.2, { align: 'center' });
+    document.setFont('helvetica', 'normal');
+    document.setFontSize(6);
+    document.setTextColor(105, 105, 105);
+    document.text('Hoja operativa para completar manualmente.', right, 205, { align: 'right' });
+  }
+
+  private followUpDate(value: string): string {
+    const date = new Date(`${value}T12:00:00-06:00`);
+    const weekday = new Intl.DateTimeFormat('es-NI', {
+      weekday: 'long',
+      timeZone: 'America/Managua',
+    }).format(date);
+    return `${weekday.toUpperCase()} ${this.date(value)}`;
+  }
+
   private drawTime(entry: SellerCommissionEntry): string {
     const time = new Intl.DateTimeFormat('en-US', {
       hour: 'numeric',
@@ -470,6 +619,18 @@ export class OperationalReportPdfService {
     const { jsPDF } = await import('jspdf');
     const document = new jsPDF({
       orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true,
+    });
+    document.setProperties({ title, author: 'Suerte', creator: 'Suerte' });
+    return document;
+  }
+
+  private async createLandscapeDocument(title: string): Promise<import('jspdf').jsPDF> {
+    const { jsPDF } = await import('jspdf');
+    const document = new jsPDF({
+      orientation: 'landscape',
       unit: 'mm',
       format: 'a4',
       compress: true,

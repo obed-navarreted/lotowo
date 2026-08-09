@@ -122,29 +122,51 @@
   color: var(--muted);
   font-size: 12px;
 }
+.seller-block + .seller-block {
+  border-top: 8px solid var(--surface-soft);
+}
 .seller-heading {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 10px;
   padding: 13px 15px;
   border-top: 1px solid var(--line-soft);
   border-bottom: 1px solid var(--line-soft);
 }
-.seller-heading > strong {
-  grid-column: 1 / -1;
-  font-size: 15px;
-}
-.seller-heading > span {
+.seller-identity {
   display: flex;
   min-width: 0;
   flex-direction: column;
 }
-.seller-heading small {
+.seller-identity > strong {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.seller-identity > small {
+  margin-top: 2px;
   color: var(--muted);
   font-size: 11px;
   text-transform: uppercase;
 }
-.seller-heading > span strong {
+.seller-totals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.seller-totals > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.seller-totals > span:last-child {
+  grid-column: 1 / -1;
+}
+.seller-totals small {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.seller-totals > span strong {
   margin-top: 2px;
   font-size: 14px;
 }
@@ -157,6 +179,9 @@
   padding: 11px 15px;
   color: var(--muted-strong);
   font-size: 12px;
+}
+.signature-note strong {
+  color: var(--ink);
 }
 .day-heading {
   display: grid;
@@ -180,9 +205,22 @@
   margin-top: 2px;
   font-size: 14px;
 }
-.day-date {
+.day-title {
   grid-column: 1 / -1;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.day-title > strong {
   font-size: 14px;
+}
+.day-title > span {
+  margin-top: 2px;
+  color: var(--muted-strong);
+  font-size: 12px;
+}
+.native-only {
+  display: none;
 }
 .commission-day + .commission-day .day-heading {
   border-top: 1px solid var(--line-soft);
@@ -253,8 +291,13 @@
     grid-template-columns: 1.4fr repeat(3, minmax(100px, 0.7fr));
     align-items: center;
   }
-  .day-date,
-  .seller-heading > strong {
+  .seller-totals {
+    display: contents;
+  }
+  .seller-totals > span:last-child {
+    grid-column: auto;
+  }
+  .day-title {
     grid-column: auto;
   }
   .entry-draw,
@@ -271,13 +314,56 @@
  * screen. Keep the APK summary touch-friendly without changing the web layout.
  */
 :host-context(app-root.app-native) .seller-heading {
+  display: block;
+  align-items: start;
+}
+:host-context(app-root.app-native) .seller-identity {
+  width: 100%;
+  margin-bottom: 11px;
+}
+:host-context(app-root.app-native) .seller-identity > strong {
+  width: 100%;
+  font-size: 16px;
+  line-height: 1.25;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+:host-context(app-root.app-native) .seller-totals {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+:host-context(app-root.app-native) .seller-totals > span:last-child {
+  grid-column: 1 / -1;
+}
+:host-context(app-root.app-native) .seller-block--single-day .seller-totals {
+  display: none;
+}
+:host-context(app-root.app-native) .seller-block--single-day .seller-identity {
+  margin-bottom: 0;
+}
+:host-context(app-root.app-native) .day-heading,
+:host-context(app-root.app-native) .commission-list article {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
 }
-:host-context(app-root.app-native) .seller-heading > strong {
+:host-context(app-root.app-native) .day-title,
+:host-context(app-root.app-native) .entry-draw,
+:host-context(app-root.app-native) .entry-result {
   grid-column: 1 / -1;
-  overflow-wrap: anywhere;
 }
-:host-context(app-root.app-native) .seller-heading > span:last-child {
-  grid-column: 1 / -1;
+:host-context(app-root.app-native) .native-only {
+  display: block;
+}
+:host-context(app-root.app-native) .commission-day--single-draw .commission-list {
+  display: none;
+}
+:host-context(app-root.app-native) .seller-heading small,
+:host-context(app-root.app-native) .day-heading small,
+:host-context(app-root.app-native) .commission-list small {
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
 }

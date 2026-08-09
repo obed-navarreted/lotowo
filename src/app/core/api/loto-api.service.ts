@@ -22,6 +22,7 @@ import {
   UserNotification,
   NotificationSettings,
   CommissionPayroll,
+  FollowUpSheet,
   SellerCommissionReport,
   WinnerDrawSummary,
 } from '../models/api.models';
@@ -306,6 +307,11 @@ export class LotoApiService {
   getCommissionPayroll(from: string, to: string) {
     const params = new HttpParams().set('from', from).set('to', to);
     return this.http.get<CommissionPayroll>('/api/v1/reports/commissions/payroll', { params });
+  }
+
+  getFollowUpSheet(date: string, routeId: string) {
+    const params = new HttpParams().set('date', date).set('routeId', routeId);
+    return this.http.get<FollowUpSheet>('/api/v1/reports/follow-up', { params });
   }
 
   getRoutes() {

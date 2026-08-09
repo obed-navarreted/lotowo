@@ -58,7 +58,9 @@
       <label class="profit-toggle"
         ><span
           ><strong>Detalle por sorteo</strong
-          ><small>Sin él, el PDF solo lleva el total de cada día y ocupa un tercio de las hojas.</small></span
+          ><small
+            >Sin él, el PDF solo lleva el total de cada día y ocupa un tercio de las hojas.</small
+          ></span
         ><input type="checkbox" [(ngModel)]="includeDraws"
       /></label>
     </div>
@@ -86,57 +88,82 @@
       <span>{{ detail.sellers.length }} vendedores</span>
     </header>
     @for (seller of detail.sellers; track seller.sellerId) {
-      <header class="seller-heading">
-        <strong>{{ seller.sellerName }}</strong>
-        <span
-          ><small>Vendido</small><strong>{{ money(seller.grossSales) }}</strong></span
-        ><span
-          ><small>Premio pagado</small><strong>{{ money(seller.prizesDue) }}</strong></span
-        ><span
-          ><small>Comisión a pagar</small><strong>{{ money(seller.commissionAmount) }}</strong></span
-        >
-      </header>
-      @for (day of days(seller); track day.date) {
-      <div class="commission-day">
-        <header class="day-heading">
-          <strong class="day-date">{{ date(day.date) }}</strong>
-          <span
-            ><small>Vendido</small><strong>{{ money(day.grossSales) }}</strong></span
-          ><span
-            ><small>Premios</small><strong>{{ money(day.prizesDue) }}</strong></span
-          ><span
-            ><small>Comisión</small><strong>{{ money(day.commissionAmount) }}</strong></span
-          ><span class="entry-result" [class.loss]="day.netAfterCommission < 0"
-            ><small>Utilidad neta</small><strong>{{ money(day.netAfterCommission) }}</strong></span
-          >
+      @let sellerDays = days(seller);
+      <article
+        class="seller-block"
+        [class.seller-block--single-day]="sellerDays.length === 1"
+        [attr.data-seller-id]="seller.sellerId"
+      >
+        <header class="seller-heading">
+          <div class="seller-identity">
+            <strong>{{ seller.sellerName }}</strong>
+            <small>Total del período</small>
+          </div>
+          <div class="seller-totals">
+            <span
+              ><small>Vendido</small><strong>{{ money(seller.grossSales) }}</strong></span
+            ><span
+              ><small>Premio pagado</small><strong>{{ money(seller.prizesDue) }}</strong></span
+            ><span
+              ><small>Comisión a pagar</small
+              ><strong>{{ money(seller.commissionAmount) }}</strong></span
+            >
+          </div>
         </header>
-        <div class="commission-list">
-          @for (entry of day.entries; track entry.drawId) {
-            <article>
-              <div class="entry-draw">
-                <strong>{{ draw(entry) }}</strong
-                ><span>Ganador {{ entry.winningNumber }}</span>
+        @for (day of sellerDays; track day.date) {
+          <div
+            class="commission-day"
+            [class.commission-day--single-draw]="day.entries.length === 1"
+          >
+            <header class="day-heading">
+              <div class="day-title">
+                <strong>{{ date(day.date) }}</strong>
+                @if (day.entries.length === 1) {
+                  <span class="native-only"
+                    >{{ draw(day.entries[0]) }} · Ganador {{ day.entries[0].winningNumber }}</span
+                  >
+                }
               </div>
               <span
-                ><small>Vendido</small><strong>{{ money(entry.grossSales) }}</strong></span
+                ><small>Vendido</small><strong>{{ money(day.grossSales) }}</strong></span
               ><span
-                ><small>Premio pagado</small><strong>{{ money(entry.prizesDue) }}</strong></span
+                ><small>Premios</small><strong>{{ money(day.prizesDue) }}</strong></span
               ><span
-                ><small>Comisión · {{ money(entry.commissionRate) }}%</small
-                ><strong>{{ money(entry.commissionAmount) }}</strong></span
-              ><span class="entry-result" [class.loss]="entry.netAfterCommission < 0"
+                ><small>Comisión</small><strong>{{ money(day.commissionAmount) }}</strong></span
+              ><span class="entry-result" [class.loss]="day.netAfterCommission < 0"
                 ><small>Utilidad neta</small
-                ><strong>{{ money(entry.netAfterCommission) }}</strong></span
+                ><strong>{{ money(day.netAfterCommission) }}</strong></span
               >
-            </article>
-          }
-        </div>
-      </div>
-      }
-      <p class="signature-note">
-        En el PDF, {{ seller.sellerName }} firma aquí el recibo de su comisión de
-        {{ money(seller.commissionAmount) }}.
-      </p>
+            </header>
+            <div class="commission-list">
+              @for (entry of day.entries; track entry.drawId) {
+                <article>
+                  <div class="entry-draw">
+                    <strong>{{ draw(entry) }}</strong
+                    ><span>Ganador {{ entry.winningNumber }}</span>
+                  </div>
+                  <span
+                    ><small>Vendido</small><strong>{{ money(entry.grossSales) }}</strong></span
+                  ><span
+                    ><small>Premio pagado</small><strong>{{ money(entry.prizesDue) }}</strong></span
+                  ><span
+                    ><small>Comisión · {{ money(entry.commissionRate) }}%</small
+                    ><strong>{{ money(entry.commissionAmount) }}</strong></span
+                  ><span class="entry-result" [class.loss]="entry.netAfterCommission < 0"
+                    ><small>Utilidad neta</small
+                    ><strong>{{ money(entry.netAfterCommission) }}</strong></span
+                  >
+                </article>
+              }
+            </div>
+          </div>
+        }
+        <p class="signature-note">
+          En el PDF, <strong>{{ seller.sellerName }}</strong> firma el recibo por
+          <strong>{{ money(seller.commissionAmount) }}</strong
+          >.
+        </p>
+      </article>
     }
   </section>
 } @else if (!loading()) {

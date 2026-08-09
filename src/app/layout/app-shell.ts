@@ -107,6 +107,13 @@ export class AppShell {
       route: '/reports/commissions',
       roles: ['ADMIN'],
     },
+    {
+      label: 'Seguimiento',
+      shortLabel: 'Hoja',
+      icon: 'clipboard',
+      route: '/reports/follow-up',
+      roles: ['ADMIN'],
+    },
   ];
 
   protected readonly navigation = computed(() => {
@@ -118,7 +125,7 @@ export class AppShell {
     const role = this.auth.user()?.role;
     const preferred =
       role === 'ADMIN'
-        ? ['/dashboard', '/results', '/tickets', '/exposure', '/limits']
+        ? ['/dashboard', '/results', '/tickets', '/exposure', '/reports/follow-up']
         : role === 'SELLER'
           ? ['/dashboard', '/sell', '/tickets', '/reports/history']
           : ['/dashboard', '/tickets', '/reports/history', '/exposure'];

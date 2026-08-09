@@ -299,4 +299,13 @@ describe('LotoApiService', () => {
     expect(request.request.params.get('to')).toBe('2026-08-05');
     request.flush({});
   });
+
+  it('requests a follow-up sheet for the selected date and route', () => {
+    service.getFollowUpSheet('2026-08-08', 'route-id').subscribe();
+
+    const request = http.expectOne((candidate) => candidate.url === '/api/v1/reports/follow-up');
+    expect(request.request.params.get('date')).toBe('2026-08-08');
+    expect(request.request.params.get('routeId')).toBe('route-id');
+    request.flush({});
+  });
 });

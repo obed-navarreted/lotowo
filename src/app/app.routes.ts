@@ -109,6 +109,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'reports/follow-up',
+        title: 'Seguimiento · Suerte',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/reports/follow-up.page').then((component) => component.FollowUpPage),
+      },
+      {
         path: 'settings/notifications',
         redirectTo: 'exposure',
         pathMatch: 'full',

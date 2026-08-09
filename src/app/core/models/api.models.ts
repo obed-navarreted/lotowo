@@ -332,3 +332,16 @@ export interface CommissionPayroll {
   netAfterCommission: number;
   sellers: SellerCommissionReport[];
 }
+
+export interface FollowUpSeller {
+  id: string;
+  fullName: string;
+}
+
+export interface FollowUpSheet {
+  date: string;
+  routeId: string;
+  routeCode: string;
+  routeName: string;
+  sellers: FollowUpSeller[];
+}

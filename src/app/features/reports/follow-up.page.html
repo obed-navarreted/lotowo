@@ -1,0 +1,104 @@
+<header class="page-header">
+  <div class="page-header__copy">
+    <span class="eyebrow">Operación diaria</span>
+    <h1>Seguimiento</h1>
+    <p class="page-subtitle">Prepara la hoja de trabajo de cada ruta lista para imprimir.</p>
+  </div>
+</header>
+
+@if (error()) {
+  <div class="alert alert--error"><lo-icon name="info" [size]="18" />{{ error() }}</div>
+}
+@if (notice()) {
+  <div class="alert alert--success"><lo-icon name="check" [size]="18" />{{ notice() }}</div>
+}
+
+<section class="follow-up-layout">
+  <form class="card follow-up-form" (submit)="$event.preventDefault(); generate()">
+    <div class="form-heading">
+      <span class="form-heading__icon"><lo-icon name="clipboard" [size]="22" /></span>
+      <div>
+        <h2>Nueva hoja</h2>
+        <p>Selecciona el día y la ruta. Los vendedores se agregan automáticamente.</p>
+      </div>
+    </div>
+
+    <label class="field" for="followUpDate">
+      <span>Fecha de seguimiento</span>
+      <span class="date-picker">
+        <lo-icon name="calendar" [size]="19" />
+        <span
+          ><strong>{{ dateLabel() }}</strong
+          ><small>DD/MM/AAAA</small></span
+        >
+        <input
+          id="followUpDate"
+          type="date"
+          name="followUpDate"
+          [(ngModel)]="date"
+          aria-label="Fecha de seguimiento"
+        />
+      </span>
+    </label>
+
+    <label class="field" for="followUpRoute">
+      <span>Ruta</span>
+      <select
+        id="followUpRoute"
+        class="select"
+        name="followUpRoute"
+        [(ngModel)]="routeId"
+        [disabled]="loadingRoutes()"
+      >
+        @if (loadingRoutes()) {
+          <option value="">Cargando rutas…</option>
+        } @else {
+          @for (route of routes(); track route.id) {
+            <option [value]="route.id">{{ route.code }} · {{ route.name }}</option>
+          }
+        }
+      </select>
+    </label>
+
+    <button
+      class="button button--primary generate-button"
+      type="submit"
+      [disabled]="exporting() || loadingRoutes() || !routeId"
+    >
+      <lo-icon name="download" [size]="18" />
+      {{ exporting() ? 'Preparando…' : 'Generar PDF' }}
+    </button>
+  </form>
+
+  <aside class="card sheet-preview">
+    <header>
+      <span>Vista de la jornada</span>
+      <strong>{{ journeyLabel() }}</strong>
+    </header>
+    <dl>
+      <div>
+        <dt>Fecha</dt>
+        <dd>{{ dateLabel() }}</dd>
+      </div>
+      <div>
+        <dt>Ruta</dt>
+        <dd>{{ selectedRoute()?.code || 'Selecciona una ruta' }}</dd>
+      </div>
+      <div>
+        <dt>Turnos de la hoja</dt>
+        <dd>{{ turnsLabel() }}</dd>
+      </div>
+      <div>
+        <dt>Sorteos del día</dt>
+        <dd>{{ drawsLabel() }}</dd>
+      </div>
+    </dl>
+    <div class="sheet-note">
+      <lo-icon name="info" [size]="18" />
+      <span
+        >El PDF se genera en A4 horizontal con espacios para venta, premio, entregado, total y
+        observaciones.</span
+      >
+    </div>
+  </aside>
+</section>
