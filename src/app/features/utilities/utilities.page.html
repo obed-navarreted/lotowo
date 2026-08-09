@@ -2,24 +2,41 @@
   <div class="page-header__copy">
     <span class="eyebrow">Resultado operativo</span>
     <h1>Utilidades</h1>
-    <p class="page-subtitle">Revisa ventas, premios y resultado neto por día, sorteo o vendedor.</p>
+    <p class="page-subtitle">
+      Revisa ventas, premios y resultado neto por período, sorteo o vendedor.
+    </p>
   </div>
 </header>
 
 <section class="utility-filters card">
   <div class="filter-grid">
     <label class="filter-field"
-      ><span>Fecha</span
+      ><span>Desde</span
       ><span class="date-picker"
         ><lo-icon name="calendar" [size]="19" /><span class="date-picker__copy"
-          ><strong>{{ dateLabel() }}</strong
+          ><strong>{{ dateLabel(fromDate) }}</strong
           ><small>DD/MM/AAAA</small></span
         ><input
           type="date"
-          [(ngModel)]="selectedDate"
+          [(ngModel)]="fromDate"
           [min]="historyMinDate"
-          (change)="onDateChanged()"
-          aria-label="Fecha de utilidades" /></span
+          [max]="today"
+          (change)="onFromDateChanged()"
+          aria-label="Fecha inicial de utilidades" /></span
+    ></label>
+    <label class="filter-field"
+      ><span>Hasta</span
+      ><span class="date-picker"
+        ><lo-icon name="calendar" [size]="19" /><span class="date-picker__copy"
+          ><strong>{{ dateLabel(toDate) }}</strong
+          ><small>DD/MM/AAAA</small></span
+        ><input
+          type="date"
+          [(ngModel)]="toDate"
+          [min]="fromDate"
+          [max]="today"
+          (change)="onToDateChanged()"
+          aria-label="Fecha final de utilidades" /></span
     ></label>
     <label class="filter-field"
       ><span>Turno</span
@@ -27,9 +44,11 @@
         class="select"
         [(ngModel)]="selectedDrawId"
         (change)="applyFilters()"
-        [disabled]="filterLoading()"
+        [disabled]="filterLoading() || !isSingleDay()"
       >
-        <option value="">Todos los turnos del día</option>
+        <option value="">
+          {{ isSingleDay() ? 'Todos los turnos del día' : 'Todos los turnos' }}
+        </option>
         @for (draw of draws(); track draw.id) {
           <option [value]="draw.id">{{ drawName(draw) }}</option>
         }
@@ -77,7 +96,7 @@
   <section class="utility-overview card">
     <header>
       <div>
-        <span class="eyebrow">{{ dateLabel() }}</span>
+        <span class="eyebrow">{{ periodLabel() }}</span>
         <h2>{{ selectedContext() }}</h2>
       </div>
       <span
@@ -123,14 +142,18 @@
     }
     <footer>
       <p>El cálculo excluye boletos reemplazados y eliminados.</p>
-      <a class="button button--primary" routerLink="/tickets" [queryParams]="ticketsQuery()"
-        ><lo-icon name="ticket" [size]="17" /> Ver boletos de este resultado
-        <lo-icon name="arrow" [size]="15"
-      /></a>
+      @if (isSingleDay()) {
+        <a class="button button--primary" routerLink="/tickets" [queryParams]="ticketsQuery()"
+          ><lo-icon name="ticket" [size]="17" /> Ver boletos de este resultado
+          <lo-icon name="arrow" [size]="15"
+        /></a>
+      }
     </footer>
   </section>
 } @else {
   <section class="card empty-state">
-    <div><strong>No hay ventas para esta selección</strong>Prueba otro día, turno o vendedor.</div>
+    <div>
+      <strong>No hay ventas para esta selección</strong>Prueba otro período, turno o vendedor.
+    </div>
   </section>
 }

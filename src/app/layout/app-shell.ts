@@ -103,7 +103,7 @@ export class AppShell {
     {
       label: 'Comisiones',
       shortLabel: 'Comisión',
-      icon: 'chart',
+      icon: 'wallet',
       route: '/reports/commissions',
       roles: ['ADMIN'],
     },

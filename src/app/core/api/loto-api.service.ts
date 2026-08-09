@@ -14,6 +14,7 @@ import {
   Ticket,
   TicketPrint,
   TicketDaySummary,
+  UtilitySummary,
   TicketFilters,
   PushConfiguration,
   AndroidPushTokenPayload,
@@ -138,6 +139,13 @@ export class LotoApiService {
     if (drawId) params = params.set('drawId', drawId);
     if (sellerId) params = params.set('sellerId', sellerId);
     return this.http.get<TicketDaySummary>('/api/v1/tickets/day-summary', { params });
+  }
+
+  getUtilitySummary(from: string, to: string, drawId?: string, sellerId?: string) {
+    let params = new HttpParams().set('from', from).set('to', to);
+    if (drawId) params = params.set('drawId', drawId);
+    if (sellerId) params = params.set('sellerId', sellerId);
+    return this.http.get<UtilitySummary>('/api/v1/reports/utilities/summary', { params });
   }
 
   getTicket(ticketId: string) {

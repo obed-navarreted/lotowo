@@ -7,7 +7,7 @@ import { catchError, forkJoin, of } from 'rxjs';
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ManagedUser } from '../../core/models/admin.models';
-import { Draw, TicketDaySummary } from '../../core/models/api.models';
+import { Draw, UtilitySummary } from '../../core/models/api.models';
 import { apiErrorMessage } from '../../shared/api-error';
 import { drawLabel } from '../../shared/draw-label';
 import { Icon } from '../../shared/icon/icon';
@@ -26,18 +26,20 @@ export class UtilitiesPage {
   private readonly destroyRef = inject(DestroyRef);
   protected readonly draws = signal<Draw[]>([]);
   protected readonly sellers = signal<ManagedUser[]>([]);
-  protected readonly summary = signal<TicketDaySummary | null>(null);
+  protected readonly summary = signal<UtilitySummary | null>(null);
   protected readonly loading = signal(true);
   protected readonly filterLoading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly historyMinDate: string;
-  protected selectedDate = this.localDate(new Date());
+  protected readonly today = this.localDate(new Date());
+  protected fromDate = this.today;
+  protected toDate = this.today;
   protected selectedDrawId = '';
   protected selectedSellerId = '';
 
   constructor() {
     const earliest = new Date();
-    earliest.setDate(earliest.getDate() - 15);
+    earliest.setDate(earliest.getDate() - 14);
     this.historyMinDate = this.auth.isAdmin() ? '' : this.localDate(earliest);
     const sellers$ =
       this.auth.user()?.role === 'SELLER'
@@ -48,14 +50,21 @@ export class UtilitiesPage {
       .subscribe({
         next: ({ sellers }) => {
           this.sellers.set(sellers.content.filter((user) => user.role === 'SELLER'));
-          this.loadDay();
+          this.loadPeriod();
         },
       });
   }
 
-  protected onDateChanged(): void {
+  protected onFromDateChanged(): void {
+    if (this.toDate < this.fromDate) this.toDate = this.fromDate;
     this.selectedDrawId = '';
-    this.loadDay();
+    this.loadPeriod();
+  }
+
+  protected onToDateChanged(): void {
+    if (this.fromDate > this.toDate) this.fromDate = this.toDate;
+    this.selectedDrawId = '';
+    this.loadPeriod();
   }
 
   protected applyFilters(): void {
@@ -63,10 +72,11 @@ export class UtilitiesPage {
   }
 
   protected clearFilters(): void {
-    this.selectedDate = this.localDate(new Date());
+    this.fromDate = this.today;
+    this.toDate = this.today;
     this.selectedDrawId = '';
     this.selectedSellerId = '';
-    this.loadDay();
+    this.loadPeriod();
   }
 
   protected drawName(draw: Draw): string {
@@ -75,40 +85,61 @@ export class UtilitiesPage {
 
   protected selectedContext(): string {
     const draw = this.draws().find((item) => item.id === this.selectedDrawId);
-    return draw ? this.drawName(draw) : 'Todos los turnos del día';
+    if (draw) return this.drawName(draw);
+    return this.isSingleDay() ? 'Todos los turnos del día' : 'Todos los turnos del período';
   }
 
   protected ticketsQuery(): Record<string, string> {
     return {
-      date: this.selectedDate,
+      date: this.fromDate,
       ...(this.selectedDrawId ? { drawId: this.selectedDrawId } : {}),
       ...(this.selectedSellerId ? { sellerId: this.selectedSellerId } : {}),
     };
+  }
+
+  protected isSingleDay(): boolean {
+    return this.fromDate === this.toDate;
   }
 
   protected money(value: number): string {
     return new Intl.NumberFormat('es-NI', { maximumFractionDigits: 2 }).format(value);
   }
 
-  protected dateLabel(): string {
+  protected dateLabel(value: string): string {
     return new Intl.DateTimeFormat('es-NI', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
       timeZone: 'America/Managua',
-    }).format(new Date(`${this.selectedDate}T12:00:00-06:00`));
+    }).format(new Date(`${value}T12:00:00-06:00`));
   }
 
-  private loadDay(): void {
-    if (!this.selectedDate) return;
-    if (this.historyMinDate && this.selectedDate < this.historyMinDate) {
+  protected periodLabel(): string {
+    const from = this.dateLabel(this.fromDate);
+    return this.isSingleDay() ? from : `${from} – ${this.dateLabel(this.toDate)}`;
+  }
+
+  private loadPeriod(): void {
+    if (!this.fromDate || !this.toDate) return;
+    if (this.historyMinDate && this.fromDate < this.historyMinDate) {
       this.errorMessage.set('Solo puedes consultar utilidades de los últimos 15 días.');
       this.summary.set(null);
       return;
     }
+    if (this.toDate < this.fromDate) {
+      this.errorMessage.set('La fecha final debe ser igual o posterior a la fecha inicial.');
+      this.summary.set(null);
+      return;
+    }
+    if (!this.isSingleDay()) {
+      this.draws.set([]);
+      this.filterLoading.set(false);
+      this.loadSummary();
+      return;
+    }
     this.filterLoading.set(true);
     this.errorMessage.set(null);
-    const from = new Date(`${this.selectedDate}T00:00:00-06:00`);
+    const from = new Date(`${this.fromDate}T00:00:00-06:00`);
     const to = new Date(from.getTime() + 86_400_000 - 1);
     this.api
       .getDraws(from, to)
@@ -143,8 +174,9 @@ export class UtilitiesPage {
     this.loading.set(true);
     this.errorMessage.set(null);
     this.api
-      .getTicketDaySummary(
-        this.selectedDate,
+      .getUtilitySummary(
+        this.fromDate,
+        this.toDate,
         this.selectedDrawId || undefined,
         this.selectedSellerId || undefined,
       )

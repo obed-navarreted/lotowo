@@ -164,6 +164,16 @@ export interface TicketDaySummary {
   pendingResults: number;
 }
 
+export interface UtilitySummary {
+  from: string;
+  to: string;
+  ticketCount: number;
+  grossSales: number;
+  prizesPaid: number;
+  netResult: number;
+  pendingResults: number;
+}
+
 export interface DrawClosure {
   id: string;
   drawId: string;

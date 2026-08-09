@@ -13,7 +13,7 @@ import { newestDrawFirst } from '../../../shared/result-order';
   imports: [FormsModule, Icon],
   templateUrl: './national-draws.page.html',
   styleUrl: './national-draws.page.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NationalDrawsPage implements OnInit {
   private readonly api = inject(LotoApiService);
@@ -26,6 +26,7 @@ export class NationalDrawsPage implements OnInit {
   protected readonly notice = signal('');
   protected name = '';
   protected nationalSequence: number | null = null;
+  protected readonly today = this.defaultLocalDate(0);
   protected scheduledDate = this.defaultLocalDate(7);
   protected scheduledTime = '20:00';
   protected salesCloseDate = this.defaultLocalDate(7);
@@ -58,49 +59,79 @@ export class NationalDrawsPage implements OnInit {
     this.saving.set(true);
     this.formError.set('');
     this.notice.set('');
-    this.api.createNationalDraw({
-      name: this.name.trim(),
-      nationalSequence: Number(this.nationalSequence),
-      scheduledAt: scheduled,
-      salesCloseAt: closes
-    }).pipe(finalize(() => this.saving.set(false))).subscribe({
-      next: (draw) => {
-        this.draws.update((draws) => [draw, ...draws].sort((left, right) => (right.nationalSequence ?? 0) - (left.nationalSequence ?? 0)));
-        this.nationalSequence = (draw.nationalSequence ?? 0) + 1;
-        this.sequenceLocked.set(true);
-        this.name = '';
-        this.notice.set(`El sorteo #${draw.nationalSequence} quedó creado y disponible hasta su cierre.`);
-      },
-      error: (apiError: unknown) => this.formError.set(apiErrorMessage(apiError, 'No fue posible crear el sorteo de lotería.'))
-    });
+    this.api
+      .createNationalDraw({
+        name: this.name.trim(),
+        nationalSequence: Number(this.nationalSequence),
+        scheduledAt: scheduled,
+        salesCloseAt: closes,
+      })
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: (draw) => {
+          this.draws.update((draws) =>
+            [draw, ...draws].sort(
+              (left, right) => (right.nationalSequence ?? 0) - (left.nationalSequence ?? 0),
+            ),
+          );
+          this.nationalSequence = (draw.nationalSequence ?? 0) + 1;
+          this.sequenceLocked.set(true);
+          this.name = '';
+          this.notice.set(
+            `El sorteo #${draw.nationalSequence} quedó creado y disponible hasta su cierre.`,
+          );
+        },
+        error: (apiError: unknown) =>
+          this.formError.set(
+            apiErrorMessage(apiError, 'No fue posible crear el sorteo de lotería.'),
+          ),
+      });
   }
 
   protected dateTime(value: string): string {
     return new Intl.DateTimeFormat('es-NI', {
-      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-      hour12: true, timeZone: 'America/Managua'
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'America/Managua',
     }).format(new Date(value));
   }
 
-  protected dateInput(value: string): string {
-    const digits = value.replace(/\D/g, '').slice(0, 8);
-    if (digits.length <= 2) return digits;
-    if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-    return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+  protected dateLabel(value: string): string {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Selecciona una fecha';
+    return new Intl.DateTimeFormat('es-NI', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'America/Managua',
+    }).format(new Date(`${value}T12:00:00-06:00`));
   }
 
   protected statusLabel(status: Draw['status']): string {
-    return ({
-      OPEN: 'Abierto', SCHEDULED: 'Programado', CLOSED: 'Cerrado', RESULT_ENTERED: 'Con resultado',
-      SETTLED: 'Liquidado', CANCELLED: 'Cancelado'
-    } as const)[status];
+    return (
+      {
+        OPEN: 'Abierto',
+        SCHEDULED: 'Programado',
+        CLOSED: 'Cerrado',
+        RESULT_ENTERED: 'Con resultado',
+        SETTLED: 'Liquidado',
+        CANCELLED: 'Cancelado',
+      } as const
+    )[status];
   }
 
   private load(): void {
     this.loading.set(true);
-    const draws$ = this.api.getNationalDraws().pipe(
-      catchError((error: HttpErrorResponse) => error.status === 404 ? of([] as Draw[]) : throwError(() => error))
-    );
+    const draws$ = this.api
+      .getNationalDraws()
+      .pipe(
+        catchError((error: HttpErrorResponse) =>
+          error.status === 404 ? of([] as Draw[]) : throwError(() => error),
+        ),
+      );
     forkJoin({ draws: draws$, sequence: this.api.getNationalSequence() })
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
@@ -109,18 +140,24 @@ export class NationalDrawsPage implements OnInit {
           this.nationalSequence = sequence.nextSequence;
           this.sequenceLocked.set(sequence.nextSequence !== null);
         },
-        error: (apiError: unknown) => this.error.set(apiErrorMessage(apiError, 'No fue posible cargar los sorteos de lotería.'))
+        error: (apiError: unknown) =>
+          this.error.set(
+            apiErrorMessage(apiError, 'No fue posible cargar los sorteos de lotería.'),
+          ),
       });
   }
 
   private nicaraguaInstant(dateValue: string, timeValue: string): string | null {
-    const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dateValue);
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateValue);
     if (!match || !/^([01]\d|2[0-3]):[0-5]\d$/.test(timeValue)) return null;
-    const [, day, month, year] = match;
+    const [, year, month, day] = match;
     const calendarDate = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
-    if (calendarDate.getUTCFullYear() !== Number(year)
-        || calendarDate.getUTCMonth() !== Number(month) - 1
-        || calendarDate.getUTCDate() !== Number(day)) return null;
+    if (
+      calendarDate.getUTCFullYear() !== Number(year) ||
+      calendarDate.getUTCMonth() !== Number(month) - 1 ||
+      calendarDate.getUTCDate() !== Number(day)
+    )
+      return null;
     const parsed = new Date(`${year}-${month}-${day}T${timeValue}:00-06:00`);
     return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
   }
@@ -128,9 +165,12 @@ export class NationalDrawsPage implements OnInit {
   private defaultLocalDate(daysAhead: number): string {
     const date = new Date(Date.now() + daysAhead * 86_400_000);
     const parts = new Intl.DateTimeFormat('es-NI', {
-      timeZone: 'America/Managua', year: 'numeric', month: '2-digit', day: '2-digit'
+      timeZone: 'America/Managua',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
     }).formatToParts(date);
     const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-    return `${values['day']}/${values['month']}/${values['year']}`;
+    return `${values['year']}-${values['month']}-${values['day']}`;
   }
 }

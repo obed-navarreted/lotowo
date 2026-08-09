@@ -32,10 +32,11 @@ describe('UtilitiesPage', () => {
     sessionStorage.clear();
   });
 
-  it('uses the selected date, draw and seller in the summary and ticket link', () => {
+  it('uses the selected one-day range, draw and seller in the summary and ticket link', () => {
     const fixture = TestBed.createComponent(UtilitiesPage);
     const component = fixture.componentInstance as unknown as {
-      selectedDate: string;
+      fromDate: string;
+      toDate: string;
       selectedDrawId: string;
       selectedSellerId: string;
       applyFilters(): void;
@@ -53,20 +54,25 @@ describe('UtilitiesPage', () => {
       });
     http.expectOne((request) => request.url === '/api/v1/draws').flush([]);
     http
-      .expectOne((request) => request.url === '/api/v1/tickets/day-summary')
+      .expectOne((request) => request.url === '/api/v1/reports/utilities/summary')
       .flush({ detail: 'No hay ventas' }, { status: 404, statusText: 'Not Found' });
 
-    component.selectedDate = '2026-08-01';
+    component.fromDate = '2026-08-01';
+    component.toDate = '2026-08-01';
     component.selectedDrawId = 'draw-id';
     component.selectedSellerId = 'seller-id';
     component.applyFilters();
 
-    const summary = http.expectOne((request) => request.url === '/api/v1/tickets/day-summary');
-    expect(summary.request.params.get('date')).toBe('2026-08-01');
+    const summary = http.expectOne(
+      (request) => request.url === '/api/v1/reports/utilities/summary',
+    );
+    expect(summary.request.params.get('from')).toBe('2026-08-01');
+    expect(summary.request.params.get('to')).toBe('2026-08-01');
     expect(summary.request.params.get('drawId')).toBe('draw-id');
     expect(summary.request.params.get('sellerId')).toBe('seller-id');
     summary.flush({
-      date: '2026-08-01',
+      from: '2026-08-01',
+      to: '2026-08-01',
       ticketCount: 4,
       grossSales: 100,
       prizesPaid: 40,
