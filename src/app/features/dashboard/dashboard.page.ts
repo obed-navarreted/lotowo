@@ -222,17 +222,14 @@ export class DashboardPage {
   private load(): void {
     this.loading.set(true);
     this.loadError.set(false);
-    const from = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const to = new Date(Date.now() + 8 * 24 * 60 * 60 * 1000);
     this.api
-      .getDraws(from, to)
+      .getDashboard()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (draws) => {
-          this.draws.set(draws);
+        next: (dashboard) => {
+          this.draws.set(dashboard.draws);
+          this.availability.set(dashboard.availability ?? null);
           this.loading.set(false);
-          const next = draws.find((draw) => draw.status === 'OPEN');
-          if (next && this.auth.user()?.role === 'SELLER') this.loadAvailability(next.id);
         },
         error: (error: HttpErrorResponse) => {
           this.loading.set(false);
@@ -242,16 +239,6 @@ export class DashboardPage {
           }
           this.loadError.set(true);
         },
-      });
-  }
-
-  private loadAvailability(drawId: string): void {
-    this.api
-      .getAvailability(drawId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (availability) => this.availability.set(availability),
-        error: () => this.availability.set(null),
       });
   }
 }

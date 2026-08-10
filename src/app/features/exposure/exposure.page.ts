@@ -309,6 +309,12 @@ export class ExposurePage {
       this.loading.set(false);
       return;
     }
+    if (
+      background &&
+      (document.visibilityState !== 'visible' || this.loading() || this.refreshing())
+    ) {
+      return;
+    }
     if (background) this.refreshing.set(true);
     else this.loading.set(true);
     this.api
@@ -330,7 +336,9 @@ export class ExposurePage {
           if (!background) this.report.set(null);
           this.loading.set(false);
           this.refreshing.set(false);
-          this.errorMessage.set(apiErrorMessage(error, 'No pudimos calcular el premio comprometido.'));
+          this.errorMessage.set(
+            apiErrorMessage(error, 'No pudimos calcular el premio comprometido.'),
+          );
         },
       });
   }

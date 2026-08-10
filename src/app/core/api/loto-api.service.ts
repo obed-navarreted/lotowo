@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import {
   CreateTicketRequest,
   DailyReport,
+  DashboardSummary,
   Draw,
   DrawClosure,
   DrawNumberReport,
@@ -95,6 +96,10 @@ export class LotoApiService {
 
   markAllNotificationsRead() {
     return this.http.put<void>('/api/v1/notifications/read-all', null);
+  }
+
+  getDashboard() {
+    return this.http.get<DashboardSummary>('/api/v1/dashboard');
   }
 
   getDraws(from: Date, to: Date) {
