@@ -76,14 +76,27 @@
       >
     }
   </div>
-  <label class="commission-choice">
-    <span class="commission-choice__icon"><lo-icon name="wallet" [size]="19" /></span>
-    <span class="commission-choice__copy"
-      ><strong>Considerar comisiones</strong
-      ><small>Desactívalo para revisar ventas menos premios, sin descontar comisiones.</small></span
-    >
-    <input type="checkbox" [(ngModel)]="includeCommissions" />
-  </label>
+  <div class="report-choices">
+    <label class="commission-choice">
+      <span class="commission-choice__icon"><lo-icon name="wallet" [size]="19" /></span>
+      <span class="commission-choice__copy"
+        ><strong>Considerar comisiones</strong
+        ><small
+          >Al exportar agrega la constancia y firma de cada vendedor. Desactívalo para generar solo
+          el reporte de ventas menos premios.</small
+        ></span
+      >
+      <input type="checkbox" [(ngModel)]="includeCommissions" />
+    </label>
+    <label class="commission-choice">
+      <span class="commission-choice__icon"><lo-icon name="table" [size]="19" /></span>
+      <span class="commission-choice__copy"
+        ><strong>Detalle por sorteo en PDF</strong
+        ><small>Incluye cada turno dentro del día y del vendedor.</small></span
+      >
+      <input type="checkbox" [(ngModel)]="includeDraws" />
+    </label>
+  </div>
   <div class="filter-actions">
     <small>{{
       auth.isAdmin() ? 'Histórico completo disponible' : 'Consulta permitida hasta 15 días atrás'
@@ -227,6 +240,7 @@
     </header>
     <div class="seller-utility-list">
       @for (seller of result.sellers; track seller.sellerId) {
+        @let sellerDays = days(seller);
         <article [class.seller-utility--loss]="sellerResultValue(seller) < 0">
           <header>
             <div>
@@ -258,6 +272,74 @@
               <dd>{{ money(sellerResultValue(seller)) }}</dd>
             </div>
           </dl>
+          <div class="utility-day-list">
+            @for (day of sellerDays; track day.date) {
+              <section class="utility-day">
+                <header>
+                  <div>
+                    <strong>{{ dateLabel(day.date) }}</strong>
+                    <small
+                      >{{ day.entries.length }}
+                      {{ day.entries.length === 1 ? 'sorteo' : 'sorteos' }}</small
+                    >
+                  </div>
+                  <span [class.loss]="dayResultValue(day) < 0"
+                    ><small>{{
+                      includeCommissions ? 'Utilidad neta' : 'Resultado sin comisión'
+                    }}</small
+                    ><strong>{{ money(dayResultValue(day)) }}</strong></span
+                  >
+                </header>
+                <div class="utility-draw-list">
+                  @for (entry of day.entries; track entry.drawId) {
+                    <article>
+                      <header>
+                        <div>
+                          <strong>{{ draw(entry) }}</strong>
+                          <small>
+                            @if (entry.pendingResult) {
+                              Ganador pendiente
+                            } @else {
+                              Ganador {{ entry.winningNumber }}
+                            }
+                          </small>
+                        </div>
+                        @if (entry.commissionProvisional && includeCommissions) {
+                          <span class="provisional-badge">Provisional</span>
+                        }
+                      </header>
+                      <dl>
+                        <div>
+                          <dt>Boletos</dt>
+                          <dd>{{ entry.ticketCount }}</dd>
+                        </div>
+                        <div>
+                          <dt>Vendido</dt>
+                          <dd>{{ money(entry.grossSales) }}</dd>
+                        </div>
+                        <div>
+                          <dt>Premios</dt>
+                          <dd>{{ money(entry.prizesPaid) }}</dd>
+                        </div>
+                        @if (includeCommissions) {
+                          <div>
+                            <dt>Comisión · {{ money(entry.commissionRate) }}%</dt>
+                            <dd>{{ money(entry.commissionAmount) }}</dd>
+                          </div>
+                        }
+                        <div class="seller-net">
+                          <dt>{{ includeCommissions ? 'Utilidad neta' : 'Sin comisión' }}</dt>
+                          <dd [class.loss]="entryResultValue(entry) < 0">
+                            {{ money(entryResultValue(entry)) }}
+                          </dd>
+                        </div>
+                      </dl>
+                    </article>
+                  }
+                </div>
+              </section>
+            }
+          </div>
         </article>
       }
     </div>

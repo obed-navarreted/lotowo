@@ -190,6 +190,23 @@ export interface UtilitySellerSummary {
   netAfterCommission: number;
   pendingResults: number;
   commissionProvisional: boolean;
+  entries: UtilityDrawSummary[];
+}
+
+export interface UtilityDrawSummary {
+  drawId: string;
+  drawType: Draw['drawType'];
+  scheduledAt: string;
+  winningNumber: string | null;
+  ticketCount: number;
+  grossSales: number;
+  prizesPaid: number;
+  commissionRate: number;
+  commissionAmount: number;
+  netBeforeCommission: number;
+  netAfterCommission: number;
+  pendingResult: boolean;
+  commissionProvisional: boolean;
 }
 
 export interface DrawClosure {

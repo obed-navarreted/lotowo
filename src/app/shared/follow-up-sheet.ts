@@ -7,8 +7,8 @@ export function isWeekendDate(date: string): boolean {
 
 export function followUpTurns(date: string): string[] {
   return isWeekendDate(date)
-    ? ['12:00 p. m.', '3:00 p. m.', '6:00 p. m.']
-    : ['12:00 p. m.', '3:00 p. m.'];
+    ? ['11:00 a. m.', '3:00 p. m.', '6:00 p. m.']
+    : ['11:00 a. m.', '3:00 p. m.'];
 }
 
 export function followUpDrawTimes(date: string): string[] {

@@ -101,12 +101,8 @@ export const routes: Routes = [
       },
       {
         path: 'reports/commissions',
-        title: 'Comisiones · Suerte',
-        canActivate: [adminGuard],
-        loadComponent: () =>
-          import('./features/reports/commission-report.page').then(
-            (component) => component.CommissionReportPage,
-          ),
+        redirectTo: 'utilities',
+        pathMatch: 'full',
       },
       {
         path: 'reports/follow-up',

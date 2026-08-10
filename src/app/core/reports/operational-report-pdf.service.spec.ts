@@ -60,6 +60,8 @@ describe('OperationalReportPdfService', () => {
     expect(pdf.orientation).toBe('landscape');
     expect(pdf.texts).toContain('SEGUIMIENTO · RUTA R-06');
     expect(pdf.texts).toContain('FECHA: 08/08/26');
+    expect(pdf.texts).toContain('11:00 a. m.');
+    expect(pdf.texts).not.toContain('12:00 p. m.');
     expect(pdf.texts).toContain('6:00 p. m.');
     expect(pdf.texts.indexOf('Ana López')).toBeLessThan(pdf.texts.indexOf('Zoe Ruiz'));
     expect(pdf.pages).toBe(2);
@@ -78,6 +80,23 @@ describe('OperationalReportPdfService', () => {
       netAfterCommission: 350,
       pendingResults: 0,
       commissionProvisional: false,
+      entries: [
+        {
+          drawId: `draw-${sellerId}`,
+          drawType: 'DAILY' as const,
+          scheduledAt: '2026-08-08T15:00:00-06:00',
+          winningNumber: '11',
+          ticketCount: 3,
+          grossSales: 500,
+          prizesPaid: 100,
+          commissionRate: 10,
+          commissionAmount: 50,
+          netBeforeCommission: 400,
+          netAfterCommission: 350,
+          pendingResult: false,
+          commissionProvisional: false,
+        },
+      ],
     });
     await new OperationalReportPdfService().exportUtilities({
       from: '2026-08-02',
@@ -95,6 +114,8 @@ describe('OperationalReportPdfService', () => {
 
     expect(pdf.texts).toContain('REPORTE DE UTILIDADES');
     expect(pdf.texts).toContain('COMISIÓN HISTÓRICA APLICADA');
+    expect(pdf.texts).toContain('Recibí conforme 50 por comisión del período.');
+    expect(pdf.texts).toContain('Firma');
     expect(pdf.texts.indexOf('Ana')).toBeLessThan(pdf.texts.indexOf('Zoe'));
     expect(pdf.savedAs).toBe('suerte-utilidades-2026-08-02-2026-08-08.pdf');
   });
@@ -124,16 +145,18 @@ describe('OperationalReportPdfService', () => {
             netAfterCommission: 700,
             pendingResults: 0,
             commissionProvisional: false,
+            entries: [],
           },
         ],
       },
-      { includeCommissions: false },
+      { includeCommissions: false, includeDraws: true },
     );
 
     expect(pdf.texts).toContain('COMISIONES EXCLUIDAS');
     expect(pdf.texts).toContain('RESULTADO SIN COMISIÓN');
     expect(pdf.texts).toContain('Resultado sin comisión = ventas - premios pagados.');
     expect(pdf.texts).not.toContain('COMISIÓN');
+    expect(pdf.texts).not.toContain('Firma');
   });
 
   it('builds the winner A4 detail grouped in route and seller order with customer receipts', async () => {

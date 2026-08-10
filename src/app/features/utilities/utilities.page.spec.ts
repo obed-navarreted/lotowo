@@ -90,9 +90,40 @@ describe('UtilitiesPage', () => {
       netAfterCommission: 50,
       pendingResults: 0,
       commissionProvisional: false,
-      sellers: [],
+      sellers: [
+        {
+          sellerId: 'seller-id',
+          sellerName: 'Vendedora Uno',
+          ticketCount: 4,
+          grossSales: 100,
+          prizesPaid: 40,
+          commissionAmount: 10,
+          netBeforeCommission: 60,
+          netAfterCommission: 50,
+          pendingResults: 0,
+          commissionProvisional: false,
+          entries: [
+            {
+              drawId: 'draw-id',
+              drawType: 'DAILY',
+              scheduledAt: '2026-08-01T11:00:00-06:00',
+              winningNumber: '11',
+              ticketCount: 4,
+              grossSales: 100,
+              prizesPaid: 40,
+              commissionRate: 10,
+              commissionAmount: 10,
+              netBeforeCommission: 60,
+              netAfterCommission: 50,
+              pendingResult: false,
+              commissionProvisional: false,
+            },
+          ],
+        },
+      ],
     };
     summary.flush(report);
+    fixture.detectChanges();
 
     expect(component.ticketsQuery()).toEqual({
       date: '2026-08-01',
@@ -100,6 +131,8 @@ describe('UtilitiesPage', () => {
       sellerId: 'seller-id',
     });
     expect(component.resultValue(report)).toBe(50);
+    expect(fixture.nativeElement.textContent).toContain('LOTO - 01/08/26 - 11AM');
+    expect(fixture.nativeElement.textContent).toContain('Vendedora Uno');
     component.includeCommissions = false;
     expect(component.resultValue(report)).toBe(60);
   });

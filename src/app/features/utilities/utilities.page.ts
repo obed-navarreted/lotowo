@@ -3,16 +3,22 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, of } from 'rxjs';
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ManagedUser } from '../../core/models/admin.models';
-import { Draw, UtilitySummary } from '../../core/models/api.models';
+import {
+  Draw,
+  UtilityDrawSummary,
+  UtilitySellerSummary,
+  UtilitySummary,
+} from '../../core/models/api.models';
 import { OperationalReportPdfService } from '../../core/reports/operational-report-pdf.service';
 import { apiErrorMessage } from '../../shared/api-error';
 import { drawLabel } from '../../shared/draw-label';
 import { Icon } from '../../shared/icon/icon';
 import { newestDrawFirst } from '../../shared/result-order';
+import { groupUtilitiesByDay, UtilityDay } from '../../shared/utility-days';
 
 @Component({
   selector: 'lo-utilities-page',
@@ -40,23 +46,24 @@ export class UtilitiesPage {
   protected selectedDrawId = '';
   protected selectedSellerId = '';
   protected includeCommissions = true;
+  protected includeDraws = true;
 
   constructor() {
     const earliest = new Date();
     earliest.setDate(earliest.getDate() - 14);
     this.historyMinDate = this.auth.isAdmin() ? '' : this.localDate(earliest);
-    const sellers$ =
-      this.auth.user()?.role === 'SELLER'
-        ? of({ content: [] as ManagedUser[] })
-        : this.api.getUsers(0, 100).pipe(catchError(() => of({ content: [] as ManagedUser[] })));
-    forkJoin({ sellers: sellers$ })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: ({ sellers }) => {
-          this.sellers.set(sellers.content.filter((user) => user.role === 'SELLER'));
-          this.loadPeriod();
-        },
-      });
+    if (this.auth.user()?.role !== 'SELLER') {
+      this.api
+        .getUsers(0, 100)
+        .pipe(
+          catchError(() => of({ content: [] as ManagedUser[] })),
+          takeUntilDestroyed(this.destroyRef),
+        )
+        .subscribe((users) =>
+          this.sellers.set(users.content.filter((user) => user.role === 'SELLER')),
+        );
+    }
+    this.loadPeriod();
   }
 
   protected onFromDateChanged(): void {
@@ -81,7 +88,10 @@ export class UtilitiesPage {
     this.exporting.set(true);
     this.errorMessage.set(null);
     void this.pdf
-      .exportUtilities(report, { includeCommissions: this.includeCommissions })
+      .exportUtilities(report, {
+        includeCommissions: this.includeCommissions,
+        includeDraws: this.includeDraws,
+      })
       .catch(() => this.errorMessage.set('No pudimos generar el reporte PDF.'))
       .finally(() => this.exporting.set(false));
   }
@@ -126,6 +136,22 @@ export class UtilitiesPage {
 
   protected sellerResultValue(seller: UtilitySummary['sellers'][number]): number {
     return this.includeCommissions ? seller.netAfterCommission : seller.netBeforeCommission;
+  }
+
+  protected days(seller: UtilitySellerSummary): UtilityDay[] {
+    return groupUtilitiesByDay(seller);
+  }
+
+  protected dayResultValue(day: UtilityDay): number {
+    return this.includeCommissions ? day.netAfterCommission : day.netBeforeCommission;
+  }
+
+  protected entryResultValue(entry: UtilityDrawSummary): number {
+    return this.includeCommissions ? entry.netAfterCommission : entry.netBeforeCommission;
+  }
+
+  protected draw(entry: UtilityDrawSummary): string {
+    return drawLabel(entry);
   }
 
   protected dateLabel(value: string): string {

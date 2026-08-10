@@ -6,11 +6,15 @@ import {
   FollowUpSheet,
   SellerCommissionEntry,
   SellerCommissionReport,
+  UtilityDrawSummary,
+  UtilitySellerSummary,
   UtilitySummary,
 } from '../models/api.models';
 import { groupCommissionsByDay } from '../../shared/commission-days';
 import { drawLabel } from '../../shared/draw-label';
 import { followUpDrawTimes, followUpTurns } from '../../shared/follow-up-sheet';
+import { groupUtilitiesByDay } from '../../shared/utility-days';
+import { PdfFileService } from './pdf-file.service';
 
 /** La planilla usa casi todo el ancho A4 para caber en la menor cantidad de hojas posible. */
 const PAYROLL_LEFT = 10;
@@ -29,10 +33,13 @@ export interface PayrollPdfOptions {
 
 export interface UtilityPdfOptions {
   includeCommissions: boolean;
+  includeDraws: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
 export class OperationalReportPdfService {
+  constructor(private readonly pdfFiles: PdfFileService = new PdfFileService()) {}
+
   async exportFollowUpSheet(sheet: FollowUpSheet): Promise<void> {
     const document = await this.createLandscapeDocument('Hoja de seguimiento');
     const turns = followUpTurns(sheet.date);
@@ -54,12 +61,15 @@ export class OperationalReportPdfService {
         pages,
       );
     }
-    document.save(`suerte-seguimiento-${this.safeFile(sheet.routeCode)}-${sheet.date}.pdf`);
+    await this.pdfFiles.save(
+      document,
+      `suerte-seguimiento-${this.safeFile(sheet.routeCode)}-${sheet.date}.pdf`,
+    );
   }
 
   async exportUtilities(
     report: UtilitySummary,
-    options: UtilityPdfOptions = { includeCommissions: true },
+    options: UtilityPdfOptions = { includeCommissions: true, includeDraws: true },
   ): Promise<void> {
     const includeCommissions = options.includeCommissions;
     const result = includeCommissions ? report.netAfterCommission : report.netResult;
@@ -165,6 +175,12 @@ export class OperationalReportPdfService {
         document.text(this.amount(value), x, y + 11, { align });
       });
       y += 23;
+      if (options.includeDraws) {
+        y = this.utilitySellerDetails(document, y, seller, includeCommissions);
+      }
+      if (includeCommissions) {
+        y = this.utilityCommissionSignature(document, y, seller);
+      }
     }
 
     document.setFont('helvetica', 'italic');
@@ -177,7 +193,84 @@ export class OperationalReportPdfService {
       15,
       Math.min(y + 2, 286),
     );
-    document.save(`suerte-utilidades-${report.from}-${report.to}.pdf`);
+    await this.pdfFiles.save(document, `suerte-utilidades-${report.from}-${report.to}.pdf`);
+  }
+
+  private utilitySellerDetails(
+    document: import('jspdf').jsPDF,
+    top: number,
+    seller: UtilitySellerSummary,
+    includeCommissions: boolean,
+  ): number {
+    let y = top;
+    const continuation = `${this.clean(seller.sellerName)} · detalle por sorteo`;
+    for (const day of groupUtilitiesByDay(seller)) {
+      y = this.ensureSpace(document, y, 10, continuation);
+      document.setFont('helvetica', 'bold');
+      document.setFontSize(7.2);
+      document.setTextColor(45, 45, 45);
+      document.text(this.date(day.date), 17, y);
+      const dayResult = includeCommissions ? day.netAfterCommission : day.netBeforeCommission;
+      document.text(`${day.entries.length} sorteos · resultado ${this.amount(dayResult)}`, 193, y, {
+        align: 'right',
+      });
+      y += 4.5;
+      for (const entry of day.entries) {
+        y = this.ensureSpace(document, y, 6, continuation);
+        document.setFont('helvetica', 'normal');
+        document.setFontSize(6.5);
+        document.setTextColor(100, 100, 100);
+        const winner = entry.pendingResult ? 'ganador pendiente' : `ganador ${entry.winningNumber}`;
+        document.text(`${this.drawTime(entry)} · ${winner}`, 20, y, { maxWidth: 63 });
+        document.text(`Venta ${this.amount(entry.grossSales)}`, 86, y);
+        document.text(`Premio ${this.amount(entry.prizesPaid)}`, 119, y);
+        if (includeCommissions) {
+          document.text(`Com. ${this.amount(entry.commissionAmount)}`, 153, y);
+        }
+        const result = includeCommissions ? entry.netAfterCommission : entry.netBeforeCommission;
+        document.setFont('helvetica', 'bold');
+        document.setTextColor(result < 0 ? 175 : 45, result < 0 ? 65 : 45, result < 0 ? 65 : 45);
+        document.text(this.amount(result), 193, y, { align: 'right' });
+        y += 4.2;
+      }
+      y += 1.5;
+    }
+    return y;
+  }
+
+  private utilityCommissionSignature(
+    document: import('jspdf').jsPDF,
+    top: number,
+    seller: UtilitySellerSummary,
+  ): number {
+    const continuation = `${this.clean(seller.sellerName)} · constancia de comisión`;
+    let y = this.ensureSpace(document, top, 14, continuation);
+    y += 3;
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(6.8);
+    document.setTextColor(35, 35, 35);
+    document.text(
+      `Recibí conforme ${this.amount(seller.commissionAmount)} por comisión del período.`,
+      16,
+      y,
+    );
+    const slots: Array<[string, number, number]> = [
+      ['Firma', 77, 44],
+      ['Cédula', 132, 27],
+      ['Fecha', 170, 24],
+    ];
+    document.setDrawColor(130, 130, 130);
+    document.setLineWidth(0.2);
+    document.setFont('helvetica', 'normal');
+    document.setFontSize(6.5);
+    document.setTextColor(110, 110, 110);
+    for (const [label, x, width] of slots) {
+      document.text(label, x, y);
+      document.line(x + 10, y + 0.6, x + 10 + width, y + 0.6);
+    }
+    y += 5;
+    this.line(document, y, 195);
+    return y + 5;
   }
 
   async exportDraw(
@@ -226,7 +319,7 @@ export class OperationalReportPdfService {
       this.line(document, y + 2.5, 225);
       y += 7;
     }
-    document.save(`suerte-sorteo-${this.fileDate(report.scheduledAt)}.pdf`);
+    await this.pdfFiles.save(document, `suerte-sorteo-${this.fileDate(report.scheduledAt)}.pdf`);
   }
 
   async exportWinnerDetail(
@@ -310,7 +403,7 @@ export class OperationalReportPdfService {
         y += 3;
       }
     }
-    document.save(`suerte-ganadores-${this.fileDate(report.scheduledAt)}.pdf`);
+    await this.pdfFiles.save(document, `suerte-ganadores-${this.fileDate(report.scheduledAt)}.pdf`);
   }
 
   /**
@@ -333,7 +426,10 @@ export class OperationalReportPdfService {
       );
     });
     const single = shared ? 'todos' : this.safeFile(payroll.sellers[0].sellerName);
-    document.save(`suerte-comisiones-${single}-${payroll.from}-${payroll.to}.pdf`);
+    await this.pdfFiles.save(
+      document,
+      `suerte-comisiones-${single}-${payroll.from}-${payroll.to}.pdf`,
+    );
   }
 
   private payrollCover(
@@ -632,7 +728,7 @@ export class OperationalReportPdfService {
     }).format(new Date(`${value}T12:00:00-06:00`));
   }
 
-  private drawTime(entry: SellerCommissionEntry): string {
+  private drawTime(entry: SellerCommissionEntry | UtilityDrawSummary): string {
     const time = new Intl.DateTimeFormat('en-US', {
       hour: 'numeric',
       hour12: true,

@@ -1,15 +1,21 @@
 import { Injectable } from '@angular/core';
 import { drawLabel } from '../../shared/draw-label';
 import { Ticket, TicketPrint } from '../models/api.models';
+import { PdfFileService } from '../reports/pdf-file.service';
 
 @Injectable({ providedIn: 'root' })
 export class ReceiptPdfService {
+  constructor(private readonly pdfFiles: PdfFileService = new PdfFileService()) {}
+
   async download(ticket: Ticket, print: TicketPrint): Promise<void> {
     const { jsPDF } = await import('jspdf');
     const isReprint = print.printType === 'REPRINT';
     const showRevision = ticket.revision > 1;
     const pageHeight =
-      88 + ticket.items.length * 7.5 + (isReprint ? 5 : 0) + (showRevision ? 4 : 0) +
+      88 +
+      ticket.items.length * 7.5 +
+      (isReprint ? 5 : 0) +
+      (showRevision ? 4 : 0) +
       (ticket.customerName ? 5 : 0);
     const document = new jsPDF({
       orientation: 'portrait',
@@ -107,7 +113,10 @@ export class ReceiptPdfService {
     document.text(this.clean(ticket.routeCode), center, y, { align: 'center' });
 
     const suffix = isReprint ? 'reimpresion-' + print.printNumber : 'impresion';
-    document.save('suerte-recibo-' + ticket.receiptNumber + '-' + suffix + '.pdf');
+    await this.pdfFiles.save(
+      document,
+      'suerte-recibo-' + ticket.receiptNumber + '-' + suffix + '.pdf',
+    );
   }
 
   private brand(document: import('jspdf').jsPDF, center: number, y: number): void {

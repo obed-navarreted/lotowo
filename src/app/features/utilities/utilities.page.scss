@@ -54,6 +54,10 @@
   border-radius: 14px;
   cursor: pointer;
 }
+.report-choices {
+  display: grid;
+  gap: 10px;
+}
 .commission-choice__icon {
   display: grid;
   width: 38px;
@@ -347,6 +351,83 @@
 .seller-utility--loss .seller-net dd {
   color: var(--danger);
 }
+.utility-day-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+}
+.utility-day {
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+}
+.seller-utility-list .utility-day > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--line-soft);
+}
+.utility-day > header > div,
+.utility-day > header > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.utility-day > header > span {
+  align-items: flex-end;
+  text-align: right;
+}
+.utility-day > header small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.utility-day > header > span strong {
+  color: var(--mint-dark);
+  font-size: 14px;
+}
+.utility-day > header > span.loss strong,
+.utility-draw-list dd.loss {
+  color: var(--danger);
+}
+.utility-draw-list {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+}
+.seller-utility-list .utility-draw-list > article {
+  padding: 11px;
+  background: #fff;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+}
+.seller-utility-list .utility-draw-list > article > header {
+  align-items: flex-start;
+}
+.utility-draw-list > article > header > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.utility-draw-list > article > header strong {
+  white-space: normal;
+}
+.seller-utility-list .utility-draw-list dl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 10px;
+  margin-top: 10px;
+}
+.seller-utility-list .utility-draw-list dt {
+  font-size: 10.5px;
+}
+.seller-utility-list .utility-draw-list dd {
+  font-size: 13px;
+}
 
 @media (max-width: 520px) {
   .filter-actions {
@@ -395,8 +476,13 @@
     width: auto;
   }
   .seller-utility-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     padding: 16px;
+  }
+  .report-choices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .utility-draw-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

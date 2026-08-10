@@ -101,13 +101,6 @@ export class AppShell {
       roles: ['ADMIN', 'SUPERVISOR', 'SELLER'],
     },
     {
-      label: 'Comisiones',
-      shortLabel: 'Comisión',
-      icon: 'wallet',
-      route: '/reports/commissions',
-      roles: ['ADMIN'],
-    },
-    {
       label: 'Seguimiento',
       shortLabel: 'Hoja',
       icon: 'clipboard',
