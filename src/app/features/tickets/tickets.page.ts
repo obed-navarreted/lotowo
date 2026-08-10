@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, of } from 'rxjs';
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ReceiptOutputService } from '../../core/receipts/receipt-output.service';
@@ -147,27 +147,30 @@ export class TicketsPage {
 
   private initialize(): void {
     this.filterLoading.set(true);
-    const sellers$ =
-      this.auth.user()?.role === 'SELLER'
-        ? of({ content: [] as ManagedUser[] })
-        : this.api.getUsers(0, 100).pipe(catchError(() => of({ content: [] as ManagedUser[] })));
-    forkJoin({
-      saleable: this.api.getSaleableDraws().pipe(catchError(() => of([] as Draw[]))),
-      sellers: sellers$,
-    })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: ({ saleable, sellers }) => {
-          this.sellers.set(sellers.content.filter((user) => user.role === 'SELLER'));
-          const next = [...saleable].sort((a, b) =>
-            a.salesCloseAt.localeCompare(b.salesCloseAt),
-          )[0];
-          if (next && !this.hasRequestedFilters) {
-            this.selectedDate = this.localDate(new Date(next.scheduledAt));
-            this.selectedDrawId = next.id;
-          }
-          this.loadDay(next?.id);
-        },
+    if (this.auth.user()?.role !== 'SELLER') {
+      this.api
+        .getUsers(0, 100)
+        .pipe(
+          catchError(() => of({ content: [] as ManagedUser[] })),
+          takeUntilDestroyed(this.destroyRef),
+        )
+        .subscribe((users) =>
+          this.sellers.set(users.content.filter((user) => user.role === 'SELLER')),
+        );
+    }
+    this.api
+      .getSaleableDraws()
+      .pipe(
+        catchError(() => of([] as Draw[])),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((saleable) => {
+        const next = [...saleable].sort((a, b) => a.salesCloseAt.localeCompare(b.salesCloseAt))[0];
+        if (next && !this.hasRequestedFilters) {
+          this.selectedDate = this.localDate(new Date(next.scheduledAt));
+          this.selectedDrawId = next.id;
+        }
+        this.loadDay(next?.id);
       });
   }
 

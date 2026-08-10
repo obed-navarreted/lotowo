@@ -128,11 +128,6 @@ export interface SellerAvailability {
   calculatedAt: string;
 }
 
-export interface DashboardSummary {
-  draws: Draw[];
-  availability?: SellerAvailability | null;
-}
-
 export interface NumberAvailability {
   number: string;
   payoutLimit: number | null;

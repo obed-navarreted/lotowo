@@ -35,8 +35,9 @@ describe('DashboardPage', () => {
   it('keeps a blocked draw as the next countdown target', () => {
     const fixture = TestBed.createComponent(DashboardPage);
     const closesAt = new Date(Date.now() + 60 * 60_000).toISOString();
-    http.expectOne('/api/v1/dashboard').flush({
-      draws: [
+    http
+      .expectOne((request) => request.url === '/api/v1/draws')
+      .flush([
         {
           id: 'blocked-draw',
           drawType: 'DAILY',
@@ -53,14 +54,13 @@ describe('DashboardPage', () => {
           version: 1,
           createdAt: new Date().toISOString(),
         },
-      ],
-      availability: {
-        sellerId: 'seller-id',
-        drawId: 'blocked-draw',
-        totalSold: 0,
-        numbers: [],
-        calculatedAt: new Date().toISOString(),
-      },
+      ]);
+    http.expectOne('/api/v1/tickets/availability/blocked-draw').flush({
+      sellerId: 'seller-id',
+      drawId: 'blocked-draw',
+      totalSold: 0,
+      numbers: [],
+      calculatedAt: new Date().toISOString(),
     });
     fixture.detectChanges();
 
