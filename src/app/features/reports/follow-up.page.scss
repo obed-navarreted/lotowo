@@ -51,7 +51,7 @@
   position: relative;
   display: grid;
   min-height: 58px;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 11px;
   padding: 8px 14px;
@@ -68,7 +68,8 @@
 }
 .date-picker strong {
   font-size: 14px;
-  text-transform: capitalize;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .date-picker small {
   color: var(--muted);

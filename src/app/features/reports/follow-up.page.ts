@@ -81,10 +81,9 @@ export class FollowUpPage {
 
   protected dateLabel(): string {
     return new Intl.DateTimeFormat('es-NI', {
-      weekday: 'long',
       day: '2-digit',
-      month: 'long',
-      year: 'numeric',
+      month: '2-digit',
+      year: '2-digit',
       timeZone: 'America/Managua',
     }).format(new Date(`${this.date}T12:00:00-06:00`));
   }

@@ -43,6 +43,47 @@
 .filter-actions .button {
   min-height: 40px;
 }
+.commission-choice {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-top: 12px;
+  padding: 12px 13px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  cursor: pointer;
+}
+.commission-choice__icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  color: var(--violet);
+  background: var(--violet-soft);
+  border-radius: 11px;
+}
+.commission-choice__copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+.commission-choice__copy strong {
+  font-size: 13px;
+}
+.commission-choice__copy small {
+  margin-top: 2px;
+  color: var(--muted-strong);
+  font-size: 11px;
+}
+.commission-choice input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  accent-color: var(--violet);
+}
 .utility-error {
   margin-bottom: 14px;
   padding: 12px 14px;
@@ -190,6 +231,13 @@
   margin-bottom: 2px;
   color: var(--mint-dark);
   font-size: 13px;
+}
+.commission-note--excluded {
+  color: var(--violet);
+  background: var(--violet-soft);
+}
+.commission-note--excluded strong {
+  color: var(--violet-dark);
 }
 .utility-overview > footer {
   display: flex;

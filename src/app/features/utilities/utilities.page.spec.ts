@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
+import { UtilitySummary } from '../../core/models/api.models';
 import { UtilitiesPage } from './utilities.page';
 
 describe('UtilitiesPage', () => {
@@ -43,8 +44,10 @@ describe('UtilitiesPage', () => {
       toDate: string;
       selectedDrawId: string;
       selectedSellerId: string;
+      includeCommissions: boolean;
       applyFilters(): void;
       ticketsQuery(): Record<string, string>;
+      resultValue(result: UtilitySummary): number;
     };
 
     http
@@ -76,7 +79,7 @@ describe('UtilitiesPage', () => {
     expect(summary.request.params.get('to')).toBe('2026-08-01');
     expect(summary.request.params.get('drawId')).toBe('draw-id');
     expect(summary.request.params.get('sellerId')).toBe('seller-id');
-    summary.flush({
+    const report: UtilitySummary = {
       from: '2026-08-01',
       to: '2026-08-01',
       ticketCount: 4,
@@ -88,12 +91,16 @@ describe('UtilitiesPage', () => {
       pendingResults: 0,
       commissionProvisional: false,
       sellers: [],
-    });
+    };
+    summary.flush(report);
 
     expect(component.ticketsQuery()).toEqual({
       date: '2026-08-01',
       drawId: 'draw-id',
       sellerId: 'seller-id',
     });
+    expect(component.resultValue(report)).toBe(50);
+    component.includeCommissions = false;
+    expect(component.resultValue(report)).toBe(60);
   });
 });

@@ -39,6 +39,7 @@ export class UtilitiesPage {
   protected toDate = this.today;
   protected selectedDrawId = '';
   protected selectedSellerId = '';
+  protected includeCommissions = true;
 
   constructor() {
     const earliest = new Date();
@@ -80,7 +81,7 @@ export class UtilitiesPage {
     this.exporting.set(true);
     this.errorMessage.set(null);
     void this.pdf
-      .exportUtilities(report)
+      .exportUtilities(report, { includeCommissions: this.includeCommissions })
       .catch(() => this.errorMessage.set('No pudimos generar el reporte PDF.'))
       .finally(() => this.exporting.set(false));
   }
@@ -117,6 +118,14 @@ export class UtilitiesPage {
 
   protected money(value: number): string {
     return new Intl.NumberFormat('es-NI', { maximumFractionDigits: 2 }).format(value);
+  }
+
+  protected resultValue(result: UtilitySummary): number {
+    return this.includeCommissions ? result.netAfterCommission : result.netResult;
+  }
+
+  protected sellerResultValue(seller: UtilitySummary['sellers'][number]): number {
+    return this.includeCommissions ? seller.netAfterCommission : seller.netBeforeCommission;
   }
 
   protected dateLabel(value: string): string {

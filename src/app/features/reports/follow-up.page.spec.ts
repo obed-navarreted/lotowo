@@ -46,9 +46,11 @@ describe('FollowUpPage', () => {
     const component = fixture.componentInstance as unknown as {
       date: string;
       routeId: string;
+      dateLabel(): string;
       generate(): void;
     };
     expect(component.date).toBe('2026-08-08');
+    expect(component.dateLabel()).toBe('08/08/26');
     expect(component.routeId).toBe('route-id');
     component.generate();
 

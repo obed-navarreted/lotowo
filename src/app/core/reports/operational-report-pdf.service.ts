@@ -27,6 +27,10 @@ export interface PayrollPdfOptions {
   includeDraws: boolean;
 }
 
+export interface UtilityPdfOptions {
+  includeCommissions: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class OperationalReportPdfService {
   async exportFollowUpSheet(sheet: FollowUpSheet): Promise<void> {
@@ -53,34 +57,51 @@ export class OperationalReportPdfService {
     document.save(`suerte-seguimiento-${this.safeFile(sheet.routeCode)}-${sheet.date}.pdf`);
   }
 
-  async exportUtilities(report: UtilitySummary): Promise<void> {
+  async exportUtilities(
+    report: UtilitySummary,
+    options: UtilityPdfOptions = { includeCommissions: true },
+  ): Promise<void> {
+    const includeCommissions = options.includeCommissions;
+    const result = includeCommissions ? report.netAfterCommission : report.netResult;
+    const provisional =
+      report.pendingResults > 0 || (includeCommissions && report.commissionProvisional);
     const document = await this.createDocument('Reporte de utilidades');
     const period = `${this.date(report.from)} al ${this.date(report.to)}`;
     let y = this.heading(
       document,
       'REPORTE DE UTILIDADES',
       'Resultado del período',
-      `${period} · utilidad después de premios y comisión`,
+      includeCommissions
+        ? `${period} · utilidad después de premios y comisión`
+        : `${period} · resultado sin descontar comisiones`,
     );
-    y = this.summary(document, y, [
+    const totals: Array<[string, string]> = [
       ['Vendido', this.amount(report.grossSales)],
       ['Premios pagados', this.amount(report.prizesPaid)],
-      ['Comisión', this.amount(report.commissionAmount)],
-      ['Utilidad neta', this.amount(report.netAfterCommission)],
+    ];
+    if (includeCommissions) totals.push(['Comisión', this.amount(report.commissionAmount)]);
+    totals.push([
+      includeCommissions ? 'Utilidad neta' : 'Resultado sin comisión',
+      this.amount(result),
     ]);
+    y = this.summary(document, y, totals);
 
     y += 7;
     document.setFillColor(
-      report.commissionProvisional ? 255 : 239,
-      report.commissionProvisional ? 248 : 248,
-      report.commissionProvisional ? 226 : 245,
+      provisional ? 255 : includeCommissions ? 239 : 240,
+      provisional ? 248 : includeCommissions ? 248 : 237,
+      provisional ? 226 : includeCommissions ? 245 : 255,
     );
     document.rect(13, y - 4, 184, 13, 'F');
     document.setFont('helvetica', 'bold');
     document.setFontSize(7.5);
     document.setTextColor(55, 55, 55);
     document.text(
-      report.commissionProvisional ? 'RESULTADO PROVISIONAL' : 'COMISIÓN HISTÓRICA APLICADA',
+      provisional
+        ? 'RESULTADO PROVISIONAL'
+        : includeCommissions
+          ? 'COMISIÓN HISTÓRICA APLICADA'
+          : 'COMISIONES EXCLUIDAS',
       16,
       y,
     );
@@ -88,9 +109,13 @@ export class OperationalReportPdfService {
     document.setFontSize(7);
     document.setTextColor(90, 90, 90);
     document.text(
-      report.commissionProvisional
-        ? 'Los sorteos pendientes usan la comisión vigente; el monto queda congelado al registrar su ganador.'
-        : 'Cada sorteo conserva el porcentaje de comisión con el que fue cerrado.',
+      provisional
+        ? includeCommissions
+          ? 'Hay sorteos pendientes; su comisión usa temporalmente el porcentaje vigente.'
+          : 'Hay sorteos pendientes; las comisiones no se descuentan en este reporte.'
+        : includeCommissions
+          ? 'Cada sorteo conserva el porcentaje de comisión con el que fue cerrado.'
+          : 'Resultado del período = ventas menos premios pagados.',
       16,
       y + 5,
     );
@@ -114,13 +139,19 @@ export class OperationalReportPdfService {
       document.setTextColor(105, 105, 105);
       document.text(`${seller.ticketCount} boletos`, 194, y, { align: 'right' });
 
-      const values: Array<[string, number, number]> = [
-        ['Vendido', seller.grossSales, 16],
-        ['Premios', seller.prizesPaid, 53],
-        ['Comisión', seller.commissionAmount, 90],
-        ['Antes de comisión', seller.netBeforeCommission, 127],
-        ['Utilidad neta', seller.netAfterCommission, 194],
-      ];
+      const values: Array<[string, number, number]> = includeCommissions
+        ? [
+            ['Vendido', seller.grossSales, 16],
+            ['Premios', seller.prizesPaid, 53],
+            ['Comisión', seller.commissionAmount, 90],
+            ['Antes de comisión', seller.netBeforeCommission, 127],
+            ['Utilidad neta', seller.netAfterCommission, 194],
+          ]
+        : [
+            ['Vendido', seller.grossSales, 16],
+            ['Premios', seller.prizesPaid, 82],
+            ['Resultado sin comisión', seller.netBeforeCommission, 194],
+          ];
       values.forEach(([label, value, x], index) => {
         const align = index === values.length - 1 ? 'right' : 'left';
         document.setFont('helvetica', 'normal');
@@ -129,11 +160,8 @@ export class OperationalReportPdfService {
         document.text(label.toUpperCase(), x, y + 6, { align });
         document.setFont('helvetica', 'bold');
         document.setFontSize(8);
-        document.setTextColor(
-          label === 'Utilidad neta' && value < 0 ? 175 : 40,
-          label === 'Utilidad neta' && value < 0 ? 65 : 40,
-          label === 'Utilidad neta' && value < 0 ? 65 : 40,
-        );
+        const loss = (label.includes('Utilidad') || label.includes('Resultado')) && value < 0;
+        document.setTextColor(loss ? 175 : 40, loss ? 65 : 40, loss ? 65 : 40);
         document.text(this.amount(value), x, y + 11, { align });
       });
       y += 23;
@@ -142,7 +170,13 @@ export class OperationalReportPdfService {
     document.setFont('helvetica', 'italic');
     document.setFontSize(7);
     document.setTextColor(110, 110, 110);
-    document.text('Utilidad neta = ventas - premios pagados - comisión.', 15, Math.min(y + 2, 286));
+    document.text(
+      includeCommissions
+        ? 'Utilidad neta = ventas - premios pagados - comisión.'
+        : 'Resultado sin comisión = ventas - premios pagados.',
+      15,
+      Math.min(y + 2, 286),
+    );
     document.save(`suerte-utilidades-${report.from}-${report.to}.pdf`);
   }
 
@@ -590,12 +624,12 @@ export class OperationalReportPdfService {
   }
 
   private followUpDate(value: string): string {
-    const date = new Date(`${value}T12:00:00-06:00`);
-    const weekday = new Intl.DateTimeFormat('es-NI', {
-      weekday: 'long',
+    return new Intl.DateTimeFormat('es-NI', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
       timeZone: 'America/Managua',
-    }).format(date);
-    return `${weekday.toUpperCase()} ${this.date(value)}`;
+    }).format(new Date(`${value}T12:00:00-06:00`));
   }
 
   private drawTime(entry: SellerCommissionEntry): string {

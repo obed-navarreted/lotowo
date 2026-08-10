@@ -59,6 +59,7 @@ describe('OperationalReportPdfService', () => {
 
     expect(pdf.orientation).toBe('landscape');
     expect(pdf.texts).toContain('SEGUIMIENTO · RUTA R-06');
+    expect(pdf.texts).toContain('FECHA: 08/08/26');
     expect(pdf.texts).toContain('6:00 p. m.');
     expect(pdf.texts.indexOf('Ana López')).toBeLessThan(pdf.texts.indexOf('Zoe Ruiz'));
     expect(pdf.pages).toBe(2);
@@ -96,6 +97,43 @@ describe('OperationalReportPdfService', () => {
     expect(pdf.texts).toContain('COMISIÓN HISTÓRICA APLICADA');
     expect(pdf.texts.indexOf('Ana')).toBeLessThan(pdf.texts.indexOf('Zoe'));
     expect(pdf.savedAs).toBe('suerte-utilidades-2026-08-02-2026-08-08.pdf');
+  });
+
+  it('exports utilities without subtracting or displaying seller commissions when excluded', async () => {
+    await new OperationalReportPdfService().exportUtilities(
+      {
+        from: '2026-08-02',
+        to: '2026-08-08',
+        ticketCount: 3,
+        grossSales: 1000,
+        prizesPaid: 200,
+        commissionAmount: 100,
+        netResult: 800,
+        netAfterCommission: 700,
+        pendingResults: 0,
+        commissionProvisional: false,
+        sellers: [
+          {
+            sellerId: 'seller',
+            sellerName: 'Ana',
+            ticketCount: 3,
+            grossSales: 1000,
+            prizesPaid: 200,
+            commissionAmount: 100,
+            netBeforeCommission: 800,
+            netAfterCommission: 700,
+            pendingResults: 0,
+            commissionProvisional: false,
+          },
+        ],
+      },
+      { includeCommissions: false },
+    );
+
+    expect(pdf.texts).toContain('COMISIONES EXCLUIDAS');
+    expect(pdf.texts).toContain('RESULTADO SIN COMISIÓN');
+    expect(pdf.texts).toContain('Resultado sin comisión = ventas - premios pagados.');
+    expect(pdf.texts).not.toContain('COMISIÓN');
   });
 
   it('builds the winner A4 detail grouped in route and seller order with customer receipts', async () => {
