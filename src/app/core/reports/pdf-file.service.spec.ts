@@ -1,7 +1,6 @@
-import { Capacitor } from '@capacitor/core';
 import { Filesystem } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PdfFileService } from './pdf-file.service';
 
 const nativeMocks = vi.hoisted(() => ({
@@ -22,10 +21,14 @@ vi.mock('@capacitor/share', () => ({
 }));
 
 describe('PdfFileService', () => {
-  afterEach(() => vi.restoreAllMocks());
+  beforeEach(() => {
+    nativeMocks.isNative.mockReset();
+    nativeMocks.writeFile.mockReset();
+    nativeMocks.share.mockReset();
+  });
 
   it('keeps the browser download outside the native application', async () => {
-    vi.mocked(Capacitor.isNativePlatform).mockReturnValue(false);
+    nativeMocks.isNative.mockReturnValue(false);
     const document = { save: vi.fn() } as unknown as import('jspdf').jsPDF;
 
     await new PdfFileService().save(document, 'reporte.pdf');
@@ -34,9 +37,9 @@ describe('PdfFileService', () => {
   });
 
   it('writes and shares the PDF through Android instead of using a WebView download', async () => {
-    vi.mocked(Capacitor.isNativePlatform).mockReturnValue(true);
-    vi.mocked(Filesystem.writeFile).mockResolvedValue({ uri: 'file:///reporte.pdf' });
-    vi.mocked(Share.share).mockResolvedValue({ activityType: 'android' });
+    nativeMocks.isNative.mockReturnValue(true);
+    nativeMocks.writeFile.mockResolvedValue({ uri: 'file:///reporte.pdf' });
+    nativeMocks.share.mockResolvedValue({ activityType: 'android' });
     const document = {
       save: vi.fn(),
       output: vi.fn().mockReturnValue(new Uint8Array([37, 80, 68, 70]).buffer),
