@@ -120,6 +120,21 @@ describe('UtilitiesPage', () => {
               pendingResult: false,
               commissionProvisional: false,
             },
+            {
+              drawId: 'draw-id-2',
+              drawType: 'DAILY',
+              scheduledAt: '2026-08-01T15:00:00-06:00',
+              winningNumber: '22',
+              ticketCount: 1,
+              grossSales: 10,
+              prizesPaid: 80,
+              commissionRate: 10,
+              commissionAmount: 1,
+              netBeforeCommission: -70,
+              netAfterCommission: -71,
+              pendingResult: false,
+              commissionProvisional: false,
+            },
           ],
         },
       ],
@@ -135,6 +150,9 @@ describe('UtilitiesPage', () => {
     expect(component.resultValue(report)).toBe(60);
     expect(fixture.nativeElement.textContent).toContain('LOTO - 01/08/26 - 11AM');
     expect(fixture.nativeElement.textContent).toContain('Vendedora Uno');
+    expect(
+      fixture.nativeElement.querySelector('.utility-draw--loss .seller-net dd.loss')?.textContent,
+    ).toContain('-70');
     component.includeCommissions = true;
     expect(component.resultValue(report)).toBe(50);
   });
