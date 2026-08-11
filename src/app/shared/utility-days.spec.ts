@@ -3,7 +3,7 @@ import { UtilitySellerSummary } from '../core/models/api.models';
 import { groupUtilitiesByDay } from './utility-days';
 
 describe('groupUtilitiesByDay', () => {
-  it('keeps newest days first and their draws in ascending time order', () => {
+  it('keeps days and their draws in ascending order', () => {
     const seller: UtilitySellerSummary = {
       sellerId: 'seller-1',
       sellerName: 'Ana Pérez',
@@ -24,15 +24,15 @@ describe('groupUtilitiesByDay', () => {
 
     const days = groupUtilitiesByDay(seller);
 
-    expect(days.map((day) => day.date)).toEqual(['2026-08-09', '2026-08-08']);
-    expect(days[0]).toMatchObject({
+    expect(days.map((day) => day.date)).toEqual(['2026-08-08', '2026-08-09']);
+    expect(days[1]).toMatchObject({
       ticketCount: 2,
       grossSales: 250,
       commissionAmount: 25,
       netBeforeCommission: 250,
       netAfterCommission: 225,
     });
-    expect(days[0].entries.map((entry) => entry.drawId)).toEqual(['draw-3', 'draw-2']);
+    expect(days[1].entries.map((entry) => entry.drawId)).toEqual(['draw-3', 'draw-2']);
   });
 
   it('accepts the previous API response while a rolling deployment completes', () => {

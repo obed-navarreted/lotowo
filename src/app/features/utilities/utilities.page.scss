@@ -184,6 +184,9 @@
   font-size: 12px;
   font-weight: 800;
 }
+.utility-mobile-summary {
+  display: none;
+}
 .utility-metrics {
   display: grid;
   gap: 10px;
@@ -432,7 +435,7 @@
   border: 1px solid var(--line-soft);
   border-radius: 12px;
 }
-.seller-utility-list .utility-day > header {
+.seller-utility-list .utility-day > summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -440,30 +443,49 @@
   padding: 11px 12px;
   background: var(--surface-soft);
   border-bottom: 1px solid var(--line-soft);
+  cursor: pointer;
+  list-style: none;
 }
-.utility-day > header > div,
-.utility-day > header > span {
+.seller-utility-list .utility-day > summary::-webkit-details-marker {
+  display: none;
+}
+.seller-utility-list .utility-day > summary::after {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-right: 1.5px solid var(--muted-strong);
+  border-bottom: 1.5px solid var(--muted-strong);
+  content: '';
+  transform: rotate(45deg);
+  transition: transform 160ms ease;
+}
+.seller-utility-list .utility-day[open] > summary::after {
+  transform: rotate(225deg);
+}
+.utility-day > summary > div,
+.utility-day > summary > span {
   display: flex;
   min-width: 0;
   flex-direction: column;
 }
-.utility-day > header > span {
+.utility-day > summary > span {
+  margin-left: auto;
   align-items: flex-end;
   text-align: right;
 }
-.utility-day > header small {
+.utility-day > summary small {
   color: var(--muted);
   font-size: 11px;
 }
-.utility-day > header > span strong {
+.utility-day > summary > span strong {
   color: var(--mint-dark);
   font-size: 14px;
 }
-.utility-day > header > span.loss strong,
+.utility-day > summary > span.loss strong,
 .utility-draw-list dd.loss {
   color: var(--danger);
 }
-.utility-day > header > span.profit strong,
+.utility-day > summary > span.profit strong,
 .utility-draw-list dd.profit {
   color: var(--mint-dark);
 }
@@ -501,6 +523,9 @@
   font-size: 13px;
 }
 .draw-title--mobile {
+  display: none;
+}
+.utility-draw-mobile {
   display: none;
 }
 .utility-draw--profit {
@@ -570,6 +595,63 @@
     align-items: flex-start;
     flex-direction: column;
   }
+  .utility-overview > .utility-metrics {
+    display: none;
+  }
+  .utility-mobile-summary {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    margin-top: 14px;
+    padding: 18px 14px 13px;
+    background: var(--surface-soft);
+    border: 1px solid var(--line-soft);
+    border-radius: 15px;
+    text-align: center;
+  }
+  .utility-mobile-summary > span {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+  }
+  .utility-mobile-summary > strong {
+    margin-top: 5px;
+    color: var(--ink);
+    font-size: clamp(29px, 10vw, 38px);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .utility-mobile-summary--profit > strong {
+    color: var(--mint-dark);
+  }
+  .utility-mobile-summary--loss > strong {
+    color: var(--danger);
+  }
+  .utility-mobile-summary > dl {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 15px 0 0;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line-soft);
+  }
+  .utility-mobile-summary > dl.utility-mobile-summary__values--with-commission {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .utility-mobile-summary dt {
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+  .utility-mobile-summary dd {
+    margin: 3px 0 0;
+    font-size: 13px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
   .seller-utilities > header {
     align-items: flex-start;
     flex-direction: column;
@@ -610,12 +692,19 @@
     background: var(--surface);
     border-radius: 9px;
   }
+  .seller-summary:not(.seller-summary--with-commission) .seller-net {
+    grid-column: 1 / -1;
+    text-align: center;
+  }
+  .seller-summary .seller-net dd {
+    font-size: 17px;
+  }
   .utility-day-list {
     gap: 9px;
     margin-top: 10px;
     padding-top: 10px;
   }
-  .seller-utility-list .utility-day > header {
+  .seller-utility-list .utility-day > summary {
     padding: 9px 10px;
   }
   .utility-draw-list {
@@ -625,35 +714,62 @@
   .seller-utility-list .utility-draw-list > article {
     padding: 9px;
   }
-  .draw-title--desktop {
+  .seller-utility-list .utility-draw-list > article > header,
+  .seller-utility-list .utility-draw-list > article > dl {
     display: none;
   }
-  .draw-title--mobile {
-    display: block;
+  .utility-draw-mobile {
+    display: grid;
+    grid-template-columns: 38px minmax(62px, 0.75fr) minmax(0, 1.4fr);
+    align-items: center;
+    gap: 9px;
   }
-  .draw-ticket-metric {
-    display: none;
-  }
-  .seller-utility-list .utility-draw-list dl {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-    margin-top: 8px;
-  }
-  .seller-utility-list .utility-draw-list dl.utility-draw-values--commissions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .seller-utility-list .utility-draw-list dl > div {
-    padding: 6px;
-    background: var(--surface-soft);
-    border-radius: 8px;
-  }
-  .seller-utility-list .utility-draw-list dt {
-    font-size: 9px;
-    line-height: 1.15;
-  }
-  .seller-utility-list .utility-draw-list dd {
-    margin-top: 2px;
+  .utility-draw-mobile__winner {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    color: var(--ink);
+    background: #fff;
+    border: 1px solid rgba(176, 123, 24, 0.65);
+    border-radius: 50%;
     font-size: 12px;
+    font-weight: 800;
+  }
+  .utility-draw-mobile__turn,
+  .utility-draw-mobile__result {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+  }
+  .utility-draw-mobile__turn strong,
+  .utility-draw-mobile__result strong {
+    overflow: hidden;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .utility-draw-mobile__turn small,
+  .utility-draw-mobile__result small {
+    margin-top: 2px;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 9.5px;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .utility-draw-mobile__result {
+    align-items: flex-end;
+    text-align: right;
+  }
+  .utility-draw-mobile__result strong.profit {
+    color: var(--mint-dark);
+  }
+  .utility-draw-mobile__result strong.loss {
+    color: var(--danger);
   }
 }
 
@@ -698,6 +814,6 @@
 
 @media (min-width: 1100px) {
   .utility-metrics {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   }
 }

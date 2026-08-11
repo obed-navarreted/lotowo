@@ -45,5 +45,5 @@ export function groupUtilitiesByDay(seller: UtilitySellerSummary): UtilityDay[] 
           new Date(left.scheduledAt).getTime() - new Date(right.scheduledAt).getTime(),
       ),
     }))
-    .sort((left, right) => right.date.localeCompare(left.date));
+    .sort((left, right) => left.date.localeCompare(right.date));
 }

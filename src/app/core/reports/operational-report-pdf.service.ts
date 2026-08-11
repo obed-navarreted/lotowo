@@ -73,139 +73,143 @@ export class OperationalReportPdfService {
   ): Promise<void> {
     const includeCommissions = options.includeCommissions;
     const result = includeCommissions ? report.netAfterCommission : report.netResult;
-    const provisional =
-      report.pendingResults > 0 || (includeCommissions && report.commissionProvisional);
     const document = await this.createDocument('Reporte de utilidades');
-    const period = `${this.date(report.from)} al ${this.date(report.to)}`;
-    let y = this.heading(
-      document,
-      'REPORTE DE UTILIDADES',
-      'Resultado del período',
-      includeCommissions
-        ? `${period} · utilidad después de premios y comisión`
-        : `${period} · resultado sin descontar comisiones`,
-    );
-    const totals: Array<[string, string]> = [
-      ['Vendido', this.amount(report.grossSales)],
-      ['Premios pagados', this.amount(report.prizesPaid)],
+    let y = this.a4UtilityHeader(document, report);
+    const totals: Array<[string, number]> = [
+      ['Vendido', report.grossSales],
+      ['Premios', report.prizesPaid],
     ];
-    if (includeCommissions) totals.push(['Comisión', this.amount(report.commissionAmount)]);
-    totals.push([
-      includeCommissions ? 'Utilidad neta' : 'Resultado sin comisión',
-      this.amount(result),
-    ]);
-    y = this.summary(document, y, totals);
+    if (includeCommissions) totals.push(['Comisión', report.commissionAmount]);
+    totals.push(['Resultado', result]);
+    y = this.a4UtilitySummary(document, y, 'RESULTADO DEL PERÍODO', totals);
 
-    y += 7;
-    document.setFillColor(
-      provisional ? 255 : includeCommissions ? 239 : 240,
-      provisional ? 248 : includeCommissions ? 248 : 237,
-      provisional ? 226 : includeCommissions ? 245 : 255,
-    );
-    document.rect(13, y - 4, 184, 13, 'F');
-    document.setFont('helvetica', 'bold');
-    document.setFontSize(7.5);
-    document.setTextColor(55, 55, 55);
-    document.text(
-      provisional
-        ? 'RESULTADO PROVISIONAL'
-        : includeCommissions
-          ? 'COMISIÓN HISTÓRICA APLICADA'
-          : 'COMISIONES EXCLUIDAS',
-      16,
-      y,
-    );
-    document.setFont('helvetica', 'normal');
-    document.setFontSize(7);
-    document.setTextColor(90, 90, 90);
-    document.text(
-      provisional
-        ? includeCommissions
-          ? 'Hay sorteos pendientes; su comisión usa temporalmente el porcentaje vigente.'
-          : 'Hay sorteos pendientes; las comisiones no se descuentan en este reporte.'
-        : includeCommissions
-          ? 'Cada sorteo conserva el porcentaje de comisión con el que fue cerrado.'
-          : 'Resultado del período = ventas menos premios pagados.',
-      16,
-      y + 5,
-    );
-    y += 19;
-    this.sectionTitle(document, `Detalle por vendedor (${report.sellers.length})`, y);
-    y += 8;
+    if (report.pendingResults > 0) {
+      document.setFillColor(255, 248, 226);
+      document.rect(15, y, 180, 9, 'F');
+      document.setFont('helvetica', 'bold');
+      document.setFontSize(7);
+      document.setTextColor(125, 89, 14);
+      document.text(
+        `PROVISIONAL · ${report.pendingResults} ${report.pendingResults === 1 ? 'sorteo pendiente' : 'sorteos pendientes'}`,
+        18,
+        y + 5.7,
+      );
+      y += 14;
+    }
 
     const sellers = [...report.sellers].sort((left, right) =>
       left.sellerName.localeCompare(right.sellerName, 'es'),
     );
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(7.5);
+    document.setTextColor(171, 128, 47);
+    document.text(`DETALLE POR VENDEDOR (${sellers.length})`, 17, y);
+    y += 9;
+
     for (const seller of sellers) {
-      y = this.ensureSpace(document, y, 23, 'Detalle por vendedor');
-      document.setFillColor(247, 246, 244);
-      document.rect(13, y - 4, 184, 19, 'F');
+      y = this.ensureSpace(document, y, sellers.length > 1 ? 34 : 16, 'Detalle por vendedor');
       document.setFont('helvetica', 'bold');
-      document.setFontSize(9);
+      document.setFontSize(10.5);
       document.setTextColor(30, 30, 30);
-      document.text(this.clean(seller.sellerName), 16, y, { maxWidth: 105 });
+      document.text(this.clean(seller.sellerName), 17, y, { maxWidth: 120 });
       document.setFont('helvetica', 'normal');
       document.setFontSize(7);
       document.setTextColor(105, 105, 105);
-      document.text(`${seller.ticketCount} boletos`, 194, y, { align: 'right' });
+      document.text(`${seller.ticketCount} boletos`, 193, y, { align: 'right' });
+      y += 7;
 
-      const values: Array<[string, number, number]> = includeCommissions
-        ? [
-            ['Vendido', seller.grossSales, 16],
-            ['Premios', seller.prizesPaid, 53],
-            ['Comisión', seller.commissionAmount, 90],
-            ['Antes de comisión', seller.netBeforeCommission, 127],
-            ['Utilidad neta', seller.netAfterCommission, 194],
-          ]
-        : [
-            ['Vendido', seller.grossSales, 16],
-            ['Premios', seller.prizesPaid, 82],
-            ['Resultado sin comisión', seller.netBeforeCommission, 194],
-          ];
-      values.forEach(([label, value, x], index) => {
-        const align = index === values.length - 1 ? 'right' : 'left';
-        document.setFont('helvetica', 'normal');
-        document.setFontSize(6.3);
-        document.setTextColor(105, 105, 105);
-        document.text(label.toUpperCase(), x, y + 6, { align });
-        document.setFont('helvetica', 'bold');
-        document.setFontSize(8);
-        const loss = (label.includes('Utilidad') || label.includes('Resultado')) && value < 0;
-        document.setTextColor(loss ? 175 : 40, loss ? 65 : 40, loss ? 65 : 40);
-        document.text(this.amount(value), x, y + 11, { align });
-      });
-      y += 23;
+      if (sellers.length > 1) {
+        const sellerResult = includeCommissions
+          ? seller.netAfterCommission
+          : seller.netBeforeCommission;
+        const sellerTotals: Array<[string, number]> = [
+          ['Vendido', seller.grossSales],
+          ['Premios', seller.prizesPaid],
+        ];
+        if (includeCommissions) sellerTotals.push(['Comisión', seller.commissionAmount]);
+        sellerTotals.push(['Resultado', sellerResult]);
+        y = this.a4UtilitySummary(document, y, '', sellerTotals);
+      }
       if (options.includeDraws) {
-        y = this.utilitySellerDetails(document, y, seller, includeCommissions);
+        y = this.utilitySellerDetails(document, y, seller);
       }
       if (includeCommissions) {
         y = this.utilityCommissionSignature(document, y, seller);
       }
+      y += 5;
     }
-
-    document.setFont('helvetica', 'italic');
-    document.setFontSize(7);
-    document.setTextColor(110, 110, 110);
-    document.text(
-      includeCommissions
-        ? 'Utilidad neta = ventas - premios pagados - comisión.'
-        : 'Resultado sin comisión = ventas - premios pagados.',
-      15,
-      Math.min(y + 2, 286),
-    );
     await this.pdfFiles.save(document, `suerte-utilidades-${report.from}-${report.to}.pdf`);
   }
 
-  /** Formato angosto pensado para leer el reporte completo en un teléfono sin ampliar. */
+  private a4UtilityHeader(document: import('jspdf').jsPDF, report: UtilitySummary): number {
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(14);
+    document.setTextColor(35, 34, 31);
+    document.text('UTILIDADES', 17, 19);
+    document.setFont('helvetica', 'normal');
+    document.setFontSize(8);
+    document.setTextColor(120, 117, 108);
+    document.text(this.mobilePeriod(report.from, report.to), 17, 25);
+    document.setDrawColor(184, 139, 53);
+    document.setLineWidth(0.45);
+    document.line(17, 30, 193, 30);
+    return 39;
+  }
+
+  private a4UtilitySummary(
+    document: import('jspdf').jsPDF,
+    top: number,
+    title: string,
+    values: Array<[string, number]>,
+  ): number {
+    let y = top;
+    if (title) {
+      document.setFont('helvetica', 'bold');
+      document.setFontSize(7.3);
+      document.setTextColor(171, 128, 47);
+      document.text(title, 17, y);
+      y += 5;
+    }
+    const left = 15;
+    const width = 180 / values.length;
+    document.setFillColor(249, 248, 245);
+    document.setDrawColor(224, 219, 208);
+    document.setLineWidth(0.2);
+    document.rect(left, y, 180, 24, 'FD');
+    values.forEach(([label, value], index) => {
+      const x = left + width * (index + 0.5);
+      if (index > 0) document.line(left + width * index, y, left + width * index, y + 24);
+      document.setFont('helvetica', 'normal');
+      document.setFontSize(6.3);
+      document.setTextColor(130, 126, 117);
+      document.text(label.toUpperCase(), x, y + 8, { align: 'center' });
+      document.setFont('helvetica', 'bold');
+      document.setFontSize(12);
+      const isResult = label === 'Resultado';
+      document.setTextColor(
+        isResult && value < 0 ? 178 : isResult && value > 0 ? 42 : 35,
+        isResult && value < 0 ? 65 : isResult && value > 0 ? 122 : 34,
+        isResult && value < 0 ? 65 : isResult && value > 0 ? 103 : 31,
+      );
+      document.text(isResult ? this.signedAmount(value) : this.amount(value), x, y + 17, {
+        align: 'center',
+      });
+    });
+    return y + 31;
+  }
+
+  /** Comprobante angosto y escaneable, inspirado en el recibo comercial móvil. */
   async exportUtilitiesMobile(
     report: UtilitySummary,
     options: UtilityPdfOptions = { includeCommissions: false, includeDraws: true },
   ): Promise<void> {
     const { jsPDF } = await import('jspdf');
+    const includeCommissions = options.includeCommissions;
+    const pageHeight = includeCommissions ? 222 : 204;
     const document = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: [92, 160],
+      format: [92, pageHeight],
       compress: true,
     });
     document.setProperties({
@@ -213,236 +217,350 @@ export class OperationalReportPdfService {
       author: 'Suerte',
       creator: 'Suerte',
     });
-    const includeCommissions = options.includeCommissions;
-    const totalResult = includeCommissions ? report.netAfterCommission : report.netResult;
-    let y = this.mobileUtilityHeading(document, report, includeCommissions);
-    y = this.mobileUtilityTotals(document, y, report, totalResult, includeCommissions);
-
     const sellers = [...report.sellers].sort((left, right) =>
       left.sellerName.localeCompare(right.sellerName, 'es'),
     );
-    for (const seller of sellers) {
-      y = this.ensureMobileSpace(document, y, 32, 'Detalle por vendedor');
-      const sellerResult = includeCommissions
-        ? seller.netAfterCommission
-        : seller.netBeforeCommission;
-      document.setFillColor(247, 246, 244);
-      document.rect(5, y - 4, 82, 25, 'F');
-      document.setFont('helvetica', 'bold');
-      document.setFontSize(10);
-      document.setTextColor(28, 28, 28);
-      document.text(this.clean(seller.sellerName), 8, y, { maxWidth: 68 });
-      document.setFont('helvetica', 'normal');
-      document.setFontSize(6.8);
-      document.setTextColor(100, 100, 100);
-      document.text(`${seller.ticketCount} boletos`, 84, y, { align: 'right' });
-      y += 7;
-      this.mobileValue(document, 'Vendido', seller.grossSales, 8, y);
-      this.mobileValue(document, 'Premios', seller.prizesPaid, 34, y);
-      if (includeCommissions)
-        this.mobileValue(document, 'Comisión', seller.commissionAmount, 59, y);
-      y += 9;
-      document.setFont('helvetica', 'bold');
-      document.setFontSize(7);
-      document.setTextColor(95, 95, 95);
-      document.text(includeCommissions ? 'UTILIDAD NETA' : 'RESULTADO SIN COMISIÓN', 8, y);
-      document.setFontSize(11);
-      document.setTextColor(
-        sellerResult < 0 ? 178 : 42,
-        sellerResult < 0 ? 65 : 122,
-        sellerResult < 0 ? 65 : 103,
-      );
-      document.text(this.amount(sellerResult), 84, y, { align: 'right' });
-      y += 9;
+
+    for (const [sellerIndex, seller] of sellers.entries()) {
+      if (sellerIndex > 0) document.addPage();
+      this.mobileReceiptBackground(document, pageHeight);
+      let y = this.mobileSellerCard(document, report, seller, includeCommissions);
 
       if (options.includeDraws) {
-        for (const day of groupUtilitiesByDay(seller)) {
-          y = this.ensureMobileSpace(document, y, 12, `${this.clean(seller.sellerName)} · turnos`);
+        const days = [...groupUtilitiesByDay(seller)].sort((left, right) =>
+          left.date.localeCompare(right.date),
+        );
+        for (const day of days) {
+          y = this.ensureMobileReceiptSpace(
+            document,
+            y,
+            13 + day.entries.length * 13,
+            report,
+            seller,
+            pageHeight,
+          );
+          this.mobileTimelineDivider(document, y);
+          y += 8;
           document.setFont('helvetica', 'bold');
-          document.setFontSize(7.5);
-          document.setTextColor(65, 65, 65);
-          document.text(this.date(day.date), 8, y);
-          const dayResult = includeCommissions ? day.netAfterCommission : day.netBeforeCommission;
-          document.text(this.amount(dayResult), 84, y, { align: 'right' });
-          y += 5;
+          document.setFontSize(8.5);
+          document.setTextColor(38, 38, 35);
+          document.text(this.mobileDate(day.date), 4, y);
+          const dayResult = day.netBeforeCommission;
+          this.mobileInlineResult(document, dayResult, 31, y);
+          y += 9;
+
           for (const entry of day.entries) {
-            y = this.ensureMobileSpace(
-              document,
-              y,
-              includeCommissions ? 19 : 16,
-              `${this.clean(seller.sellerName)} · turnos`,
-            );
-            const entryResult = includeCommissions
-              ? entry.netAfterCommission
-              : entry.netBeforeCommission;
-            const winner = entry.pendingResult ? 'Pendiente' : `Ganador ${entry.winningNumber}`;
-            document.setFillColor(252, 252, 251);
-            document.rect(7, y - 3.5, 78, includeCommissions ? 16 : 13, 'F');
+            const entryResult = entry.netBeforeCommission;
+            const winner = entry.pendingResult ? '—' : (entry.winningNumber ?? '—');
+            document.setDrawColor(184, 139, 53);
+            document.setLineWidth(0.25);
+            document.circle(8, y - 1.2, 4, 'S');
             document.setFont('helvetica', 'bold');
-            document.setFontSize(8);
+            document.setFontSize(7.5);
             document.setTextColor(35, 35, 35);
-            document.text(this.drawTime(entry), 10, y);
+            document.text(winner, 8, y - 0.2, { align: 'center' });
+            document.setFontSize(8);
+            document.text(this.mobileTurnLabel(entry), 17, y - 1.8);
             document.setFont('helvetica', 'normal');
-            document.setFontSize(6.5);
-            document.setTextColor(105, 105, 105);
-            document.text(`${winner} · ${entry.ticketCount} boletos`, 82, y, { align: 'right' });
-            y += 5;
-            document.text(`Venta ${this.amount(entry.grossSales)}`, 10, y);
-            document.text(`Premio ${this.amount(entry.prizesPaid)}`, 37, y);
-            if (includeCommissions) {
-              document.text(`Com. ${this.amount(entry.commissionAmount)}`, 64, y);
-              y += 4;
-            }
-            document.setFont('helvetica', 'bold');
-            document.setTextColor(
-              entryResult < 0 ? 178 : 42,
-              entryResult < 0 ? 65 : 122,
-              entryResult < 0 ? 65 : 103,
+            document.setFontSize(6.2);
+            document.setTextColor(120, 117, 108);
+            document.text(
+              `${entry.ticketCount} ${entry.ticketCount === 1 ? 'boleto' : 'boletos'}`,
+              17,
+              y + 2.2,
             );
-            document.text(`Resultado ${this.amount(entryResult)}`, 82, y, { align: 'right' });
-            y += 8;
+            this.mobileResult(document, entryResult, 88, y - 1.8, 8);
+            const amounts = `Venta ${this.amount(entry.grossSales)} · Premio ${this.amount(entry.prizesPaid)}`;
+            document.setFont('helvetica', 'normal');
+            document.setFontSize(5.7);
+            document.setTextColor(120, 117, 108);
+            document.text(amounts, 88, y + 2.2, { align: 'right' });
+            document.setDrawColor(222, 218, 208);
+            document.setLineWidth(0.15);
+            document.line(4, y + 6, 88, y + 6);
+            y += 13;
           }
         }
       }
 
       if (includeCommissions) {
-        y = this.ensureMobileSpace(document, y, 18, `${this.clean(seller.sellerName)} · firma`);
+        y = this.ensureMobileReceiptSpace(document, y, 18, report, seller, pageHeight);
         document.setFont('helvetica', 'normal');
         document.setFontSize(6.5);
-        document.setTextColor(80, 80, 80);
-        document.text(`Recibí ${this.amount(seller.commissionAmount)} por comisión.`, 8, y);
-        y += 8;
+        document.setTextColor(95, 92, 85);
+        document.text(`Recibí ${this.amount(seller.commissionAmount)} por comisión.`, 8, y + 4);
+        y += 12;
         document.setDrawColor(125, 125, 125);
         document.line(8, y, 56, y);
         document.text('Firma', 8, y + 3.5);
-        y += 9;
+        y += 8;
       }
-      y += 2;
+      document.setFont('helvetica', 'normal');
+      document.setFontSize(5.8);
+      document.setTextColor(135, 131, 121);
+      document.text(
+        'suerte · reporte de utilidades por turno',
+        46,
+        Math.min(y + 6, pageHeight - 5),
+        { align: 'center' },
+      );
     }
 
     await this.pdfFiles.save(document, `suerte-utilidades-movil-${report.from}-${report.to}.pdf`);
   }
 
-  private mobileUtilityHeading(
+  private mobileReceiptBackground(document: import('jspdf').jsPDF, pageHeight: number): void {
+    document.setFillColor(250, 249, 246);
+    document.rect(0, 0, 92, pageHeight, 'F');
+  }
+
+  private mobileSellerCard(
     document: import('jspdf').jsPDF,
     report: UtilitySummary,
+    seller: UtilitySellerSummary,
     includeCommissions: boolean,
   ): number {
+    const result = includeCommissions ? seller.netAfterCommission : seller.netBeforeCommission;
+    document.setFillColor(255, 255, 255);
+    document.setDrawColor(224, 218, 205);
+    document.setLineWidth(0.25);
+    document.roundedRect(2, 3, 88, 56, 4, 4, 'FD');
     document.setFont('helvetica', 'bold');
-    document.setTextColor(25, 25, 25);
-    document.setFontSize(15);
-    document.text('suerte', 6, 10);
-    document.setFontSize(11);
-    document.text('UTILIDADES', 6, 19);
+    document.setTextColor(171, 128, 47);
+    document.setFontSize(6.8);
+    document.text('SUERTE · UTILIDADES', 46, 11, { align: 'center' });
     document.setFont('helvetica', 'normal');
-    document.setFontSize(7.5);
-    document.setTextColor(95, 95, 95);
-    document.text(`${this.date(report.from)} al ${this.date(report.to)}`, 6, 24);
-    document.text(includeCommissions ? 'Comisiones incluidas' : 'Comisiones excluidas', 86, 24, {
-      align: 'right',
+    document.setFontSize(7.2);
+    document.setTextColor(115, 111, 102);
+    document.text(this.mobilePeriod(report.from, report.to), 46, 16, { align: 'center' });
+    document.setFont('helvetica', 'bold');
+    document.setTextColor(48, 46, 42);
+    document.setFontSize(7.2);
+    document.text(`${this.clean(seller.sellerName)} · ${seller.ticketCount} boletos`, 46, 23, {
+      align: 'center',
+      maxWidth: 78,
     });
-    document.setDrawColor(120, 120, 120);
-    document.line(6, 28, 86, 28);
-    return 34;
+    document.setFontSize(5.8);
+    document.setTextColor(130, 126, 117);
+    document.text('RESULTADO', 46, 31, { align: 'center' });
+    this.mobileResult(document, result, 46, 40, 17, 'center');
+    document.setDrawColor(224, 219, 208);
+    document.setLineWidth(0.15);
+    document.line(7, 45, 85, 45);
+    const values: Array<[string, number]> = [
+      ['VENDIDO', seller.grossSales],
+      ['PREMIOS', seller.prizesPaid],
+    ];
+    if (includeCommissions) values.push(['COMISIÓN', seller.commissionAmount]);
+    const width = 76 / values.length;
+    values.forEach(([label, value], index) => {
+      const x = 8 + width * (index + 0.5);
+      document.setFont('helvetica', 'normal');
+      document.setFontSize(5.6);
+      document.setTextColor(130, 126, 117);
+      document.text(label, x, 51, { align: 'center' });
+      document.setFont('helvetica', 'normal');
+      document.setFontSize(8.5);
+      document.setTextColor(35, 34, 31);
+      document.text(this.amount(value), x, 56, { align: 'center' });
+    });
+    return 66;
   }
 
-  private mobileUtilityTotals(
+  private mobileResult(
     document: import('jspdf').jsPDF,
-    top: number,
-    report: UtilitySummary,
-    result: number,
-    includeCommissions: boolean,
-  ): number {
-    let y = top;
-    this.mobileValue(document, 'Vendido', report.grossSales, 7, y);
-    this.mobileValue(document, 'Premios', report.prizesPaid, 33, y);
-    if (includeCommissions) this.mobileValue(document, 'Comisión', report.commissionAmount, 59, y);
-    y += 12;
-    document.setFont('helvetica', 'normal');
-    document.setFontSize(7);
-    document.setTextColor(90, 90, 90);
-    document.text(includeCommissions ? 'UTILIDAD NETA' : 'RESULTADO SIN COMISIÓN', 7, y);
+    value: number,
+    x: number,
+    y: number,
+    fontSize: number,
+    align: 'left' | 'center' | 'right' = 'right',
+  ): void {
     document.setFont('helvetica', 'bold');
-    document.setFontSize(13);
-    document.setTextColor(result < 0 ? 178 : 42, result < 0 ? 65 : 122, result < 0 ? 65 : 103);
-    document.text(this.amount(result), 85, y, { align: 'right' });
-    return y + 12;
+    document.setFontSize(fontSize);
+    document.setTextColor(
+      value < 0 ? 178 : value > 0 ? 42 : 55,
+      value < 0 ? 65 : value > 0 ? 122 : 55,
+      value < 0 ? 65 : value > 0 ? 103 : 55,
+    );
+    document.text(this.signedAmount(value), x, y, { align });
   }
 
-  private mobileValue(
+  private mobileInlineResult(
     document: import('jspdf').jsPDF,
-    label: string,
     value: number,
     x: number,
     y: number,
   ): void {
-    document.setFont('helvetica', 'normal');
-    document.setFontSize(6.5);
-    document.setTextColor(105, 105, 105);
-    document.text(label.toUpperCase(), x, y);
     document.setFont('helvetica', 'bold');
-    document.setFontSize(9);
-    document.setTextColor(30, 30, 30);
-    document.text(this.amount(value), x, y + 5);
+    document.setFontSize(7.5);
+    document.setTextColor(
+      value < 0 ? 178 : value > 0 ? 42 : 55,
+      value < 0 ? 65 : value > 0 ? 122 : 55,
+      value < 0 ? 65 : value > 0 ? 103 : 55,
+    );
+    document.text(`(${this.signedAmount(value)})`, x, y);
   }
 
-  private ensureMobileSpace(
+  private mobileTimelineDivider(document: import('jspdf').jsPDF, y: number): void {
+    document.setDrawColor(220, 216, 206);
+    document.setLineWidth(0.15);
+    document.setLineDashPattern([1, 1], 0);
+    document.line(2, y, 90, y);
+    document.setLineDashPattern([], 0);
+    document.setFillColor(225, 221, 211);
+    document.circle(46, y, 0.8, 'F');
+  }
+
+  private ensureMobileReceiptSpace(
     document: import('jspdf').jsPDF,
     y: number,
     required: number,
-    continuation: string,
+    report: UtilitySummary,
+    seller: UtilitySellerSummary,
+    pageHeight: number,
   ): number {
-    if (y + required <= 154) return y;
+    if (y + required <= pageHeight - 8) return y;
     document.addPage();
+    this.mobileReceiptBackground(document, pageHeight);
     document.setFont('helvetica', 'bold');
-    document.setFontSize(8);
-    document.setTextColor(75, 75, 75);
-    document.text(this.clean(continuation), 6, 10, { maxWidth: 80 });
-    document.setDrawColor(170, 170, 170);
-    document.line(6, 14, 86, 14);
+    document.setFontSize(7.5);
+    document.setTextColor(171, 128, 47);
+    document.text('SUERTE · UTILIDADES', 4, 8);
+    document.setTextColor(65, 62, 57);
+    document.text(`${this.clean(seller.sellerName)} · continuación`, 88, 8, { align: 'right' });
+    document.setFont('helvetica', 'normal');
+    document.setFontSize(6.2);
+    document.setTextColor(120, 117, 108);
+    document.text(this.mobilePeriod(report.from, report.to), 4, 13);
     return 20;
+  }
+
+  private mobileTurnLabel(entry: UtilityDrawSummary): string {
+    const time = new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      hour12: true,
+      timeZone: 'America/Managua',
+    })
+      .format(new Date(entry.scheduledAt))
+      .replace(/\s/g, '');
+    return entry.drawType === 'NATIONAL_LOTTERY' ? `${time} · Lotería` : time;
+  }
+
+  private mobileDate(value: string): string {
+    const parts = new Intl.DateTimeFormat('es-NI', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'America/Managua',
+    }).formatToParts(new Date(`${value}T12:00:00-06:00`));
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const month = String(values['month']);
+    return `${values['day']} ${month.charAt(0).toUpperCase()}${month.slice(1).replace('.', '')} ${values['year']}`;
+  }
+
+  private mobilePeriod(from: string, to: string): string {
+    const start = this.mobileDate(from).split(' ');
+    const end = this.mobileDate(to).split(' ');
+    if (start[1] === end[1] && start[2] === end[2]) return `${start[0]} – ${end.join(' ')}`;
+    return `${start.join(' ')} – ${end.join(' ')}`;
+  }
+
+  private signedAmount(value: number): string {
+    return `${value > 0 ? '+' : ''}${this.amount(value)}`;
   }
 
   private utilitySellerDetails(
     document: import('jspdf').jsPDF,
     top: number,
     seller: UtilitySellerSummary,
-    includeCommissions: boolean,
   ): number {
     let y = top;
     const continuation = `${this.clean(seller.sellerName)} · detalle por sorteo`;
-    for (const day of groupUtilitiesByDay(seller)) {
-      y = this.ensureSpace(document, y, 10, continuation);
+    const days = [...groupUtilitiesByDay(seller)].sort((left, right) =>
+      left.date.localeCompare(right.date),
+    );
+    for (const day of days) {
+      y = this.ensureSpace(document, y, 16 + day.entries.length * 7, continuation);
       document.setFont('helvetica', 'bold');
-      document.setFontSize(7.2);
-      document.setTextColor(45, 45, 45);
-      document.text(this.date(day.date), 17, y);
-      const dayResult = includeCommissions ? day.netAfterCommission : day.netBeforeCommission;
-      document.text(`${day.entries.length} sorteos · resultado ${this.amount(dayResult)}`, 193, y, {
-        align: 'right',
-      });
-      y += 4.5;
+      document.setFontSize(8.5);
+      document.setTextColor(45, 44, 40);
+      document.text(this.mobileDate(day.date), 17, y);
+      this.a4InlineResult(document, day.netBeforeCommission, 52, y);
+      document.setFont('helvetica', 'normal');
+      document.setFontSize(6.5);
+      document.setTextColor(120, 117, 108);
+      document.text(`${day.entries.length} sorteos`, 193, y, { align: 'right' });
+      y += 7;
+      const tableTop = y - 3.8;
+      document.setFillColor(248, 247, 244);
+      document.rect(15, y - 3.8, 180, 7, 'F');
+      const headers: Array<[string, number, 'left' | 'right']> = [
+        ['TURNO', 18, 'left'],
+        ['GANADOR', 72.5, 'left'],
+        ['VENTA', 107.5, 'left'],
+        ['PREMIO', 142.5, 'left'],
+        ['RESULTADO', 192, 'right'],
+      ];
+      document.setFont('helvetica', 'bold');
+      document.setFontSize(6.2);
+      document.setTextColor(130, 126, 117);
+      headers.forEach(([label, x, align], index) =>
+        document.text(label, x, y, { align: index > 0 && index < 4 ? 'center' : align }),
+      );
+      y += 7;
       for (const entry of day.entries) {
-        y = this.ensureSpace(document, y, 6, continuation);
+        const result = entry.netBeforeCommission;
+        document.setFillColor(
+          result < 0 ? 252 : result > 0 ? 236 : 248,
+          result < 0 ? 238 : result > 0 ? 247 : 247,
+          result < 0 ? 238 : result > 0 ? 241 : 244,
+        );
+        document.rect(160, y - 3.7, 35, 7, 'F');
         document.setFont('helvetica', 'normal');
-        document.setFontSize(6.5);
-        document.setTextColor(100, 100, 100);
-        const winner = entry.pendingResult ? 'ganador pendiente' : `ganador ${entry.winningNumber}`;
-        document.text(`${this.drawTime(entry)} · ${winner}`, 20, y, { maxWidth: 63 });
-        document.text(`Venta ${this.amount(entry.grossSales)}`, 86, y);
-        document.text(`Premio ${this.amount(entry.prizesPaid)}`, 119, y);
-        if (includeCommissions) {
-          document.text(`Com. ${this.amount(entry.commissionAmount)}`, 153, y);
-        }
-        const result = includeCommissions ? entry.netAfterCommission : entry.netBeforeCommission;
+        document.setFontSize(7);
+        document.setTextColor(55, 54, 50);
+        document.text(this.mobileTurnLabel(entry), 18, y);
+        document.setFont('helvetica', 'bold');
+        document.text(entry.pendingResult ? '—' : (entry.winningNumber ?? '—'), 72.5, y, {
+          align: 'center',
+        });
+        document.setFont('helvetica', 'normal');
+        document.text(this.amount(entry.grossSales), 107.5, y, { align: 'center' });
+        document.text(this.amount(entry.prizesPaid), 142.5, y, { align: 'center' });
         document.setFont('helvetica', 'bold');
         document.setTextColor(result < 0 ? 175 : 45, result < 0 ? 65 : 45, result < 0 ? 65 : 45);
-        document.text(this.amount(result), 193, y, { align: 'right' });
-        y += 4.2;
+        document.text(this.signedAmount(result), 192, y, { align: 'right' });
+        y += 7;
       }
-      y += 1.5;
+      const tableBottom = y - 3.7;
+      document.setDrawColor(218, 213, 202);
+      document.setLineWidth(0.18);
+      document.rect(15, tableTop, 180, tableBottom - tableTop, 'S');
+      document.line(15, tableTop + 7, 195, tableTop + 7);
+      for (const x of [55, 90, 125, 160]) document.line(x, tableTop, x, tableBottom);
+      for (let row = 1; row < day.entries.length; row += 1) {
+        const rowY = tableTop + 7 + row * 7;
+        document.line(15, rowY, 195, rowY);
+      }
+      y += 7;
     }
     return y;
+  }
+
+  private a4InlineResult(
+    document: import('jspdf').jsPDF,
+    value: number,
+    x: number,
+    y: number,
+  ): void {
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(8);
+    document.setTextColor(
+      value < 0 ? 178 : value > 0 ? 42 : 55,
+      value < 0 ? 65 : value > 0 ? 122 : 55,
+      value < 0 ? 65 : value > 0 ? 103 : 55,
+    );
+    document.text(`(${this.signedAmount(value)})`, x, y);
   }
 
   private utilityCommissionSignature(

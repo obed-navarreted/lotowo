@@ -129,9 +129,8 @@ export class UtilitiesPage {
   }
 
   protected drawShort(entry: UtilityDrawSummary): string {
-    return `${entry.drawType === 'NATIONAL_LOTTERY' ? 'Lotería' : 'LOTO'} · ${this.hourLabel(
-      entry.scheduledAt,
-    )}`;
+    const hour = this.hourLabel(entry.scheduledAt);
+    return entry.drawType === 'NATIONAL_LOTTERY' ? `${hour} · Lotería` : hour;
   }
 
   protected drawOptionName(draw: Draw): string {
@@ -186,6 +185,10 @@ export class UtilitiesPage {
 
   protected money(value: number): string {
     return new Intl.NumberFormat('es-NI', { maximumFractionDigits: 2 }).format(value);
+  }
+
+  protected signedMoney(value: number): string {
+    return value > 0 ? `+${this.money(value)}` : this.money(value);
   }
 
   protected resultValue(result: UtilitySummary): number {

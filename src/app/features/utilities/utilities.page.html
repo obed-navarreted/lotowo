@@ -172,6 +172,30 @@
         {{ result.ticketCount === 1 ? 'boleto válido' : 'boletos válidos' }}</span
       >
     </header>
+    <article
+      class="utility-mobile-summary"
+      [class.utility-mobile-summary--loss]="resultValue(result) < 0"
+      [class.utility-mobile-summary--profit]="resultValue(result) > 0"
+    >
+      <span>Resultado</span>
+      <strong>{{ signedMoney(resultValue(result)) }}</strong>
+      <dl [class.utility-mobile-summary__values--with-commission]="includeCommissions">
+        <div>
+          <dt>Vendido</dt>
+          <dd>{{ money(result.grossSales) }}</dd>
+        </div>
+        <div>
+          <dt>Premios</dt>
+          <dd>{{ money(result.prizesPaid) }}</dd>
+        </div>
+        @if (includeCommissions) {
+          <div>
+            <dt>Comisión</dt>
+            <dd>{{ money(result.commissionAmount) }}</dd>
+          </div>
+        }
+      </dl>
+    </article>
     <div class="utility-metrics">
       <article class="utility-metric card">
         <span class="metric-icon metric-icon--sales"><lo-icon name="wallet" /></span>
@@ -187,32 +211,19 @@
           <p>Premios de números ganadores</p>
         </div>
       </article>
-      <article class="utility-metric card">
-        <span class="metric-icon metric-icon--commission"><lo-icon name="wallet" /></span>
-        <div>
-          <small>{{ includeCommissions ? 'Comisión' : 'Comisión excluida' }}</small
-          ><strong>{{ includeCommissions ? money(result.commissionAmount) : '—' }}</strong>
-          <p>
-            {{
-              includeCommissions
-                ? 'Porcentajes históricos por sorteo'
-                : 'No se resta en este resultado'
-            }}
-          </p>
-        </div>
-      </article>
+      @if (includeCommissions) {
+        <article class="utility-metric card">
+          <span class="metric-icon metric-icon--commission"><lo-icon name="wallet" /></span>
+          <div>
+            <small>Comisión</small><strong>{{ money(result.commissionAmount) }}</strong>
+            <p>Porcentajes históricos por sorteo</p>
+          </div>
+        </article>
+      }
       <article class="utility-metric card" [class.utility-metric--loss]="resultValue(result) < 0">
         <span class="metric-icon"><lo-icon name="trend" /></span>
         <div>
-          <small>{{
-            includeCommissions
-              ? resultValue(result) < 0
-                ? 'Pérdida neta'
-                : 'Utilidad neta'
-              : resultValue(result) < 0
-                ? 'Pérdida sin comisión'
-                : 'Resultado sin comisión'
-          }}</small
+          <small>Resultado</small
           ><strong>{{ money(resultValue(result)) }}</strong>
           <p>
             {{ includeCommissions ? 'Ventas menos premios y comisión' : 'Ventas menos premios' }}
@@ -234,20 +245,6 @@
               ? 'La comisión de esos sorteos usa temporalmente el porcentaje vigente.'
               : 'Las comisiones no se consideran en este resultado.'
           }}</span
-        >
-      </div>
-    } @else if (includeCommissions) {
-      <div class="commission-note">
-        <lo-icon name="check" [size]="18" /><span
-          ><strong>La utilidad ya incluye comisión</strong>Cada cierre conserva el porcentaje
-          histórico que correspondía al vendedor.</span
-        >
-      </div>
-    } @else {
-      <div class="commission-note commission-note--excluded">
-        <lo-icon name="info" [size]="18" /><span
-          ><strong>Comisiones excluidas</strong>Este resultado corresponde a ventas menos premios
-          pagados.</span
         >
       </div>
     }
@@ -293,7 +290,10 @@
               <span class="provisional-badge">Provisional</span>
             }
           </header>
-          <dl class="seller-summary">
+          <dl
+            class="seller-summary"
+            [class.seller-summary--with-commission]="includeCommissions"
+          >
             <div>
               <dt>Vendido</dt>
               <dd>{{ money(seller.grossSales) }}</dd>
@@ -302,23 +302,26 @@
               <dt>Premios</dt>
               <dd>{{ money(seller.prizesPaid) }}</dd>
             </div>
-            <div>
-              <dt>{{ includeCommissions ? 'Comisión' : 'Comisión excluida' }}</dt>
-              <dd>{{ includeCommissions ? money(seller.commissionAmount) : '—' }}</dd>
-            </div>
+            @if (includeCommissions) {
+              <div>
+                <dt>Comisión</dt>
+                <dd>{{ money(seller.commissionAmount) }}</dd>
+              </div>
+            }
             <div class="seller-net">
-              <dt>{{ includeCommissions ? 'Utilidad neta' : 'Resultado sin comisión' }}</dt>
-              <dd>{{ money(sellerResultValue(seller)) }}</dd>
+              <dt>Resultado</dt>
+              <dd>{{ signedMoney(sellerResultValue(seller)) }}</dd>
             </div>
           </dl>
           <div class="utility-day-list">
             @for (day of sellerDays; track day.date) {
-              <section
+              <details
                 class="utility-day"
                 [class.utility-day--loss]="resultState(dayResultValue(day)) === 'loss'"
                 [class.utility-day--profit]="resultState(dayResultValue(day)) === 'profit'"
+                open
               >
-                <header>
+                <summary>
                   <div>
                     <strong>{{ dateLabel(day.date) }}</strong>
                     <small
@@ -329,12 +332,10 @@
                   <span
                     [class.loss]="dayResultValue(day) < 0"
                     [class.profit]="dayResultValue(day) > 0"
-                    ><small>{{
-                      includeCommissions ? 'Utilidad neta' : 'Resultado sin comisión'
-                    }}</small
-                    ><strong>{{ money(dayResultValue(day)) }}</strong></span
+                    ><small>Resultado</small
+                    ><strong>{{ signedMoney(dayResultValue(day)) }}</strong></span
                   >
-                </header>
+                </summary>
                 <div class="utility-draw-list">
                   @for (entry of day.entries; track entry.drawId) {
                     <article
@@ -353,6 +354,29 @@
                           <span class="provisional-badge">Provisional</span>
                         }
                       </header>
+                      <div class="utility-draw-mobile">
+                        <span class="utility-draw-mobile__winner">{{
+                          entry.pendingResult ? '—' : entry.winningNumber
+                        }}</span>
+                        <div class="utility-draw-mobile__turn">
+                          <strong>{{ drawShort(entry) }}</strong>
+                          <small
+                            >{{ entry.ticketCount }}
+                            {{ entry.ticketCount === 1 ? 'boleto' : 'boletos' }}</small
+                          >
+                        </div>
+                        <div class="utility-draw-mobile__result">
+                          <strong
+                            [class.loss]="entryResultValue(entry) < 0"
+                            [class.profit]="entryResultValue(entry) > 0"
+                            >{{ signedMoney(entryResultValue(entry)) }}</strong
+                          >
+                          <small
+                            >Venta {{ money(entry.grossSales) }} · Premio
+                            {{ money(entry.prizesPaid) }}</small
+                          >
+                        </div>
+                      </div>
                       <dl [class.utility-draw-values--commissions]="includeCommissions">
                         <div class="draw-ticket-metric">
                           <dt>Boletos</dt>
@@ -373,19 +397,19 @@
                           </div>
                         }
                         <div class="seller-net">
-                          <dt>{{ includeCommissions ? 'Utilidad neta' : 'Sin comisión' }}</dt>
+                          <dt>Resultado</dt>
                           <dd
                             [class.loss]="entryResultValue(entry) < 0"
                             [class.profit]="entryResultValue(entry) > 0"
                           >
-                            {{ money(entryResultValue(entry)) }}
+                            {{ signedMoney(entryResultValue(entry)) }}
                           </dd>
                         </div>
                       </dl>
                     </article>
                   }
                 </div>
-              </section>
+              </details>
             }
           </div>
         </article>

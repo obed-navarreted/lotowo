@@ -6,6 +6,7 @@ const pdf = vi.hoisted(() => ({
   savedAs: '',
   pages: 1,
   orientation: '',
+  lines: [] as number[][],
 }));
 
 vi.mock('jspdf', () => ({
@@ -15,6 +16,7 @@ vi.mock('jspdf', () => ({
       pdf.savedAs = '';
       pdf.pages = 1;
       pdf.orientation = options?.orientation ?? '';
+      pdf.lines = [];
     }
     setProperties(): void {}
     setFont(): void {}
@@ -23,8 +25,13 @@ vi.mock('jspdf', () => ({
     setFillColor(): void {}
     setDrawColor(): void {}
     setLineWidth(): void {}
-    line(): void {}
+    line(...coordinates: number[]): void {
+      pdf.lines.push(coordinates);
+    }
     rect(): void {}
+    roundedRect(): void {}
+    circle(): void {}
+    setLineDashPattern(): void {}
     addPage(): void {
       pdf.pages += 1;
     }
@@ -115,11 +122,18 @@ describe('OperationalReportPdfService', () => {
       { includeCommissions: true, includeDraws: true },
     );
 
-    expect(pdf.texts).toContain('REPORTE DE UTILIDADES');
-    expect(pdf.texts).toContain('COMISIÓN HISTÓRICA APLICADA');
+    expect(pdf.texts).toContain('UTILIDADES');
+    expect(pdf.texts).toContain('COMISIÓN');
+    expect(pdf.texts).toContain('RESULTADO');
+    expect(pdf.texts).not.toContain('REPORTE DE UTILIDADES');
+    expect(pdf.texts).not.toContain('COMISIÓN HISTÓRICA APLICADA');
     expect(pdf.texts).toContain('Recibí conforme 50 por comisión del período.');
     expect(pdf.texts).toContain('Firma');
     expect(pdf.texts.indexOf('Ana')).toBeLessThan(pdf.texts.indexOf('Zoe'));
+    expect(pdf.lines).toContainEqual(expect.arrayContaining([55]));
+    expect(pdf.lines).toContainEqual(expect.arrayContaining([90]));
+    expect(pdf.lines).toContainEqual(expect.arrayContaining([125]));
+    expect(pdf.lines).toContainEqual(expect.arrayContaining([160]));
     expect(pdf.savedAs).toBe('suerte-utilidades-2026-08-02-2026-08-08.pdf');
   });
 
@@ -155,9 +169,10 @@ describe('OperationalReportPdfService', () => {
       { includeCommissions: false, includeDraws: true },
     );
 
-    expect(pdf.texts).toContain('COMISIONES EXCLUIDAS');
-    expect(pdf.texts).toContain('RESULTADO SIN COMISIÓN');
-    expect(pdf.texts).toContain('Resultado sin comisión = ventas - premios pagados.');
+    expect(pdf.texts).toContain('UTILIDADES');
+    expect(pdf.texts).toContain('RESULTADO');
+    expect(pdf.texts).not.toContain('COMISIONES EXCLUIDAS');
+    expect(pdf.texts).not.toContain('RESULTADO SIN COMISIÓN');
     expect(pdf.texts).not.toContain('COMISIÓN');
     expect(pdf.texts).not.toContain('Firma');
   });
@@ -165,8 +180,8 @@ describe('OperationalReportPdfService', () => {
   it('exports a narrow mobile utility report that is readable without zooming', async () => {
     await new OperationalReportPdfService().exportUtilitiesMobile(
       {
-        from: '2026-08-10',
-        to: '2026-08-10',
+        from: '2026-08-08',
+        to: '2026-08-09',
         ticketCount: 2,
         grossSales: 300,
         prizesPaid: 100,
@@ -191,7 +206,7 @@ describe('OperationalReportPdfService', () => {
               {
                 drawId: 'draw',
                 drawType: 'DAILY',
-                scheduledAt: '2026-08-10T11:00:00-06:00',
+                scheduledAt: '2026-08-09T11:00:00-06:00',
                 winningNumber: '03',
                 ticketCount: 2,
                 grossSales: 300,
@@ -203,6 +218,21 @@ describe('OperationalReportPdfService', () => {
                 pendingResult: false,
                 commissionProvisional: false,
               },
+              {
+                drawId: 'draw-earlier',
+                drawType: 'DAILY',
+                scheduledAt: '2026-08-08T15:00:00-06:00',
+                winningNumber: '04',
+                ticketCount: 1,
+                grossSales: 50,
+                prizesPaid: 0,
+                commissionRate: 10,
+                commissionAmount: 5,
+                netBeforeCommission: 50,
+                netAfterCommission: 45,
+                pendingResult: false,
+                commissionProvisional: false,
+              },
             ],
           },
         ],
@@ -210,12 +240,20 @@ describe('OperationalReportPdfService', () => {
       { includeCommissions: false, includeDraws: true },
     );
 
-    expect(pdf.texts).toContain('UTILIDADES');
-    expect(pdf.texts).toContain('Comisiones excluidas');
+    expect(pdf.texts).toContain('SUERTE · UTILIDADES');
+    expect(pdf.texts).toContain('08 – 09 Ago 2026');
+    expect(pdf.texts).not.toContain('comisión excluida');
+    expect(pdf.texts).not.toContain('comisión incluida');
     expect(pdf.texts).toContain('11AM');
-    expect(pdf.texts).toContain('Ana Pérez');
+    expect(pdf.texts).toContain('Ana Pérez · 2 boletos');
+    expect(pdf.texts).toContain('RESULTADO');
+    expect(pdf.texts).not.toContain('RESULTADO SIN COMISIÓN');
+    expect(pdf.texts).not.toContain('UTILIDAD NETA');
     expect(pdf.texts).not.toContain('Firma');
-    expect(pdf.savedAs).toBe('suerte-utilidades-movil-2026-08-10-2026-08-10.pdf');
+    expect(pdf.texts).toContain('(+50)');
+    expect(pdf.texts).toContain('(+200)');
+    expect(pdf.texts.indexOf('08 Ago 2026')).toBeLessThan(pdf.texts.indexOf('09 Ago 2026'));
+    expect(pdf.savedAs).toBe('suerte-utilidades-movil-2026-08-08-2026-08-09.pdf');
   });
 
   it('builds the winner A4 detail grouped in route and seller order with customer receipts', async () => {

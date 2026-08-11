@@ -150,6 +150,12 @@ describe('UtilitiesPage', () => {
     expect(component.resultValue(report)).toBe(60);
     expect(fixture.nativeElement.textContent).toContain('LOTO - 01/08/26 - 11AM');
     expect(fixture.nativeElement.textContent).toContain('Vendedora Uno');
+    expect(fixture.nativeElement.querySelector('.utility-mobile-summary')).not.toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.utility-draw-mobile')).toHaveLength(2);
+    expect(fixture.nativeElement.querySelector('details.utility-day[open]')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Resultado sin comisión');
+    expect(fixture.nativeElement.textContent).not.toContain('Comisión excluida');
+    expect(fixture.nativeElement.textContent).not.toContain('Utilidad neta');
     expect(
       fixture.nativeElement.querySelector('.utility-draw--loss .seller-net dd.loss')?.textContent,
     ).toContain('-70');
