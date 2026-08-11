@@ -6,22 +6,35 @@ import { Share } from '@capacitor/share';
 @Injectable({ providedIn: 'root' })
 export class PdfFileService {
   async save(document: import('jspdf').jsPDF, fileName: string): Promise<void> {
-    if (!Capacitor.isNativePlatform()) {
+    if (!this.isNativePlatform()) {
       document.save(fileName);
       return;
     }
 
     const data = this.base64(document.output('arraybuffer'));
+    const fileUri = await this.writeTemporaryFile(fileName, data);
+    await this.shareFile(fileName, fileUri);
+  }
+
+  protected isNativePlatform(): boolean {
+    return Capacitor.isNativePlatform();
+  }
+
+  protected async writeTemporaryFile(fileName: string, data: string): Promise<string> {
     const file = await Filesystem.writeFile({
       path: fileName,
       data,
       directory: Directory.Cache,
       recursive: true,
     });
+    return file.uri;
+  }
+
+  protected async shareFile(fileName: string, fileUri: string): Promise<void> {
     await Share.share({
       title: 'Reporte Suerte',
       text: fileName,
-      url: file.uri,
+      url: fileUri,
       dialogTitle: 'Guardar o compartir PDF',
     });
   }

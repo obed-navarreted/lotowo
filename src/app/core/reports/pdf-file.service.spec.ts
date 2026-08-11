@@ -1,61 +1,51 @@
-import { Filesystem } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PdfFileService } from './pdf-file.service';
 
-const nativeMocks = vi.hoisted(() => ({
-  isNative: vi.fn(),
-  writeFile: vi.fn(),
-  share: vi.fn(),
-}));
+class TestPdfFileService extends PdfFileService {
+  native = false;
+  readonly writtenFiles: Array<{ fileName: string; data: string }> = [];
+  readonly sharedFiles: Array<{ fileName: string; fileUri: string }> = [];
 
-vi.mock('@capacitor/core', () => ({
-  Capacitor: { isNativePlatform: nativeMocks.isNative },
-}));
-vi.mock('@capacitor/filesystem', () => ({
-  Directory: { Cache: 'CACHE' },
-  Filesystem: { writeFile: nativeMocks.writeFile },
-}));
-vi.mock('@capacitor/share', () => ({
-  Share: { share: nativeMocks.share },
-}));
+  protected override isNativePlatform(): boolean {
+    return this.native;
+  }
+
+  protected override async writeTemporaryFile(fileName: string, data: string): Promise<string> {
+    this.writtenFiles.push({ fileName, data });
+    return 'file:///reporte.pdf';
+  }
+
+  protected override async shareFile(fileName: string, fileUri: string): Promise<void> {
+    this.sharedFiles.push({ fileName, fileUri });
+  }
+}
 
 describe('PdfFileService', () => {
-  beforeEach(() => {
-    nativeMocks.isNative.mockReset();
-    nativeMocks.writeFile.mockReset();
-    nativeMocks.share.mockReset();
-  });
-
   it('keeps the browser download outside the native application', async () => {
-    nativeMocks.isNative.mockReturnValue(false);
+    const service = new TestPdfFileService();
     const document = { save: vi.fn() } as unknown as import('jspdf').jsPDF;
 
-    await new PdfFileService().save(document, 'reporte.pdf');
+    await service.save(document, 'reporte.pdf');
 
     expect(document.save).toHaveBeenCalledWith('reporte.pdf');
+    expect(service.writtenFiles).toEqual([]);
+    expect(service.sharedFiles).toEqual([]);
   });
 
   it('writes and shares the PDF through Android instead of using a WebView download', async () => {
-    nativeMocks.isNative.mockReturnValue(true);
-    nativeMocks.writeFile.mockResolvedValue({ uri: 'file:///reporte.pdf' });
-    nativeMocks.share.mockResolvedValue({ activityType: 'android' });
+    const service = new TestPdfFileService();
+    service.native = true;
     const document = {
       save: vi.fn(),
       output: vi.fn().mockReturnValue(new Uint8Array([37, 80, 68, 70]).buffer),
     } as unknown as import('jspdf').jsPDF;
 
-    await new PdfFileService().save(document, 'reporte.pdf');
+    await service.save(document, 'reporte.pdf');
 
     expect(document.save).not.toHaveBeenCalled();
-    expect(Filesystem.writeFile).toHaveBeenCalledWith(
-      expect.objectContaining({ path: 'reporte.pdf', data: 'JVBERg==' }),
-    );
-    expect(Share.share).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: 'file:///reporte.pdf',
-        dialogTitle: 'Guardar o compartir PDF',
-      }),
-    );
+    expect(service.writtenFiles).toEqual([{ fileName: 'reporte.pdf', data: 'JVBERg==' }]);
+    expect(service.sharedFiles).toEqual([
+      { fileName: 'reporte.pdf', fileUri: 'file:///reporte.pdf' },
+    ]);
   });
 });
