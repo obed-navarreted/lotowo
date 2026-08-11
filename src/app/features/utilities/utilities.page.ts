@@ -17,7 +17,6 @@ import { OperationalReportPdfService } from '../../core/reports/operational-repo
 import { apiErrorMessage } from '../../shared/api-error';
 import { drawLabel } from '../../shared/draw-label';
 import { Icon } from '../../shared/icon/icon';
-import { newestDrawFirst } from '../../shared/result-order';
 import { groupUtilitiesByDay, UtilityDay } from '../../shared/utility-days';
 
 @Component({
@@ -36,16 +35,17 @@ export class UtilitiesPage {
   protected readonly sellers = signal<ManagedUser[]>([]);
   protected readonly summary = signal<UtilitySummary | null>(null);
   protected readonly loading = signal(true);
-  protected readonly exporting = signal(false);
+  protected readonly exporting = signal<'A4' | 'MOBILE' | null>(null);
   protected readonly filterLoading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly historyMinDate: string;
   protected readonly today = this.localDate(new Date());
   protected fromDate = this.weekStart(this.today);
   protected toDate = this.today;
-  protected selectedDrawId = '';
+  protected selectedDrawIds: string[] = [];
+  protected allDrawsSelected = true;
   protected selectedSellerId = '';
-  protected includeCommissions = true;
+  protected includeCommissions = false;
   protected includeDraws = true;
 
   constructor() {
@@ -68,38 +68,91 @@ export class UtilitiesPage {
 
   protected onFromDateChanged(): void {
     if (this.toDate < this.fromDate) this.toDate = this.fromDate;
-    this.selectedDrawId = '';
+    this.resetDrawSelection();
     this.loadPeriod();
   }
 
   protected onToDateChanged(): void {
     if (this.fromDate > this.toDate) this.fromDate = this.toDate;
-    this.selectedDrawId = '';
+    this.resetDrawSelection();
     this.loadPeriod();
   }
 
   protected applyFilters(): void {
+    if (this.isSingleDay() && !this.allDrawsSelected && !this.selectedDrawIds.length) {
+      this.errorMessage.set('Selecciona al menos un turno o marca Todos.');
+      return;
+    }
     this.loadSummary();
   }
 
-  protected exportReport(): void {
+  protected exportReport(format: 'A4' | 'MOBILE'): void {
     const report = this.summary();
     if (!report || this.exporting()) return;
-    this.exporting.set(true);
+    this.exporting.set(format);
     this.errorMessage.set(null);
-    void this.pdf
-      .exportUtilities(report, {
-        includeCommissions: this.includeCommissions,
-        includeDraws: this.includeDraws,
-      })
+    const options = {
+      includeCommissions: this.includeCommissions,
+      includeDraws: this.includeDraws,
+    };
+    const exportOperation =
+      format === 'MOBILE'
+        ? this.pdf.exportUtilitiesMobile(report, options)
+        : this.pdf.exportUtilities(report, options);
+    void exportOperation
       .catch(() => this.errorMessage.set('No pudimos generar el reporte PDF.'))
-      .finally(() => this.exporting.set(false));
+      .finally(() => this.exporting.set(null));
+  }
+
+  protected onAllDrawsChanged(selected: boolean): void {
+    this.allDrawsSelected = selected;
+    if (selected) this.selectedDrawIds = [];
+  }
+
+  protected toggleDraw(drawId: string, selected: boolean): void {
+    this.selectedDrawIds = selected
+      ? [...new Set([...this.selectedDrawIds, drawId])]
+      : this.selectedDrawIds.filter((id) => id !== drawId);
+  }
+
+  protected drawSelected(drawId: string): boolean {
+    return this.selectedDrawIds.includes(drawId);
+  }
+
+  protected drawSelectionLabel(): string {
+    if (!this.isSingleDay()) return 'Disponible al consultar un solo día';
+    if (this.allDrawsSelected) return 'Todos los turnos';
+    if (!this.selectedDrawIds.length) return 'Selecciona los turnos';
+    return `${this.selectedDrawIds.length} ${
+      this.selectedDrawIds.length === 1 ? 'turno seleccionado' : 'turnos seleccionados'
+    }`;
+  }
+
+  protected drawShort(entry: UtilityDrawSummary): string {
+    return `${entry.drawType === 'NATIONAL_LOTTERY' ? 'Lotería' : 'LOTO'} · ${this.hourLabel(
+      entry.scheduledAt,
+    )}`;
+  }
+
+  protected drawOptionName(draw: Draw): string {
+    return `${draw.drawType === 'NATIONAL_LOTTERY' ? 'Lotería' : 'LOTO'} ${this.hourLabel(
+      draw.scheduledAt,
+    )}`;
+  }
+
+  protected winnerAndTickets(entry: UtilityDrawSummary): string {
+    const winner = entry.pendingResult ? 'Ganador pendiente' : `Ganador ${entry.winningNumber}`;
+    return `${winner} · ${entry.ticketCount} ${entry.ticketCount === 1 ? 'boleto' : 'boletos'}`;
+  }
+
+  protected resultState(value: number): 'profit' | 'loss' | 'neutral' {
+    return value > 0 ? 'profit' : value < 0 ? 'loss' : 'neutral';
   }
 
   protected clearFilters(): void {
     this.fromDate = this.weekStart(this.today);
     this.toDate = this.today;
-    this.selectedDrawId = '';
+    this.resetDrawSelection();
     this.selectedSellerId = '';
     this.loadPeriod();
   }
@@ -109,15 +162,20 @@ export class UtilitiesPage {
   }
 
   protected selectedContext(): string {
-    const draw = this.draws().find((item) => item.id === this.selectedDrawId);
-    if (draw) return this.drawName(draw);
+    if (!this.allDrawsSelected && this.selectedDrawIds.length === 1) {
+      const draw = this.draws().find((item) => item.id === this.selectedDrawIds[0]);
+      if (draw) return this.drawName(draw);
+    }
+    if (!this.allDrawsSelected && this.selectedDrawIds.length > 1) {
+      return `${this.selectedDrawIds.length} turnos seleccionados`;
+    }
     return this.isSingleDay() ? 'Todos los turnos del día' : 'Todos los turnos del período';
   }
 
   protected ticketsQuery(): Record<string, string> {
     return {
       date: this.fromDate,
-      ...(this.selectedDrawId ? { drawId: this.selectedDrawId } : {}),
+      ...(this.selectedDrawIds.length === 1 ? { drawId: this.selectedDrawIds[0] } : {}),
       ...(this.selectedSellerId ? { sellerId: this.selectedSellerId } : {}),
     };
   }
@@ -204,7 +262,12 @@ export class UtilitiesPage {
       )
       .subscribe({
         next: (draws) => {
-          this.draws.set([...draws].sort(newestDrawFirst));
+          this.draws.set(
+            [...draws].sort(
+              (left, right) =>
+                new Date(left.scheduledAt).getTime() - new Date(right.scheduledAt).getTime(),
+            ),
+          );
           this.filterLoading.set(false);
           this.loadSummary();
         },
@@ -226,7 +289,7 @@ export class UtilitiesPage {
       .getUtilitySummary(
         this.fromDate,
         this.toDate,
-        this.selectedDrawId || undefined,
+        this.allDrawsSelected ? [] : this.selectedDrawIds,
         this.selectedSellerId || undefined,
       )
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -259,5 +322,20 @@ export class UtilitiesPage {
     const date = new Date(`${today}T12:00:00-06:00`);
     date.setUTCDate(date.getUTCDate() - date.getUTCDay());
     return date.toISOString().slice(0, 10);
+  }
+
+  private hourLabel(scheduledAt: string): string {
+    return new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      hour12: true,
+      timeZone: 'America/Managua',
+    })
+      .format(new Date(scheduledAt))
+      .replace(' ', '');
+  }
+
+  private resetDrawSelection(): void {
+    this.allDrawsSelected = true;
+    this.selectedDrawIds = [];
   }
 }

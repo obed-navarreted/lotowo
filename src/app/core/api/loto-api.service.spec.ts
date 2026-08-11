@@ -261,14 +261,16 @@ describe('LotoApiService', () => {
     expect(days.request.params.get('sellerId')).toBe('seller-id');
     days.flush([]);
 
-    service.getUtilitySummary('2026-07-19', '2026-08-02', undefined, 'seller-id').subscribe();
+    service
+      .getUtilitySummary('2026-07-19', '2026-08-02', ['draw-1', 'draw-2'], 'seller-id')
+      .subscribe();
     const summary = http.expectOne(
       (request) => request.url === '/api/v1/reports/utilities/summary',
     );
     expect(summary.request.params.get('from')).toBe('2026-07-19');
     expect(summary.request.params.get('to')).toBe('2026-08-02');
     expect(summary.request.params.get('sellerId')).toBe('seller-id');
-    expect(summary.request.params.has('drawId')).toBe(false);
+    expect(summary.request.params.getAll('drawIds')).toEqual(['draw-1', 'draw-2']);
     summary.flush({});
 
     service.getDrawNumberReport('draw-id', 'seller-id').subscribe();

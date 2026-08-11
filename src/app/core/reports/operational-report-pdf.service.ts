@@ -69,7 +69,7 @@ export class OperationalReportPdfService {
 
   async exportUtilities(
     report: UtilitySummary,
-    options: UtilityPdfOptions = { includeCommissions: true, includeDraws: true },
+    options: UtilityPdfOptions = { includeCommissions: false, includeDraws: true },
   ): Promise<void> {
     const includeCommissions = options.includeCommissions;
     const result = includeCommissions ? report.netAfterCommission : report.netResult;
@@ -194,6 +194,213 @@ export class OperationalReportPdfService {
       Math.min(y + 2, 286),
     );
     await this.pdfFiles.save(document, `suerte-utilidades-${report.from}-${report.to}.pdf`);
+  }
+
+  /** Formato angosto pensado para leer el reporte completo en un teléfono sin ampliar. */
+  async exportUtilitiesMobile(
+    report: UtilitySummary,
+    options: UtilityPdfOptions = { includeCommissions: false, includeDraws: true },
+  ): Promise<void> {
+    const { jsPDF } = await import('jspdf');
+    const document = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: [92, 160],
+      compress: true,
+    });
+    document.setProperties({
+      title: 'Utilidades · formato móvil',
+      author: 'Suerte',
+      creator: 'Suerte',
+    });
+    const includeCommissions = options.includeCommissions;
+    const totalResult = includeCommissions ? report.netAfterCommission : report.netResult;
+    let y = this.mobileUtilityHeading(document, report, includeCommissions);
+    y = this.mobileUtilityTotals(document, y, report, totalResult, includeCommissions);
+
+    const sellers = [...report.sellers].sort((left, right) =>
+      left.sellerName.localeCompare(right.sellerName, 'es'),
+    );
+    for (const seller of sellers) {
+      y = this.ensureMobileSpace(document, y, 32, 'Detalle por vendedor');
+      const sellerResult = includeCommissions
+        ? seller.netAfterCommission
+        : seller.netBeforeCommission;
+      document.setFillColor(247, 246, 244);
+      document.rect(5, y - 4, 82, 25, 'F');
+      document.setFont('helvetica', 'bold');
+      document.setFontSize(10);
+      document.setTextColor(28, 28, 28);
+      document.text(this.clean(seller.sellerName), 8, y, { maxWidth: 68 });
+      document.setFont('helvetica', 'normal');
+      document.setFontSize(6.8);
+      document.setTextColor(100, 100, 100);
+      document.text(`${seller.ticketCount} boletos`, 84, y, { align: 'right' });
+      y += 7;
+      this.mobileValue(document, 'Vendido', seller.grossSales, 8, y);
+      this.mobileValue(document, 'Premios', seller.prizesPaid, 34, y);
+      if (includeCommissions)
+        this.mobileValue(document, 'Comisión', seller.commissionAmount, 59, y);
+      y += 9;
+      document.setFont('helvetica', 'bold');
+      document.setFontSize(7);
+      document.setTextColor(95, 95, 95);
+      document.text(includeCommissions ? 'UTILIDAD NETA' : 'RESULTADO SIN COMISIÓN', 8, y);
+      document.setFontSize(11);
+      document.setTextColor(
+        sellerResult < 0 ? 178 : 42,
+        sellerResult < 0 ? 65 : 122,
+        sellerResult < 0 ? 65 : 103,
+      );
+      document.text(this.amount(sellerResult), 84, y, { align: 'right' });
+      y += 9;
+
+      if (options.includeDraws) {
+        for (const day of groupUtilitiesByDay(seller)) {
+          y = this.ensureMobileSpace(document, y, 12, `${this.clean(seller.sellerName)} · turnos`);
+          document.setFont('helvetica', 'bold');
+          document.setFontSize(7.5);
+          document.setTextColor(65, 65, 65);
+          document.text(this.date(day.date), 8, y);
+          const dayResult = includeCommissions ? day.netAfterCommission : day.netBeforeCommission;
+          document.text(this.amount(dayResult), 84, y, { align: 'right' });
+          y += 5;
+          for (const entry of day.entries) {
+            y = this.ensureMobileSpace(
+              document,
+              y,
+              includeCommissions ? 19 : 16,
+              `${this.clean(seller.sellerName)} · turnos`,
+            );
+            const entryResult = includeCommissions
+              ? entry.netAfterCommission
+              : entry.netBeforeCommission;
+            const winner = entry.pendingResult ? 'Pendiente' : `Ganador ${entry.winningNumber}`;
+            document.setFillColor(252, 252, 251);
+            document.rect(7, y - 3.5, 78, includeCommissions ? 16 : 13, 'F');
+            document.setFont('helvetica', 'bold');
+            document.setFontSize(8);
+            document.setTextColor(35, 35, 35);
+            document.text(this.drawTime(entry), 10, y);
+            document.setFont('helvetica', 'normal');
+            document.setFontSize(6.5);
+            document.setTextColor(105, 105, 105);
+            document.text(`${winner} · ${entry.ticketCount} boletos`, 82, y, { align: 'right' });
+            y += 5;
+            document.text(`Venta ${this.amount(entry.grossSales)}`, 10, y);
+            document.text(`Premio ${this.amount(entry.prizesPaid)}`, 37, y);
+            if (includeCommissions) {
+              document.text(`Com. ${this.amount(entry.commissionAmount)}`, 64, y);
+              y += 4;
+            }
+            document.setFont('helvetica', 'bold');
+            document.setTextColor(
+              entryResult < 0 ? 178 : 42,
+              entryResult < 0 ? 65 : 122,
+              entryResult < 0 ? 65 : 103,
+            );
+            document.text(`Resultado ${this.amount(entryResult)}`, 82, y, { align: 'right' });
+            y += 8;
+          }
+        }
+      }
+
+      if (includeCommissions) {
+        y = this.ensureMobileSpace(document, y, 18, `${this.clean(seller.sellerName)} · firma`);
+        document.setFont('helvetica', 'normal');
+        document.setFontSize(6.5);
+        document.setTextColor(80, 80, 80);
+        document.text(`Recibí ${this.amount(seller.commissionAmount)} por comisión.`, 8, y);
+        y += 8;
+        document.setDrawColor(125, 125, 125);
+        document.line(8, y, 56, y);
+        document.text('Firma', 8, y + 3.5);
+        y += 9;
+      }
+      y += 2;
+    }
+
+    await this.pdfFiles.save(document, `suerte-utilidades-movil-${report.from}-${report.to}.pdf`);
+  }
+
+  private mobileUtilityHeading(
+    document: import('jspdf').jsPDF,
+    report: UtilitySummary,
+    includeCommissions: boolean,
+  ): number {
+    document.setFont('helvetica', 'bold');
+    document.setTextColor(25, 25, 25);
+    document.setFontSize(15);
+    document.text('suerte', 6, 10);
+    document.setFontSize(11);
+    document.text('UTILIDADES', 6, 19);
+    document.setFont('helvetica', 'normal');
+    document.setFontSize(7.5);
+    document.setTextColor(95, 95, 95);
+    document.text(`${this.date(report.from)} al ${this.date(report.to)}`, 6, 24);
+    document.text(includeCommissions ? 'Comisiones incluidas' : 'Comisiones excluidas', 86, 24, {
+      align: 'right',
+    });
+    document.setDrawColor(120, 120, 120);
+    document.line(6, 28, 86, 28);
+    return 34;
+  }
+
+  private mobileUtilityTotals(
+    document: import('jspdf').jsPDF,
+    top: number,
+    report: UtilitySummary,
+    result: number,
+    includeCommissions: boolean,
+  ): number {
+    let y = top;
+    this.mobileValue(document, 'Vendido', report.grossSales, 7, y);
+    this.mobileValue(document, 'Premios', report.prizesPaid, 33, y);
+    if (includeCommissions) this.mobileValue(document, 'Comisión', report.commissionAmount, 59, y);
+    y += 12;
+    document.setFont('helvetica', 'normal');
+    document.setFontSize(7);
+    document.setTextColor(90, 90, 90);
+    document.text(includeCommissions ? 'UTILIDAD NETA' : 'RESULTADO SIN COMISIÓN', 7, y);
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(13);
+    document.setTextColor(result < 0 ? 178 : 42, result < 0 ? 65 : 122, result < 0 ? 65 : 103);
+    document.text(this.amount(result), 85, y, { align: 'right' });
+    return y + 12;
+  }
+
+  private mobileValue(
+    document: import('jspdf').jsPDF,
+    label: string,
+    value: number,
+    x: number,
+    y: number,
+  ): void {
+    document.setFont('helvetica', 'normal');
+    document.setFontSize(6.5);
+    document.setTextColor(105, 105, 105);
+    document.text(label.toUpperCase(), x, y);
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(9);
+    document.setTextColor(30, 30, 30);
+    document.text(this.amount(value), x, y + 5);
+  }
+
+  private ensureMobileSpace(
+    document: import('jspdf').jsPDF,
+    y: number,
+    required: number,
+    continuation: string,
+  ): number {
+    if (y + required <= 154) return y;
+    document.addPage();
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(8);
+    document.setTextColor(75, 75, 75);
+    document.text(this.clean(continuation), 6, 10, { maxWidth: 80 });
+    document.setDrawColor(170, 170, 170);
+    document.line(6, 14, 86, 14);
+    return 20;
   }
 
   private utilitySellerDetails(

@@ -37,12 +37,13 @@ describe('UtilitiesPage', () => {
     vi.useRealTimers();
   });
 
-  it('uses the selected one-day range, draw and seller in the summary and ticket link', () => {
+  it('uses multiple selected draws and leaves commissions excluded by default', () => {
     const fixture = TestBed.createComponent(UtilitiesPage);
     const component = fixture.componentInstance as unknown as {
       fromDate: string;
       toDate: string;
-      selectedDrawId: string;
+      selectedDrawIds: string[];
+      allDrawsSelected: boolean;
       selectedSellerId: string;
       includeCommissions: boolean;
       applyFilters(): void;
@@ -68,7 +69,8 @@ describe('UtilitiesPage', () => {
 
     component.fromDate = '2026-08-01';
     component.toDate = '2026-08-01';
-    component.selectedDrawId = 'draw-id';
+    component.selectedDrawIds = ['draw-id', 'draw-id-2'];
+    component.allDrawsSelected = false;
     component.selectedSellerId = 'seller-id';
     component.applyFilters();
 
@@ -77,7 +79,7 @@ describe('UtilitiesPage', () => {
     );
     expect(summary.request.params.get('from')).toBe('2026-08-01');
     expect(summary.request.params.get('to')).toBe('2026-08-01');
-    expect(summary.request.params.get('drawId')).toBe('draw-id');
+    expect(summary.request.params.getAll('drawIds')).toEqual(['draw-id', 'draw-id-2']);
     expect(summary.request.params.get('sellerId')).toBe('seller-id');
     const report: UtilitySummary = {
       from: '2026-08-01',
@@ -127,13 +129,13 @@ describe('UtilitiesPage', () => {
 
     expect(component.ticketsQuery()).toEqual({
       date: '2026-08-01',
-      drawId: 'draw-id',
       sellerId: 'seller-id',
     });
-    expect(component.resultValue(report)).toBe(50);
+    expect(component.includeCommissions).toBe(false);
+    expect(component.resultValue(report)).toBe(60);
     expect(fixture.nativeElement.textContent).toContain('LOTO - 01/08/26 - 11AM');
     expect(fixture.nativeElement.textContent).toContain('Vendedora Uno');
-    component.includeCommissions = false;
-    expect(component.resultValue(report)).toBe(60);
+    component.includeCommissions = true;
+    expect(component.resultValue(report)).toBe(50);
   });
 });

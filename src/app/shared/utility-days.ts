@@ -37,5 +37,13 @@ export function groupUtilitiesByDay(seller: UtilitySellerSummary): UtilityDay[] 
     day.entries.push(entry);
     days.set(date, day);
   }
-  return [...days.values()].sort((left, right) => right.date.localeCompare(left.date));
+  return [...days.values()]
+    .map((day) => ({
+      ...day,
+      entries: [...day.entries].sort(
+        (left, right) =>
+          new Date(left.scheduledAt).getTime() - new Date(right.scheduledAt).getTime(),
+      ),
+    }))
+    .sort((left, right) => right.date.localeCompare(left.date));
 }

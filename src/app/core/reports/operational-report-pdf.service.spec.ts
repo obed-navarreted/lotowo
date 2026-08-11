@@ -98,19 +98,22 @@ describe('OperationalReportPdfService', () => {
         },
       ],
     });
-    await new OperationalReportPdfService().exportUtilities({
-      from: '2026-08-02',
-      to: '2026-08-08',
-      ticketCount: 6,
-      grossSales: 1000,
-      prizesPaid: 200,
-      commissionAmount: 100,
-      netResult: 800,
-      netAfterCommission: 700,
-      pendingResults: 0,
-      commissionProvisional: false,
-      sellers: [seller('z', 'Zoe'), seller('a', 'Ana')],
-    });
+    await new OperationalReportPdfService().exportUtilities(
+      {
+        from: '2026-08-02',
+        to: '2026-08-08',
+        ticketCount: 6,
+        grossSales: 1000,
+        prizesPaid: 200,
+        commissionAmount: 100,
+        netResult: 800,
+        netAfterCommission: 700,
+        pendingResults: 0,
+        commissionProvisional: false,
+        sellers: [seller('z', 'Zoe'), seller('a', 'Ana')],
+      },
+      { includeCommissions: true, includeDraws: true },
+    );
 
     expect(pdf.texts).toContain('REPORTE DE UTILIDADES');
     expect(pdf.texts).toContain('COMISIÓN HISTÓRICA APLICADA');
@@ -157,6 +160,62 @@ describe('OperationalReportPdfService', () => {
     expect(pdf.texts).toContain('Resultado sin comisión = ventas - premios pagados.');
     expect(pdf.texts).not.toContain('COMISIÓN');
     expect(pdf.texts).not.toContain('Firma');
+  });
+
+  it('exports a narrow mobile utility report that is readable without zooming', async () => {
+    await new OperationalReportPdfService().exportUtilitiesMobile(
+      {
+        from: '2026-08-10',
+        to: '2026-08-10',
+        ticketCount: 2,
+        grossSales: 300,
+        prizesPaid: 100,
+        commissionAmount: 30,
+        netResult: 200,
+        netAfterCommission: 170,
+        pendingResults: 0,
+        commissionProvisional: false,
+        sellers: [
+          {
+            sellerId: 'seller',
+            sellerName: 'Ana Pérez',
+            ticketCount: 2,
+            grossSales: 300,
+            prizesPaid: 100,
+            commissionAmount: 30,
+            netBeforeCommission: 200,
+            netAfterCommission: 170,
+            pendingResults: 0,
+            commissionProvisional: false,
+            entries: [
+              {
+                drawId: 'draw',
+                drawType: 'DAILY',
+                scheduledAt: '2026-08-10T11:00:00-06:00',
+                winningNumber: '03',
+                ticketCount: 2,
+                grossSales: 300,
+                prizesPaid: 100,
+                commissionRate: 10,
+                commissionAmount: 30,
+                netBeforeCommission: 200,
+                netAfterCommission: 170,
+                pendingResult: false,
+                commissionProvisional: false,
+              },
+            ],
+          },
+        ],
+      },
+      { includeCommissions: false, includeDraws: true },
+    );
+
+    expect(pdf.texts).toContain('UTILIDADES');
+    expect(pdf.texts).toContain('Comisiones excluidas');
+    expect(pdf.texts).toContain('11AM');
+    expect(pdf.texts).toContain('Ana Pérez');
+    expect(pdf.texts).not.toContain('Firma');
+    expect(pdf.savedAs).toBe('suerte-utilidades-movil-2026-08-10-2026-08-10.pdf');
   });
 
   it('builds the winner A4 detail grouped in route and seller order with customer receipts', async () => {

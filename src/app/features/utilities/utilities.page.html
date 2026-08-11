@@ -7,14 +7,26 @@
     </p>
   </div>
   @if (summary()) {
-    <button
-      class="button button--primary utility-export"
-      type="button"
-      (click)="exportReport()"
-      [disabled]="exporting()"
-    >
-      <lo-icon name="download" [size]="17" />{{ exporting() ? 'Generando…' : 'PDF' }}
-    </button>
+    <div class="utility-export-actions">
+      <button
+        class="button utility-export"
+        type="button"
+        (click)="exportReport('MOBILE')"
+        [disabled]="exporting()"
+      >
+        <lo-icon name="clipboard" [size]="17" />{{
+          exporting() === 'MOBILE' ? 'Generando…' : 'Móvil'
+        }}
+      </button>
+      <button
+        class="button button--primary utility-export"
+        type="button"
+        (click)="exportReport('A4')"
+        [disabled]="exporting()"
+      >
+        <lo-icon name="download" [size]="17" />{{ exporting() === 'A4' ? 'Generando…' : 'PDF A4' }}
+      </button>
+    </div>
   }
 </header>
 
@@ -48,22 +60,46 @@
           (change)="onToDateChanged()"
           aria-label="Fecha final de utilidades" /></span
     ></label>
-    <label class="filter-field"
-      ><span>Turno</span
-      ><select
-        class="select"
-        [(ngModel)]="selectedDrawId"
-        (change)="applyFilters()"
-        [disabled]="filterLoading() || !isSingleDay()"
+    <div class="filter-field turn-filter">
+      <span>Turnos</span>
+      <div
+        class="turn-selector"
+        [class.turn-selector--disabled]="filterLoading() || !isSingleDay()"
       >
-        <option value="">
-          {{ isSingleDay() ? 'Todos los turnos del día' : 'Todos los turnos' }}
-        </option>
-        @for (draw of draws(); track draw.id) {
-          <option [value]="draw.id">{{ drawName(draw) }}</option>
-        }
-      </select></label
-    >
+        <div class="turn-selector__summary">
+          <strong>{{ drawSelectionLabel() }}</strong>
+          <small>{{
+            isSingleDay() ? 'Puedes elegir uno o varios' : 'Elige un solo día para filtrar turnos'
+          }}</small>
+        </div>
+        <div class="turn-options">
+          <label class="turn-chip" [class.turn-chip--active]="allDrawsSelected">
+            <input
+              type="checkbox"
+              [ngModel]="allDrawsSelected"
+              (ngModelChange)="onAllDrawsChanged($event)"
+              [disabled]="filterLoading() || !isSingleDay()"
+            />
+            <span>Todos</span>
+          </label>
+          @for (draw of draws(); track draw.id) {
+            <label
+              class="turn-chip"
+              [class.turn-chip--active]="drawSelected(draw.id)"
+              [class.turn-chip--disabled]="allDrawsSelected"
+            >
+              <input
+                type="checkbox"
+                [checked]="drawSelected(draw.id)"
+                (change)="toggleDraw(draw.id, $any($event.target).checked)"
+                [disabled]="filterLoading() || !isSingleDay() || allDrawsSelected"
+              />
+              <span>{{ drawOptionName(draw) }}</span>
+            </label>
+          }
+        </div>
+      </div>
+    </div>
     @if (auth.user()?.role !== 'SELLER') {
       <label class="filter-field"
         ><span>Vendedor</span
@@ -241,8 +277,11 @@
     <div class="seller-utility-list">
       @for (seller of result.sellers; track seller.sellerId) {
         @let sellerDays = days(seller);
-        <article [class.seller-utility--loss]="sellerResultValue(seller) < 0">
-          <header>
+        <article
+          [class.seller-utility--loss]="resultState(sellerResultValue(seller)) === 'loss'"
+          [class.seller-utility--profit]="resultState(sellerResultValue(seller)) === 'profit'"
+        >
+          <header class="seller-header">
             <div>
               <strong>{{ seller.sellerName }}</strong>
               <small
@@ -254,7 +293,7 @@
               <span class="provisional-badge">Provisional</span>
             }
           </header>
-          <dl>
+          <dl class="seller-summary">
             <div>
               <dt>Vendido</dt>
               <dd>{{ money(seller.grossSales) }}</dd>
@@ -274,7 +313,11 @@
           </dl>
           <div class="utility-day-list">
             @for (day of sellerDays; track day.date) {
-              <section class="utility-day">
+              <section
+                class="utility-day"
+                [class.utility-day--loss]="resultState(dayResultValue(day)) === 'loss'"
+                [class.utility-day--profit]="resultState(dayResultValue(day)) === 'profit'"
+              >
                 <header>
                   <div>
                     <strong>{{ dateLabel(day.date) }}</strong>
@@ -283,7 +326,9 @@
                       {{ day.entries.length === 1 ? 'sorteo' : 'sorteos' }}</small
                     >
                   </div>
-                  <span [class.loss]="dayResultValue(day) < 0"
+                  <span
+                    [class.loss]="dayResultValue(day) < 0"
+                    [class.profit]="dayResultValue(day) > 0"
                     ><small>{{
                       includeCommissions ? 'Utilidad neta' : 'Resultado sin comisión'
                     }}</small
@@ -292,24 +337,24 @@
                 </header>
                 <div class="utility-draw-list">
                   @for (entry of day.entries; track entry.drawId) {
-                    <article>
+                    <article
+                      [class.utility-draw--loss]="resultState(entryResultValue(entry)) === 'loss'"
+                      [class.utility-draw--profit]="
+                        resultState(entryResultValue(entry)) === 'profit'
+                      "
+                    >
                       <header>
                         <div>
-                          <strong>{{ draw(entry) }}</strong>
-                          <small>
-                            @if (entry.pendingResult) {
-                              Ganador pendiente
-                            } @else {
-                              Ganador {{ entry.winningNumber }}
-                            }
-                          </small>
+                          <strong class="draw-title--desktop">{{ draw(entry) }}</strong>
+                          <strong class="draw-title--mobile">{{ drawShort(entry) }}</strong>
+                          <small>{{ winnerAndTickets(entry) }}</small>
                         </div>
                         @if (entry.commissionProvisional && includeCommissions) {
                           <span class="provisional-badge">Provisional</span>
                         }
                       </header>
-                      <dl>
-                        <div>
+                      <dl [class.utility-draw-values--commissions]="includeCommissions">
+                        <div class="draw-ticket-metric">
                           <dt>Boletos</dt>
                           <dd>{{ entry.ticketCount }}</dd>
                         </div>
@@ -329,7 +374,10 @@
                         }
                         <div class="seller-net">
                           <dt>{{ includeCommissions ? 'Utilidad neta' : 'Sin comisión' }}</dt>
-                          <dd [class.loss]="entryResultValue(entry) < 0">
+                          <dd
+                            [class.loss]="entryResultValue(entry) < 0"
+                            [class.profit]="entryResultValue(entry) > 0"
+                          >
                             {{ money(entryResultValue(entry)) }}
                           </dd>
                         </div>
