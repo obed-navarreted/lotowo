@@ -94,6 +94,13 @@ export class AppShell {
       roles: ['ADMIN', 'SUPERVISOR', 'SELLER'],
     },
     {
+      label: 'Montada',
+      shortLabel: 'Montada',
+      icon: 'stack',
+      route: '/mounting',
+      roles: ['ADMIN', 'SUPERVISOR', 'SELLER'],
+    },
+    {
       label: 'Reportes',
       shortLabel: 'Reportes',
       icon: 'chart',
@@ -118,10 +125,10 @@ export class AppShell {
     const role = this.auth.user()?.role;
     const preferred =
       role === 'ADMIN'
-        ? ['/dashboard', '/results', '/tickets', '/exposure', '/reports/follow-up']
+        ? ['/dashboard', '/results', '/tickets', '/exposure', '/mounting']
         : role === 'SELLER'
-          ? ['/dashboard', '/sell', '/tickets', '/reports/history']
-          : ['/dashboard', '/tickets', '/reports/history', '/exposure'];
+          ? ['/dashboard', '/sell', '/tickets', '/reports/history', '/mounting']
+          : ['/dashboard', '/tickets', '/reports/history', '/exposure', '/mounting'];
     const available = this.navigation();
     return preferred.flatMap((route) => available.filter((item) => item.route === route));
   });

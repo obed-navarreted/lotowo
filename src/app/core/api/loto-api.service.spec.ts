@@ -282,6 +282,17 @@ describe('LotoApiService', () => {
     detail.flush({});
   });
 
+  it('requests mounting calculations with the assumed payout', () => {
+    service.getMountingReport('draw-id', 25_000).subscribe();
+
+    const request = http.expectOne(
+      (candidate) => candidate.url === '/api/v1/reports/draws/draw-id/mounting',
+    );
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.get('assumedPayout')).toBe('25000');
+    request.flush({});
+  });
+
   it('requests winner history with pagination and the selected range', () => {
     service.getWinnerReports(2, 20, '2026-07-01', '2026-08-05').subscribe();
 

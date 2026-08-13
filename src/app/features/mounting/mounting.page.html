@@ -1,0 +1,116 @@
+<header class="page-header mounting-heading">
+  <div class="page-header__copy">
+    <span class="eyebrow">Cobertura de premios</span>
+    <h1>Montada</h1>
+    <p class="page-subtitle">Define cuánto asumir y revisa qué terminaciones debes pedir.</p>
+  </div>
+  @if (report()) {
+    <button
+      class="button button--primary mounting-export"
+      type="button"
+      (click)="exportImage()"
+      [disabled]="exporting()"
+    >
+      <lo-icon name="image" [size]="18" />
+      {{ exporting() ? 'Generando…' : 'Imagen PNG' }}
+    </button>
+  }
+</header>
+
+<section class="mounting-controls card">
+  <header>
+    <span><lo-icon name="stack" [size]="19" /></span>
+    <div>
+      <strong>Calcula la cobertura</strong><small>{{ scopeLabel() }} · pago externo ×80</small>
+    </div>
+  </header>
+  <div class="mounting-control-grid">
+    <label>
+      <span>Sorteo vigente</span>
+      <select
+        class="select"
+        [(ngModel)]="selectedDrawId"
+        (change)="onDrawChanged()"
+        [disabled]="loadingDraws()"
+      >
+        @for (draw of draws(); track draw.id) {
+          <option [value]="draw.id">{{ drawName(draw) }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      <span>Premio que deseas asumir</span>
+      <div class="mounting-amount">
+        <input
+          type="number"
+          min="0"
+          step="100"
+          inputmode="decimal"
+          [(ngModel)]="assumedPayout"
+          (keydown.enter)="calculate()"
+        />
+      </div>
+    </label>
+    <button
+      class="button button--primary"
+      type="button"
+      (click)="calculate()"
+      [disabled]="loadingDraws() || calculating()"
+    >
+      <lo-icon name="refresh" [size]="18" />
+      {{ calculating() ? 'Calculando…' : 'Calcular' }}
+    </button>
+  </div>
+</section>
+
+@if (errorMessage()) {
+  <div class="mounting-error"><lo-icon name="info" [size]="18" />{{ errorMessage() }}</div>
+}
+
+@if (loadingDraws() || calculating()) {
+  <section class="mounting-loading">
+    <article class="card"></article>
+    <article class="card"></article>
+    <article class="card"></article>
+  </section>
+} @else if (report(); as detail) {
+  <section class="mounting-sheet card">
+    <header class="mounting-sheet__header">
+      <span class="eyebrow">{{ drawName(detail) }}</span>
+      <h2>Números a pedir</h2>
+      <div class="mounting-totals">
+        <div>
+          <small>A asumir</small><strong>{{ money(detail.assumedPayout) }}</strong>
+        </div>
+        <div>
+          <small>Números</small><strong>{{ detail.items.length }}</strong>
+        </div>
+        <div>
+          <small>Total a pedir</small><strong>{{ money(detail.totalStakeToRequest) }}</strong>
+        </div>
+      </div>
+    </header>
+
+    @if (detail.items.length) {
+      <div class="mounting-grid">
+        @for (item of detail.items; track item.number) {
+          <article>
+            <b>{{ item.number }}</b>
+            <div>
+              <small>Pedir</small><strong>{{ money(item.stakeToRequest) }}</strong>
+            </div>
+            <span>Premio {{ money(item.potentialPayout) }}</span>
+          </article>
+        }
+      </div>
+    } @else {
+      <div class="mounting-empty">
+        <span><lo-icon name="check" [size]="22" /></span>
+        <strong>No hay números que pedir</strong>
+        <p>Todos los premios están dentro del monto que decidiste asumir.</p>
+      </div>
+    }
+
+    <footer>Generado {{ generatedAt(detail.generatedAt) }} · hora de Nicaragua</footer>
+  </section>
+}

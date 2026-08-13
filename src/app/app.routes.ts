@@ -78,6 +78,12 @@ export const routes: Routes = [
           import('./features/exposure/exposure.page').then((component) => component.ExposurePage),
       },
       {
+        path: 'mounting',
+        title: 'Montada · Suerte',
+        loadComponent: () =>
+          import('./features/mounting/mounting.page').then((component) => component.MountingPage),
+      },
+      {
         path: 'reports',
         title: 'Reportes · Suerte',
         loadComponent: () =>

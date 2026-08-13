@@ -255,6 +255,24 @@ export interface DrawNumberReport extends DrawReport {
   numbers: NumberReport[];
 }
 
+export interface MountingItem {
+  number: string;
+  potentialPayout: number;
+  excessPayout: number;
+  stakeToRequest: number;
+}
+
+export interface MountingReport {
+  drawId: string;
+  drawType: Draw['drawType'];
+  scheduledAt: string;
+  assumedPayout: number;
+  externalMultiplier: number;
+  totalStakeToRequest: number;
+  generatedAt: string;
+  items: MountingItem[];
+}
+
 export interface SellerSettlement {
   sellerId: string;
   sellerName: string;

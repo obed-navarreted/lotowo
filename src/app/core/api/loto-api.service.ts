@@ -6,6 +6,7 @@ import {
   Draw,
   DrawClosure,
   DrawNumberReport,
+  MountingReport,
   DrawReport,
   DrawSettlementReport,
   NumberExposure,
@@ -290,6 +291,13 @@ export class LotoApiService {
     if (sellerId) params = params.set('sellerId', sellerId);
     if (routeId) params = params.set('routeId', routeId);
     return this.http.get<DrawNumberReport>(`/api/v1/reports/draws/${drawId}/numbers`, { params });
+  }
+
+  getMountingReport(drawId: string, assumedPayout: number) {
+    const params = new HttpParams().set('assumedPayout', assumedPayout);
+    return this.http.get<MountingReport>(`/api/v1/reports/draws/${drawId}/mounting`, {
+      params,
+    });
   }
 
   getDrawSettlementReport(drawId: string, sellerId?: string) {
