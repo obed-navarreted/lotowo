@@ -26,13 +26,33 @@
   </header>
   <div class="mounting-control-grid">
     <label>
-      <span>Sorteo vigente</span>
+      <span>Fecha</span>
+      <span class="date-picker">
+        <lo-icon name="calendar" [size]="19" />
+        <span class="date-picker__copy">
+          <strong>{{ filterDateLabel() }}</strong>
+          <small>DD/MM/AAAA</small>
+        </span>
+        <input
+          type="date"
+          [(ngModel)]="selectedDate"
+          [min]="historyMinDate"
+          (change)="onDateChanged()"
+          aria-label="Fecha del sorteo"
+        />
+      </span>
+    </label>
+    <label>
+      <span>Sorteo</span>
       <select
         class="select"
         [(ngModel)]="selectedDrawId"
         (change)="onDrawChanged()"
         [disabled]="loadingDraws()"
       >
+        @if (!draws().length) {
+          <option value="">No hay sorteos para este día</option>
+        }
         @for (draw of draws(); track draw.id) {
           <option [value]="draw.id">{{ drawName(draw) }}</option>
         }

@@ -7,6 +7,8 @@ describe('MountingPage', () => {
   let http: HttpTestingController;
 
   beforeEach(async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-12T14:00:00-06:00'));
     sessionStorage.setItem('lotowo.access-token', 'admin-token');
     sessionStorage.setItem(
       'lotowo.user',
@@ -29,20 +31,28 @@ describe('MountingPage', () => {
   afterEach(() => {
     http.verify();
     sessionStorage.clear();
+    vi.useRealTimers();
   });
 
   it('selects the current draw and renders only numbers that need coverage', () => {
     const fixture = TestBed.createComponent(MountingPage);
-    http.expectOne('/api/v1/draws/saleable').flush([
+    const agenda = http.expectOne((request) => request.url === '/api/v1/draws');
+    expect(agenda.request.params.get('from')).toBe('2026-08-12T06:00:00.000Z');
+    expect(agenda.request.params.get('to')).toBe('2026-08-13T05:59:59.999Z');
+    agenda.flush([
       {
         id: 'later-draw',
         drawType: 'DAILY',
         scheduledAt: '2026-08-12T21:00:00-06:00',
+        salesCloseAt: '2026-08-12T21:00:00-06:00',
+        status: 'OPEN',
       },
       {
         id: 'current-draw',
         drawType: 'DAILY',
         scheduledAt: '2026-08-12T15:00:00-06:00',
+        salesCloseAt: '2026-08-12T15:00:00-06:00',
+        status: 'OPEN',
       },
     ]);
 

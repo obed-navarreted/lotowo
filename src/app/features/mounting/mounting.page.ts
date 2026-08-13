@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { catchError, finalize, of } from 'rxjs';
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { Draw, MountingReport } from '../../core/models/api.models';
@@ -30,28 +30,70 @@ export class MountingPage {
   protected readonly calculating = signal(false);
   protected readonly exporting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly historyMinDate: string;
+  protected readonly today: string;
+  protected selectedDate: string;
   protected selectedDrawId = '';
   protected assumedPayout: number | null = 25_000;
+  private drawLoadSequence = 0;
 
   constructor() {
+    this.today = this.localDate(new Date());
+    this.selectedDate = this.today;
+    const earliest = new Date();
+    earliest.setDate(earliest.getDate() - 15);
+    this.historyMinDate = this.auth.isAdmin() ? '' : this.localDate(earliest);
+    this.loadDraws();
+  }
+
+  protected onDateChanged(): void {
+    this.selectedDrawId = '';
+    this.report.set(null);
+    this.loadDraws();
+  }
+
+  private loadDraws(): void {
+    if (this.historyMinDate && this.selectedDate < this.historyMinDate) {
+      this.draws.set([]);
+      this.report.set(null);
+      this.errorMessage.set('Solo puedes consultar sorteos de los últimos 15 días.');
+      return;
+    }
+    const sequence = ++this.drawLoadSequence;
+    const from = new Date(`${this.selectedDate}T00:00:00-06:00`);
+    const to = new Date(from.getTime() + 86_400_000 - 1);
+    this.loadingDraws.set(true);
+    this.errorMessage.set(null);
+    this.draws.set([]);
     this.api
-      .getSaleableDraws()
+      .getDraws(from, to)
       .pipe(
-        finalize(() => this.loadingDraws.set(false)),
+        catchError((error: HttpErrorResponse) => {
+          if (error.status === 404) return of([] as Draw[]);
+          throw error;
+        }),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: (draws) => {
+          if (sequence !== this.drawLoadSequence) return;
           const ordered = [...draws].sort(
             (left, right) =>
               new Date(left.scheduledAt).getTime() - new Date(right.scheduledAt).getTime(),
           );
           this.draws.set(ordered);
-          this.selectedDrawId = ordered[0]?.id ?? '';
+          this.selectedDrawId = this.defaultDraw(ordered)?.id ?? '';
+          this.loadingDraws.set(false);
           if (this.selectedDrawId) this.calculate();
+          else this.errorMessage.set('No hay sorteos registrados para la fecha seleccionada.');
         },
-        error: (error: unknown) =>
-          this.errorMessage.set(apiErrorMessage(error, 'No pudimos cargar los sorteos vigentes.')),
+        error: (error: unknown) => {
+          if (sequence !== this.drawLoadSequence) return;
+          this.loadingDraws.set(false);
+          this.errorMessage.set(
+            apiErrorMessage(error, 'No pudimos cargar los sorteos de ese día.'),
+          );
+        },
       });
   }
 
@@ -60,7 +102,7 @@ export class MountingPage {
     this.errorMessage.set(null);
     if (!this.selectedDrawId) {
       this.report.set(null);
-      this.errorMessage.set('Selecciona un sorteo vigente.');
+      this.errorMessage.set('Selecciona un sorteo.');
       return;
     }
     if (
@@ -126,11 +168,46 @@ export class MountingPage {
     }).format(new Date(value));
   }
 
+  protected filterDateLabel(): string {
+    return new Intl.DateTimeFormat('es-NI', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'America/Managua',
+    }).format(new Date(`${this.selectedDate}T12:00:00-06:00`));
+  }
+
   protected scopeLabel(): string {
     return this.auth.isAdmin()
       ? 'Vista general'
       : this.auth.user()?.role === 'SUPERVISOR'
         ? 'Rutas asignadas'
         : 'Mis ventas';
+  }
+
+  private defaultDraw(draws: Draw[]): Draw | undefined {
+    if (!draws.length) return undefined;
+    if (this.selectedDate !== this.today) return draws[0];
+    const now = Date.now();
+    return (
+      draws.find(
+        (draw) => draw.status !== 'CANCELLED' && new Date(draw.salesCloseAt).getTime() > now,
+      ) ??
+      [...draws]
+        .reverse()
+        .find(
+          (draw) => draw.status !== 'CANCELLED' && new Date(draw.scheduledAt).getTime() <= now,
+        ) ??
+      draws[0]
+    );
+  }
+
+  private localDate(date: Date): string {
+    return new Intl.DateTimeFormat('en-CA', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      timeZone: 'America/Managua',
+    }).format(date);
   }
 }

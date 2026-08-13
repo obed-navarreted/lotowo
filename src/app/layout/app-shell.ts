@@ -125,10 +125,8 @@ export class AppShell {
     const role = this.auth.user()?.role;
     const preferred =
       role === 'ADMIN'
-        ? ['/dashboard', '/results', '/tickets', '/exposure', '/mounting']
-        : role === 'SELLER'
-          ? ['/dashboard', '/sell', '/tickets', '/reports/history', '/mounting']
-          : ['/dashboard', '/tickets', '/reports/history', '/exposure', '/mounting'];
+        ? ['/dashboard', '/results', '/tickets', '/utilities', '/exposure']
+        : ['/dashboard', '/reports/history', '/tickets', '/utilities', '/exposure'];
     const available = this.navigation();
     return preferred.flatMap((route) => available.filter((item) => item.route === route));
   });

@@ -4,10 +4,13 @@
 
 .mounting-heading {
   align-items: flex-end;
+  min-width: 0;
 }
 
 .mounting-export {
+  box-sizing: border-box;
   flex: 0 0 auto;
+  max-width: 100%;
 }
 
 .mounting-controls {
@@ -282,16 +285,21 @@
 
 @media (min-width: 760px) {
   .mounting-control-grid {
-    grid-template-columns: minmax(240px, 1.2fr) minmax(210px, 0.8fr) auto;
+    grid-template-columns: minmax(180px, 0.72fr) minmax(230px, 1.15fr) minmax(210px, 0.82fr) auto;
   }
 }
 
 @media (max-width: 520px) {
   .mounting-heading {
-    align-items: stretch;
-  }
-  .mounting-export {
     width: 100%;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .mounting-heading > .mounting-export {
+    width: auto;
+    max-width: 100%;
+    align-self: flex-start;
+    padding-inline: 14px;
   }
   .mounting-controls {
     padding: 13px;
