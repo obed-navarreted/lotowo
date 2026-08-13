@@ -142,10 +142,17 @@ export class LotoApiService {
     return this.http.get<TicketDaySummary>('/api/v1/tickets/day-summary', { params });
   }
 
-  getUtilitySummary(from: string, to: string, drawIds: string[] = [], sellerId?: string) {
+  getUtilitySummary(
+    from: string,
+    to: string,
+    drawIds: string[] = [],
+    sellerId?: string,
+    routeId?: string,
+  ) {
     let params = new HttpParams().set('from', from).set('to', to);
     for (const drawId of drawIds) params = params.append('drawIds', drawId);
     if (sellerId) params = params.set('sellerId', sellerId);
+    if (routeId) params = params.set('routeId', routeId);
     return this.http.get<UtilitySummary>('/api/v1/reports/utilities/summary', { params });
   }
 

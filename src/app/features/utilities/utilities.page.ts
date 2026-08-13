@@ -6,7 +6,7 @@ import { RouterLink } from '@angular/router';
 import { catchError, of } from 'rxjs';
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { ManagedUser } from '../../core/models/admin.models';
+import { ManagedUser, RouteSummary } from '../../core/models/admin.models';
 import {
   Draw,
   UtilityDrawSummary,
@@ -32,6 +32,7 @@ export class UtilitiesPage {
   private readonly pdf = inject(OperationalReportPdfService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly draws = signal<Draw[]>([]);
+  protected readonly routes = signal<RouteSummary[]>([]);
   protected readonly sellers = signal<ManagedUser[]>([]);
   protected readonly summary = signal<UtilitySummary | null>(null);
   protected readonly loading = signal(true);
@@ -45,6 +46,7 @@ export class UtilitiesPage {
   protected selectedDrawIds: string[] = [];
   protected allDrawsSelected = true;
   protected selectedSellerId = '';
+  protected selectedRouteId = '';
   protected includeCommissions = false;
   protected includeDraws = true;
 
@@ -53,6 +55,17 @@ export class UtilitiesPage {
     earliest.setDate(earliest.getDate() - 14);
     this.historyMinDate = this.auth.isAdmin() ? '' : this.localDate(earliest);
     if (this.auth.user()?.role !== 'SELLER') {
+      this.api
+        .getRoutes()
+        .pipe(
+          catchError(() => of([] as RouteSummary[])),
+          takeUntilDestroyed(this.destroyRef),
+        )
+        .subscribe((routes) =>
+          this.routes.set(
+            [...routes].sort((left, right) => left.name.localeCompare(right.name, 'es')),
+          ),
+        );
       this.api
         .getUsers(0, 100)
         .pipe(
@@ -94,6 +107,7 @@ export class UtilitiesPage {
     const options = {
       includeCommissions: this.includeCommissions,
       includeDraws: this.includeDraws,
+      scopeLabel: this.selectedRoute()?.name,
     };
     const exportOperation =
       format === 'MOBILE'
@@ -153,7 +167,30 @@ export class UtilitiesPage {
     this.toDate = this.today;
     this.resetDrawSelection();
     this.selectedSellerId = '';
+    this.selectedRouteId = '';
     this.loadPeriod();
+  }
+
+  protected onRouteChanged(): void {
+    if (
+      this.selectedSellerId &&
+      !this.sellers().some(
+        (seller) => seller.id === this.selectedSellerId && seller.routeId === this.selectedRouteId,
+      )
+    ) {
+      this.selectedSellerId = '';
+    }
+    this.applyFilters();
+  }
+
+  protected visibleSellers(): ManagedUser[] {
+    return this.selectedRouteId
+      ? this.sellers().filter((seller) => seller.routeId === this.selectedRouteId)
+      : this.sellers();
+  }
+
+  protected selectedRoute(): RouteSummary | undefined {
+    return this.routes().find((route) => route.id === this.selectedRouteId);
   }
 
   protected drawName(draw: Draw): string {
@@ -161,14 +198,18 @@ export class UtilitiesPage {
   }
 
   protected selectedContext(): string {
+    const route = this.selectedRoute();
+    const routeContext = route ? ` · ${route.name}` : '';
     if (!this.allDrawsSelected && this.selectedDrawIds.length === 1) {
       const draw = this.draws().find((item) => item.id === this.selectedDrawIds[0]);
-      if (draw) return this.drawName(draw);
+      if (draw) return `${this.drawName(draw)}${routeContext}`;
     }
     if (!this.allDrawsSelected && this.selectedDrawIds.length > 1) {
-      return `${this.selectedDrawIds.length} turnos seleccionados`;
+      return `${this.selectedDrawIds.length} turnos seleccionados${routeContext}`;
     }
-    return this.isSingleDay() ? 'Todos los turnos del día' : 'Todos los turnos del período';
+    return `${
+      this.isSingleDay() ? 'Todos los turnos del día' : 'Todos los turnos del período'
+    }${routeContext}`;
   }
 
   protected ticketsQuery(): Record<string, string> {
@@ -294,6 +335,7 @@ export class UtilitiesPage {
         this.toDate,
         this.allDrawsSelected ? [] : this.selectedDrawIds,
         this.selectedSellerId || undefined,
+        this.selectedRouteId || undefined,
       )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({

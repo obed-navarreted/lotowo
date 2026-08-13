@@ -34,6 +34,7 @@ export interface PayrollPdfOptions {
 export interface UtilityPdfOptions {
   includeCommissions: boolean;
   includeDraws: boolean;
+  scopeLabel?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -74,7 +75,7 @@ export class OperationalReportPdfService {
     const includeCommissions = options.includeCommissions;
     const result = includeCommissions ? report.netAfterCommission : report.netResult;
     const document = await this.createDocument('Reporte de utilidades');
-    let y = this.a4UtilityHeader(document, report);
+    let y = this.a4UtilityHeader(document, report, options.scopeLabel);
     const totals: Array<[string, number]> = [
       ['Vendido', report.grossSales],
       ['Premios', report.prizesPaid],
@@ -141,7 +142,11 @@ export class OperationalReportPdfService {
     await this.pdfFiles.save(document, `suerte-utilidades-${report.from}-${report.to}.pdf`);
   }
 
-  private a4UtilityHeader(document: import('jspdf').jsPDF, report: UtilitySummary): number {
+  private a4UtilityHeader(
+    document: import('jspdf').jsPDF,
+    report: UtilitySummary,
+    scopeLabel?: string,
+  ): number {
     document.setFont('helvetica', 'bold');
     document.setFontSize(14);
     document.setTextColor(35, 34, 31);
@@ -149,7 +154,14 @@ export class OperationalReportPdfService {
     document.setFont('helvetica', 'normal');
     document.setFontSize(8);
     document.setTextColor(120, 117, 108);
-    document.text(this.mobilePeriod(report.from, report.to), 17, 25);
+    document.text(
+      scopeLabel
+        ? `${this.mobilePeriod(report.from, report.to)} · ${this.clean(scopeLabel)}`
+        : this.mobilePeriod(report.from, report.to),
+      17,
+      25,
+      { maxWidth: 176 },
+    );
     document.setDrawColor(184, 139, 53);
     document.setLineWidth(0.45);
     document.line(17, 30, 193, 30);
@@ -224,7 +236,13 @@ export class OperationalReportPdfService {
     for (const [sellerIndex, seller] of sellers.entries()) {
       if (sellerIndex > 0) document.addPage();
       this.mobileReceiptBackground(document, pageHeight);
-      let y = this.mobileSellerCard(document, report, seller, includeCommissions);
+      let y = this.mobileSellerCard(
+        document,
+        report,
+        seller,
+        includeCommissions,
+        options.scopeLabel,
+      );
 
       if (options.includeDraws) {
         const days = [...groupUtilitiesByDay(seller)].sort((left, right) =>
@@ -319,6 +337,7 @@ export class OperationalReportPdfService {
     report: UtilitySummary,
     seller: UtilitySellerSummary,
     includeCommissions: boolean,
+    scopeLabel?: string,
   ): number {
     const result = includeCommissions ? seller.netAfterCommission : seller.netBeforeCommission;
     document.setFillColor(255, 255, 255);
@@ -332,7 +351,14 @@ export class OperationalReportPdfService {
     document.setFont('helvetica', 'normal');
     document.setFontSize(7.2);
     document.setTextColor(115, 111, 102);
-    document.text(this.mobilePeriod(report.from, report.to), 46, 16, { align: 'center' });
+    document.text(
+      scopeLabel
+        ? `${this.mobilePeriod(report.from, report.to)} · ${this.clean(scopeLabel)}`
+        : this.mobilePeriod(report.from, report.to),
+      46,
+      16,
+      { align: 'center', maxWidth: 80 },
+    );
     document.setFont('helvetica', 'bold');
     document.setTextColor(48, 46, 42);
     document.setFontSize(7.2);

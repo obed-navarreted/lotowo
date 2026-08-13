@@ -3,7 +3,7 @@
     <span class="eyebrow">Resultado operativo</span>
     <h1>Utilidades</h1>
     <p class="page-subtitle">
-      Revisa ventas, premios y resultado neto por período, sorteo o vendedor.
+      Revisa ventas, premios y resultado neto por período, sorteo, ruta o vendedor.
     </p>
   </div>
   @if (summary()) {
@@ -102,10 +102,19 @@
     </div>
     @if (auth.user()?.role !== 'SELLER') {
       <label class="filter-field"
+        ><span>Ruta</span
+        ><select class="select" [(ngModel)]="selectedRouteId" (change)="onRouteChanged()">
+          <option value="">Todas las rutas permitidas</option>
+          @for (route of routes(); track route.id) {
+            <option [value]="route.id">{{ route.name }}</option>
+          }
+        </select></label
+      >
+      <label class="filter-field"
         ><span>Vendedor</span
         ><select class="select" [(ngModel)]="selectedSellerId" (change)="applyFilters()">
           <option value="">Todos los vendedores permitidos</option>
-          @for (seller of sellers(); track seller.id) {
+          @for (seller of visibleSellers(); track seller.id) {
             <option [value]="seller.id">{{ seller.fullName }}</option>
           }
         </select></label
@@ -223,8 +232,7 @@
       <article class="utility-metric card" [class.utility-metric--loss]="resultValue(result) < 0">
         <span class="metric-icon"><lo-icon name="trend" /></span>
         <div>
-          <small>Resultado</small
-          ><strong>{{ money(resultValue(result)) }}</strong>
+          <small>Resultado</small><strong>{{ money(resultValue(result)) }}</strong>
           <p>
             {{ includeCommissions ? 'Ventas menos premios y comisión' : 'Ventas menos premios' }}
           </p>
@@ -290,10 +298,7 @@
               <span class="provisional-badge">Provisional</span>
             }
           </header>
-          <dl
-            class="seller-summary"
-            [class.seller-summary--with-commission]="includeCommissions"
-          >
+          <dl class="seller-summary" [class.seller-summary--with-commission]="includeCommissions">
             <div>
               <dt>Vendido</dt>
               <dd>{{ money(seller.grossSales) }}</dd>

@@ -45,6 +45,7 @@ describe('UtilitiesPage', () => {
       selectedDrawIds: string[];
       allDrawsSelected: boolean;
       selectedSellerId: string;
+      selectedRouteId: string;
       includeCommissions: boolean;
       applyFilters(): void;
       ticketsQuery(): Record<string, string>;
@@ -60,6 +61,9 @@ describe('UtilitiesPage', () => {
         totalElements: 0,
         totalPages: 0,
       });
+    http
+      .expectOne((request) => request.url === '/api/v1/routes')
+      .flush([{ id: 'route-id', code: 'R-01', name: 'Ruta Norte', active: true }]);
     const initial = http.expectOne(
       (request) => request.url === '/api/v1/reports/utilities/summary',
     );
@@ -72,6 +76,7 @@ describe('UtilitiesPage', () => {
     component.selectedDrawIds = ['draw-id', 'draw-id-2'];
     component.allDrawsSelected = false;
     component.selectedSellerId = 'seller-id';
+    component.selectedRouteId = 'route-id';
     component.applyFilters();
 
     const summary = http.expectOne(
@@ -81,6 +86,7 @@ describe('UtilitiesPage', () => {
     expect(summary.request.params.get('to')).toBe('2026-08-01');
     expect(summary.request.params.getAll('drawIds')).toEqual(['draw-id', 'draw-id-2']);
     expect(summary.request.params.get('sellerId')).toBe('seller-id');
+    expect(summary.request.params.get('routeId')).toBe('route-id');
     const report: UtilitySummary = {
       from: '2026-08-01',
       to: '2026-08-01',
@@ -150,6 +156,7 @@ describe('UtilitiesPage', () => {
     expect(component.resultValue(report)).toBe(60);
     expect(fixture.nativeElement.textContent).toContain('LOTO - 01/08/26 - 11AM');
     expect(fixture.nativeElement.textContent).toContain('Vendedora Uno');
+    expect(fixture.nativeElement.textContent).toContain('Ruta Norte');
     expect(fixture.nativeElement.querySelector('.utility-mobile-summary')).not.toBeNull();
     expect(fixture.nativeElement.querySelectorAll('.utility-draw-mobile')).toHaveLength(2);
     expect(fixture.nativeElement.querySelector('details.utility-day[open]')).not.toBeNull();
