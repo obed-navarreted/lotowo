@@ -47,6 +47,7 @@ describe('UtilitiesPage', () => {
       selectedSellerId: string;
       selectedRouteId: string;
       includeCommissions: boolean;
+      includeMovements: boolean;
       applyFilters(): void;
       ticketsQuery(): Record<string, string>;
       resultValue(result: UtilitySummary): number;
@@ -64,6 +65,9 @@ describe('UtilitiesPage', () => {
     http
       .expectOne((request) => request.url === '/api/v1/routes')
       .flush([{ id: 'route-id', code: 'R-01', name: 'Ruta Norte', active: true }]);
+    http
+      .expectOne((request) => request.url === '/api/v1/admin/finance/movements')
+      .flush({ detail: 'No hay movimientos' }, { status: 404, statusText: 'Not Found' });
     const initial = http.expectOne(
       (request) => request.url === '/api/v1/reports/utilities/summary',
     );
@@ -153,13 +157,14 @@ describe('UtilitiesPage', () => {
       sellerId: 'seller-id',
     });
     expect(component.includeCommissions).toBe(false);
+    expect(component.includeMovements).toBe(false);
     expect(component.resultValue(report)).toBe(60);
     expect(fixture.nativeElement.textContent).toContain('LOTO - 01/08/26 - 11AM');
     expect(fixture.nativeElement.textContent).toContain('Vendedora Uno');
     expect(fixture.nativeElement.textContent).toContain('Ruta Norte');
     expect(fixture.nativeElement.querySelector('.utility-mobile-summary')).not.toBeNull();
     expect(fixture.nativeElement.querySelectorAll('.utility-draw-mobile')).toHaveLength(2);
-    expect(fixture.nativeElement.querySelector('details.utility-day[open]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('details.utility-day[open]')).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('Resultado sin comisión');
     expect(fixture.nativeElement.textContent).not.toContain('Comisión excluida');
     expect(fixture.nativeElement.textContent).not.toContain('Utilidad neta');

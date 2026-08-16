@@ -70,6 +70,71 @@
 .metric--loss span {
   color: var(--danger);
 }
+.draw-finance {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: 18px;
+  margin-top: 12px;
+  padding: 16px;
+  border-color: rgba(108, 75, 237, 0.2);
+  background: linear-gradient(135deg, #fff 0%, #faf8ff 100%);
+}
+.draw-finance > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.draw-finance > header > div {
+  display: flex;
+  flex-direction: column;
+}
+.draw-finance > header > div strong {
+  font-size: 16px;
+}
+.draw-finance > header > b {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.draw-finance > header > b.profit {
+  color: var(--mint-dark);
+}
+.draw-finance > header > b.loss {
+  color: var(--danger);
+}
+.draw-finance dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.draw-finance dl > div {
+  padding: 9px;
+  background: white;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+}
+.draw-finance dt {
+  color: var(--muted);
+  font-size: 10px;
+}
+.draw-finance dd {
+  margin: 3px 0 0;
+  font-size: 14px;
+  font-weight: 800;
+}
+@media (max-width: 620px) {
+  .draw-finance {
+    grid-template-columns: 1fr;
+  }
+  .draw-finance dl {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .draw-finance dd {
+    font-size: 12px;
+  }
+}
 .number-report {
   margin-top: 14px;
   overflow: hidden;

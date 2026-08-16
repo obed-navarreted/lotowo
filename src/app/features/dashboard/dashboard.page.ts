@@ -12,7 +12,7 @@ import { RouterLink } from '@angular/router';
 import { finalize, interval, startWith } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { LotoApiService } from '../../core/api/loto-api.service';
-import { Draw, DrawClosure, SellerAvailability } from '../../core/models/api.models';
+import { Draw, SellerAvailability } from '../../core/models/api.models';
 import { Icon } from '../../shared/icon/icon';
 import { apiErrorMessage } from '../../shared/api-error';
 import { drawLabel } from '../../shared/draw-label';
@@ -33,11 +33,6 @@ export class DashboardPage {
   protected readonly loadError = signal(false);
   protected readonly actionError = signal('');
   protected readonly updatingDrawId = signal<string | null>(null);
-  protected readonly resultDraw = signal<Draw | null>(null);
-  protected readonly resultNumber = signal('');
-  protected readonly resultSaving = signal(false);
-  protected readonly resultError = signal('');
-  protected readonly lastClosure = signal<DrawClosure | null>(null);
   protected readonly draws = signal<Draw[]>([]);
   protected readonly availability = signal<SellerAvailability | null>(null);
   protected readonly now = signal(Date.now());
@@ -157,44 +152,6 @@ export class DashboardPage {
       draw.status !== 'CANCELLED' &&
       new Date(draw.salesCloseAt).getTime() <= this.now()
     );
-  }
-
-  protected openResult(draw: Draw): void {
-    if (!this.canRegisterResult(draw)) return;
-    this.resultDraw.set(draw);
-    this.resultNumber.set('');
-    this.resultError.set('');
-  }
-
-  protected closeResult(): void {
-    if (!this.resultSaving()) this.resultDraw.set(null);
-  }
-  protected updateResultNumber(value: string): void {
-    this.resultNumber.set(value.replace(/\D/g, '').slice(0, 2));
-    this.resultError.set('');
-  }
-  protected submitResult(): void {
-    const draw = this.resultDraw();
-    if (!draw || !/^\d{2}$/.test(this.resultNumber())) {
-      this.resultError.set('Escribe el número ganador con dos dígitos, entre 00 y 99.');
-      return;
-    }
-    this.resultSaving.set(true);
-    this.api
-      .registerWinningNumber(draw.id, this.resultNumber())
-      .pipe(
-        finalize(() => this.resultSaving.set(false)),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (closure) => {
-          this.lastClosure.set(closure);
-          this.resultDraw.set(null);
-          this.load();
-        },
-        error: (error: unknown) =>
-          this.resultError.set(apiErrorMessage(error, 'No fue posible registrar el resultado.')),
-      });
   }
 
   protected toggleSales(draw: Draw): void {

@@ -9,6 +9,16 @@
   flex: 0 0 auto;
   gap: 8px;
 }
+.utility-export--weekly {
+  color: var(--violet-dark);
+  background: var(--violet-soft);
+  border-color: rgba(108, 75, 237, 0.2);
+}
+@media (max-width: 767px) {
+  .utility-export--weekly {
+    display: none;
+  }
+}
 .utility-filters {
   margin-bottom: 16px;
   padding: 15px;
@@ -327,6 +337,295 @@
 .utility-overview > footer .button {
   width: 100%;
 }
+.business-finance {
+  margin-top: 14px;
+  padding: 17px;
+  border-color: rgba(108, 75, 237, 0.2);
+  background: linear-gradient(135deg, #fff 0%, #faf8ff 100%);
+}
+.business-finance > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.business-finance h2 {
+  margin: 1px 0 0;
+}
+.business-finance > header > strong {
+  color: var(--ink);
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+}
+.business-finance > header > strong.profit {
+  color: var(--mint-dark);
+}
+.business-finance > header > strong.loss {
+  color: var(--danger);
+}
+.business-finance dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0 0;
+}
+.business-finance dl > div {
+  padding: 11px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid var(--line-soft);
+  border-radius: 11px;
+}
+.business-finance dt {
+  color: var(--muted);
+  font-size: 11px;
+}
+.business-finance dd {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 800;
+}
+.business-finance > p {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.expense-manager {
+  margin-top: 14px;
+  overflow: hidden;
+  padding: 0;
+}
+.expense-manager > header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 17px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.expense-manager > header h2 {
+  margin: 1px 0 0;
+}
+.expense-manager > header p {
+  margin: 4px 0 0;
+  color: var(--muted-strong);
+  font-size: 12px;
+}
+.expense-date {
+  display: flex;
+  width: min(100%, 280px);
+  flex-direction: column;
+  gap: 5px;
+}
+.expense-date > span:first-child,
+.expense-draft label > span,
+.expense-edit-grid label > span {
+  color: var(--muted-strong);
+  font-size: 11px;
+  font-weight: 750;
+}
+.expense-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 12px 15px 0;
+  padding: 10px 12px;
+  color: var(--mint-dark);
+  background: var(--mint-soft);
+  border-radius: 11px;
+  font-size: 12px;
+}
+.expense-message button {
+  padding: 0 4px;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-size: 19px;
+}
+.expense-manager > .utility-error {
+  margin: 12px 15px 0;
+}
+.expense-create {
+  padding: 15px;
+}
+.expense-create > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.expense-create > header > div {
+  display: flex;
+  flex-direction: column;
+}
+.expense-create > header small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.expense-create > header .button {
+  min-height: 38px;
+  padding-inline: 11px;
+}
+.expense-drafts {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.expense-draft {
+  display: grid;
+  grid-template-columns: 130px 145px minmax(220px, 1.6fr) minmax(190px, 1fr) 42px;
+  align-items: end;
+  gap: 8px;
+  padding: 10px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+}
+.expense-draft label,
+.expense-edit-grid label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+.expense-remove,
+.expense-actions button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--muted-strong);
+  background: white;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.expense-remove {
+  width: 42px;
+  height: 42px;
+  color: var(--danger);
+}
+.expense-save {
+  min-width: 180px;
+  margin-top: 11px;
+  margin-left: auto;
+}
+.expense-history {
+  border-top: 1px solid var(--line-soft);
+}
+.expense-history > header {
+  padding: 13px 17px;
+  background: var(--surface-soft);
+  font-size: 13px;
+}
+.expense-history > article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 13px;
+  min-height: 66px;
+  padding: 10px 17px;
+  border-top: 1px solid var(--line-soft);
+}
+.expense-history__main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.expense-history__main strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.expense-history__main small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.expense-history > article > b {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.expense-history > article.movement-income > b {
+  color: var(--success);
+}
+.expense-actions {
+  display: flex;
+  gap: 6px;
+}
+.expense-actions button {
+  width: 35px;
+  height: 35px;
+}
+.expense-actions button:last-child {
+  color: var(--danger);
+}
+.expense-deleted {
+  opacity: 0.58;
+  background: var(--danger-soft);
+}
+.expense-deleted__badge {
+  padding: 5px 7px;
+  color: var(--danger);
+  background: white;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.expense-loading {
+  padding: 20px 17px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.expense-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  background: rgba(28, 26, 39, 0.48);
+  backdrop-filter: blur(5px);
+}
+.expense-modal > section {
+  width: min(100%, 590px);
+  padding: 20px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: var(--shadow-md);
+}
+.expense-modal h2 {
+  margin: 3px 0 12px;
+}
+.expense-modal p {
+  color: var(--muted-strong);
+}
+.expense-modal .modal-note {
+  font-size: 12px;
+}
+.expense-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.expense-edit-description {
+  grid-column: 1 / -1;
+}
+.expense-modal footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+.expense-modal .button--danger {
+  color: white;
+  background: var(--danger);
+  border-color: var(--danger);
+}
 .seller-utilities {
   margin-top: 14px;
   overflow: hidden;
@@ -570,6 +869,48 @@
   .utility-export-actions .button {
     min-width: 0;
     flex: 1;
+  }
+  .business-finance > header,
+  .expense-manager > header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .business-finance > header > strong {
+    font-size: 22px;
+  }
+  .business-finance dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .expense-date {
+    width: 100%;
+  }
+  .expense-draft {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) 42px;
+  }
+  .expense-description,
+  .expense-draft label:nth-child(4) {
+    grid-column: 1 / -1;
+  }
+  .expense-remove {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .expense-save {
+    width: 100%;
+  }
+  .expense-history > article {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .expense-actions,
+  .expense-deleted__badge {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+  .expense-edit-grid {
+    grid-template-columns: 1fr;
+  }
+  .expense-edit-description {
+    grid-column: auto;
   }
   .turn-selector__summary {
     align-items: flex-start;

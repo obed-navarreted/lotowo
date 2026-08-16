@@ -30,22 +30,39 @@
 }
 @if (lastClosure(); as closure) {
   <div class="closure-success">
-    <span class="closure-success__icon"><lo-icon name="check" [size]="17" /></span
-    ><div class="closure-success__copy">
+    <span class="closure-success__icon"><lo-icon name="check" [size]="17" /></span>
+    <div class="closure-success__copy">
       <strong>Ganador {{ closure.winningNumber }} registrado</strong>
       <div class="closure-success__metrics">
-        <span>Ventas <b>{{ money(closure.grossSales) }}</b></span>
-        <span>Premios <b>{{ money(closure.prizesDue) }}</b></span>
-        <span [class.loss]="closure.netResult < 0">Resultado <b>{{ money(closure.netResult) }}</b></span>
+        <span
+          >Ventas <b>{{ money(closure.grossSales) }}</b></span
+        >
+        <span
+          >Premios locales <b>{{ money(closure.localPrizes) }}</b></span
+        >
+        <span
+          >Montada <b>{{ money(closure.externalStake) }}</b></span
+        >
+        <span
+          >Premio externo <b>{{ money(closure.externalPrize) }}</b></span
+        >
+        <span [class.loss]="closure.businessResult < 0"
+          >Resultado real <b>{{ money(closure.businessResult) }}</b></span
+        >
       </div>
-    </div
-    ><a
+    </div>
+    <a
       class="button"
       routerLink="/reports"
       [queryParams]="{ date: selectedDate, drawId: closure.drawId }"
       title="Consultar ganadores y cierre"
       >Ver cierre</a
-    ><button class="closure-success__close" type="button" (click)="lastClosure.set(null)" aria-label="Cerrar">
+    ><button
+      class="closure-success__close"
+      type="button"
+      (click)="lastClosure.set(null)"
+      aria-label="Cerrar"
+    >
       <lo-icon name="close" [size]="16" />
     </button>
   </div>
@@ -123,6 +140,7 @@
 @if (selectedDraw(); as draw) {
   <div class="result-modal" (click)="closeResult()">
     <section
+      class="result-dialog"
       role="dialog"
       aria-modal="true"
       aria-labelledby="winner-title"
@@ -144,6 +162,87 @@
           autofocus
         /><small>Se calcularán premios y cierres globales, por ruta y por vendedor.</small></label
       >
+      <section class="late-mountings">
+        <header>
+          <div>
+            <strong>Montada externa</strong>
+            <small>Registra lo comprado fuera antes de cerrar el resultado.</small>
+          </div>
+          <button class="button" type="button" (click)="addMounting()" [disabled]="saving()">
+            <lo-icon name="plus" [size]="16" /> Agregar
+          </button>
+        </header>
+        @if (mountings().length) {
+          <div class="mounting-list">
+            @for (item of mountings(); track $index; let index = $index) {
+              <div class="mounting-row">
+                <label
+                  ><span>Número</span
+                  ><input
+                    class="input"
+                    inputmode="numeric"
+                    maxlength="2"
+                    placeholder="00"
+                    [value]="item.number"
+                    (input)="updateMountingNumber(index, $any($event.target).value)"
+                /></label>
+                <label
+                  ><span>Montado</span
+                  ><input
+                    class="input"
+                    type="number"
+                    inputmode="decimal"
+                    min="0.01"
+                    step="0.01"
+                    [value]="item.stakeAmount || ''"
+                    (input)="updateMountingAmount(index, $any($event.target).value)"
+                /></label>
+                <label
+                  ><span>Pago ×</span
+                  ><input
+                    class="input"
+                    type="number"
+                    inputmode="decimal"
+                    min="0.01"
+                    step="0.01"
+                    [value]="item.payoutMultiplier"
+                    (input)="updateMountingMultiplier(index, $any($event.target).value)"
+                /></label>
+                <button
+                  class="mounting-row__remove"
+                  type="button"
+                  (click)="removeMounting(index)"
+                  aria-label="Quitar montada"
+                >
+                  <lo-icon name="trash" [size]="17" />
+                </button>
+              </div>
+            }
+          </div>
+          <div class="mounting-summary">
+            <span
+              >Inversión externa <b>{{ money(mountingTotal()) }}</b></span
+            >
+            <span
+              >Premio calculado <b>{{ money(calculatedExternalPrize()) }}</b></span
+            >
+          </div>
+        } @else {
+          <p class="mounting-empty">Si no hubo montada, continúa sin agregar números.</p>
+        }
+        <label class="external-prize"
+          ><span>Premio externo recibido</span
+          ><input
+            class="input"
+            type="number"
+            inputmode="decimal"
+            min="0"
+            step="0.01"
+            [value]="externalPrizeReceived()"
+            (input)="updateExternalPrize($any($event.target).value)"
+          /><small>Debe coincidir con la montada del número ganador.</small></label
+        >
+      </section>
       @if (actionError()) {
         <div class="modal-error">{{ actionError() }}</div>
       }

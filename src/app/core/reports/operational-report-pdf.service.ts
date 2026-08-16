@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import {
+  BusinessFinanceSummary,
   CommissionPayroll,
   DrawNumberReport,
   DrawSettlementReport,
@@ -34,7 +35,9 @@ export interface PayrollPdfOptions {
 export interface UtilityPdfOptions {
   includeCommissions: boolean;
   includeDraws: boolean;
+  includeMovements?: boolean;
   scopeLabel?: string;
+  businessSummary?: BusinessFinanceSummary | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -83,6 +86,21 @@ export class OperationalReportPdfService {
     if (includeCommissions) totals.push(['Comisión', report.commissionAmount]);
     totals.push(['Resultado', result]);
     y = this.a4UtilitySummary(document, y, 'RESULTADO DEL PERÍODO', totals);
+    if (options.businessSummary) {
+      const finance = options.businessSummary;
+      const adjustments: Array<[string, number]> = [
+        ['Montadas', -finance.externalStake],
+        ['Premios externos', finance.externalPrizes],
+      ];
+      if (options.includeMovements) {
+        adjustments.push(
+          ['Otros ingresos', finance.extraIncome],
+          ['Otros gastos', -finance.expenses],
+        );
+      }
+      adjustments.push(['Resultado neto', finance.businessResult]);
+      y = this.a4UtilitySummary(document, y, 'AJUSTES ADMINISTRATIVOS', adjustments);
+    }
 
     if (report.pendingResults > 0) {
       document.setFillColor(255, 248, 226);
@@ -197,7 +215,7 @@ export class OperationalReportPdfService {
       document.text(label.toUpperCase(), x, y + 8, { align: 'center' });
       document.setFont('helvetica', 'bold');
       document.setFontSize(12);
-      const isResult = label === 'Resultado';
+      const isResult = label.startsWith('Resultado');
       document.setTextColor(
         isResult && value < 0 ? 178 : isResult && value > 0 ? 42 : 35,
         isResult && value < 0 ? 65 : isResult && value > 0 ? 122 : 34,
@@ -232,7 +250,6 @@ export class OperationalReportPdfService {
     const sellers = [...report.sellers].sort((left, right) =>
       left.sellerName.localeCompare(right.sellerName, 'es'),
     );
-
     for (const [sellerIndex, seller] of sellers.entries()) {
       if (sellerIndex > 0) document.addPage();
       this.mobileReceiptBackground(document, pageHeight);

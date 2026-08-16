@@ -26,6 +26,13 @@ import {
   FollowUpSheet,
   SellerCommissionReport,
   WinnerDrawSummary,
+  BusinessSettlement,
+  ExternalMountingInput,
+  BusinessFinanceSummary,
+  BusinessMovement,
+  BusinessMovementInput,
+  BusinessExpense,
+  ExpenseInput,
 } from '../models/api.models';
 import {
   CommissionUpdate,
@@ -266,6 +273,83 @@ export class LotoApiService {
 
   registerWinningNumber(drawId: string, number: string) {
     return this.http.post<DrawClosure>(`/api/v1/settlements/draws/${drawId}/result`, { number });
+  }
+
+  registerBusinessResult(
+    drawId: string,
+    winningNumber: string,
+    mountings: ExternalMountingInput[],
+    externalPrizeReceived: number,
+  ) {
+    return this.http.post<BusinessSettlement>(`/api/v1/admin/finance/draws/${drawId}/result`, {
+      winningNumber,
+      mountings,
+      externalPrizeReceived,
+    });
+  }
+
+  getBusinessFinanceSummary(
+    from: string,
+    to: string,
+    includeCommissions = true,
+    includeMovements = true,
+  ) {
+    const params = new HttpParams()
+      .set('from', from)
+      .set('to', to)
+      .set('includeCommissions', includeCommissions)
+      .set('includeMovements', includeMovements);
+    return this.http.get<BusinessFinanceSummary>('/api/v1/admin/finance/summary', { params });
+  }
+
+  getDrawBusinessSummary(drawId: string) {
+    return this.http.get<BusinessSettlement>(`/api/v1/admin/finance/draws/${drawId}`);
+  }
+
+  getBusinessExpenses(date: string, includeDeleted = true) {
+    const params = new HttpParams().set('date', date).set('includeDeleted', includeDeleted);
+    return this.http.get<BusinessExpense[]>('/api/v1/admin/finance/expenses', { params });
+  }
+
+  createBusinessExpenses(date: string, expenses: ExpenseInput[]) {
+    return this.http.post<BusinessExpense[]>('/api/v1/admin/finance/expenses/batches', {
+      date,
+      expenses,
+    });
+  }
+
+  updateBusinessExpense(expenseId: string, date: string, expense: ExpenseInput) {
+    return this.http.put<BusinessExpense>(`/api/v1/admin/finance/expenses/${expenseId}`, {
+      date,
+      expense,
+    });
+  }
+
+  deleteBusinessExpense(expenseId: string) {
+    return this.http.delete<void>(`/api/v1/admin/finance/expenses/${expenseId}`);
+  }
+
+  getBusinessMovements(date: string, includeDeleted = true) {
+    const params = new HttpParams().set('date', date).set('includeDeleted', includeDeleted);
+    return this.http.get<BusinessMovement[]>('/api/v1/admin/finance/movements', { params });
+  }
+
+  createBusinessMovements(date: string, movements: BusinessMovementInput[]) {
+    return this.http.post<BusinessMovement[]>('/api/v1/admin/finance/movements/batches', {
+      date,
+      movements,
+    });
+  }
+
+  updateBusinessMovement(movementId: string, date: string, movement: BusinessMovementInput) {
+    return this.http.put<BusinessMovement>(`/api/v1/admin/finance/movements/${movementId}`, {
+      date,
+      movement,
+    });
+  }
+
+  deleteBusinessMovement(movementId: string) {
+    return this.http.delete<void>(`/api/v1/admin/finance/movements/${movementId}`);
   }
 
   getDrawClosure(drawId: string) {

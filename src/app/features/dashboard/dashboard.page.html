@@ -156,9 +156,9 @@
               </button>
             }
             @if (auth.isAdmin() && canRegisterResult(draw)) {
-              <button class="draw-result-action" type="button" (click)="openResult(draw)">
+              <a class="draw-result-action" routerLink="/results">
                 <lo-icon name="check" [size]="15" /><span>Resultado</span>
-              </button>
+              </a>
             }
           </div>
         }
@@ -205,61 +205,3 @@
     }
   </article>
 </section>
-
-@if (lastClosure(); as closure) {
-  <div class="closure-notice">
-    <lo-icon name="check" [size]="18" /><span
-      ><strong>Resultado {{ closure.winningNumber }} registrado.</strong> Cierre generado: ventas
-      {{ money(closure.grossSales) }}, premios {{ money(closure.prizesDue) }}, resultado neto
-      {{ money(closure.netResult) }}.</span
-    ><button type="button" (click)="lastClosure.set(null)">
-      <lo-icon name="close" [size]="15" />
-    </button>
-  </div>
-}
-
-@if (resultDraw(); as draw) {
-  <div class="result-modal-backdrop" (click)="closeResult()">
-    <section
-      class="result-dialog"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="result-dialog-title"
-      (click)="$event.stopPropagation()"
-    >
-      <span class="result-dialog__mark"><lo-icon name="check" [size]="23" /></span>
-      <span class="eyebrow">Cierre del sorteo</span>
-      <h2 id="result-dialog-title">Registrar número ganador</h2>
-      <p>{{ drawLabel(draw) }}</p>
-      <label
-        ><span>Terminación ganadora</span
-        ><input
-          class="input result-number-input"
-          inputmode="numeric"
-          maxlength="2"
-          placeholder="00"
-          [value]="resultNumber()"
-          (input)="updateResultNumber($any($event.target).value)"
-          autofocus
-        /><small
-          >Esta acción calcula boletos premiados y cierres por vendedor, ruta y total.</small
-        ></label
-      >
-      @if (resultError()) {
-        <div class="result-dialog__error">{{ resultError() }}</div>
-      }
-      <footer>
-        <button class="button" type="button" (click)="closeResult()" [disabled]="resultSaving()">
-          Cancelar</button
-        ><button
-          class="button button--primary"
-          type="button"
-          (click)="submitResult()"
-          [disabled]="resultSaving() || resultNumber().length !== 2"
-        >
-          {{ resultSaving() ? 'Calculando cierres…' : 'Registrar y cerrar' }}
-        </button>
-      </footer>
-    </section>
-  </div>
-}

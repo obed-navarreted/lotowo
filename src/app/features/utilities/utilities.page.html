@@ -8,6 +8,19 @@
   </div>
   @if (summary()) {
     <div class="utility-export-actions">
+      @if (canExportWeeklyZip()) {
+        <button
+          class="button utility-export utility-export--weekly"
+          type="button"
+          (click)="exportWeeklyZip()"
+          [disabled]="exporting()"
+          title="Descarga un ZIP por ruta con una imagen por vendedor"
+        >
+          <lo-icon name="download" [size]="17" />{{
+            exporting() === 'ZIP' ? 'Empacando…' : 'ZIP semanal'
+          }}
+        </button>
+      }
       <button
         class="button utility-export"
         type="button"
@@ -131,8 +144,30 @@
           el reporte de ventas menos premios.</small
         ></span
       >
-      <input type="checkbox" [(ngModel)]="includeCommissions" />
+      <input
+        type="checkbox"
+        [(ngModel)]="includeCommissions"
+        (change)="onFinanceOptionsChanged()"
+      />
     </label>
+    @if (auth.isAdmin()) {
+      <label class="commission-choice">
+        <span class="commission-choice__icon"><lo-icon name="trend" [size]="19" /></span>
+        <span class="commission-choice__copy"
+          ><strong>Considerar otros ingresos y gastos</strong
+          ><small
+            >Los aplica al resultado neto del período. Las montadas y sus premios pertenecen a cada
+            sorteo y se consideran por separado.</small
+          ></span
+        >
+        <input
+          type="checkbox"
+          [(ngModel)]="includeMovements"
+          [disabled]="!!selectedRouteId || !!selectedSellerId || !allDrawsSelected"
+          (change)="onFinanceOptionsChanged()"
+        />
+      </label>
+    }
     <label class="commission-choice">
       <span class="commission-choice__icon"><lo-icon name="table" [size]="19" /></span>
       <span class="commission-choice__copy"
@@ -233,9 +268,7 @@
         <span class="metric-icon"><lo-icon name="trend" /></span>
         <div>
           <small>Resultado</small><strong>{{ money(resultValue(result)) }}</strong>
-          <p>
-            {{ includeCommissions ? 'Ventas menos premios y comisión' : 'Ventas menos premios' }}
-          </p>
+          <p>{{ resultDescription() }}</p>
         </div>
       </article>
     </div>
@@ -266,6 +299,51 @@
       }
     </footer>
   </section>
+  @if (auth.isAdmin() && businessSummary(); as finance) {
+    <section class="business-finance card">
+      <header>
+        <div>
+          <span class="eyebrow">Detalle financiero administrativo</span>
+          <h2>
+            Montadas aplicadas · movimientos
+            {{ includeMovements ? 'incluidos' : 'informativos' }}
+          </h2>
+        </div>
+        <strong
+          [class.loss]="finance.businessResult < 0"
+          [class.profit]="finance.businessResult > 0"
+        >
+          {{ signedMoney(finance.businessResult) }}
+        </strong>
+      </header>
+      <dl>
+        <div>
+          <dt>Resultado operativo</dt>
+          <dd>{{ signedMoney(finance.resultAfterCommission) }}</dd>
+        </div>
+        <div>
+          <dt>Montadas</dt>
+          <dd>−{{ money(finance.externalStake) }}</dd>
+        </div>
+        <div>
+          <dt>Premios externos</dt>
+          <dd>+{{ money(finance.externalPrizes) }}</dd>
+        </div>
+        <div>
+          <dt>Otros gastos</dt>
+          <dd>−{{ money(finance.expenses) }}</dd>
+        </div>
+        <div>
+          <dt>Otros ingresos</dt>
+          <dd>+{{ money(finance.extraIncome) }}</dd>
+        </div>
+      </dl>
+      <p>
+        Visible únicamente para administración. Las montadas pertenecen a cada sorteo; los demás
+        ingresos y gastos pertenecen a su fecha. No modifica los cierres de vendedores.
+      </p>
+    </section>
+  }
   <section class="seller-utilities card">
     <header>
       <div>
@@ -324,7 +402,6 @@
                 class="utility-day"
                 [class.utility-day--loss]="resultState(dayResultValue(day)) === 'loss'"
                 [class.utility-day--profit]="resultState(dayResultValue(day)) === 'profit'"
-                open
               >
                 <summary>
                   <div>
@@ -427,4 +504,233 @@
       <strong>No hay ventas para esta selección</strong>Prueba otro período, turno o vendedor.
     </div>
   </section>
+}
+
+@if (auth.isAdmin()) {
+  <section class="expense-manager card">
+    <header>
+      <div>
+        <span class="eyebrow">Control administrativo</span>
+        <h2>Ingresos y gastos</h2>
+        <p>Registra ajustes extraordinarios por fecha, con usuario opcional.</p>
+      </div>
+      <label class="expense-date"
+        ><span>Fecha</span
+        ><span class="date-picker"
+          ><lo-icon name="calendar" [size]="18" /><span class="date-picker__copy"
+            ><strong>{{ dateLabel(expenseDate) }}</strong
+            ><small>DD/MM/AAAA</small></span
+          ><input
+            type="date"
+            [(ngModel)]="expenseDate"
+            [max]="today"
+            (change)="onExpenseDateChanged()"
+            aria-label="Fecha de los movimientos" /></span
+      ></label>
+    </header>
+    @if (expenseMessage()) {
+      <div class="expense-message">
+        {{ expenseMessage() }}
+        <button type="button" (click)="expenseMessage.set(null)" aria-label="Cerrar">×</button>
+      </div>
+    }
+    @if (expenseError()) {
+      <div class="utility-error">{{ expenseError() }}</div>
+    }
+    <div class="expense-create">
+      <header>
+        <div><strong>Nuevos movimientos</strong><small>Puedes guardar varios a la vez.</small></div>
+        <button class="button" type="button" (click)="addExpenseDraft()">
+          <lo-icon name="plus" [size]="16" /> Agregar fila
+        </button>
+      </header>
+      <div class="expense-drafts">
+        @for (item of expenseDrafts(); track $index; let index = $index) {
+          <div class="expense-draft">
+            <label
+              ><span>Tipo</span
+              ><select class="select" [(ngModel)]="item.type">
+                <option value="EXPENSE">Gasto</option>
+                <option value="INCOME">Ingreso</option>
+              </select></label
+            >
+            <label
+              ><span>Monto</span
+              ><input
+                class="input"
+                type="number"
+                inputmode="decimal"
+                min="0.01"
+                step="0.01"
+                [(ngModel)]="item.amount"
+            /></label>
+            <label class="expense-description"
+              ><span>Descripción obligatoria</span
+              ><input
+                class="input"
+                type="text"
+                maxlength="500"
+                placeholder="Ej. Recarga semanal"
+                [(ngModel)]="item.description"
+            /></label>
+            <label
+              ><span>Asociar a usuario</span
+              ><select class="select" [(ngModel)]="item.userId">
+                <option value="">Sin usuario</option>
+                @for (user of expenseUsers(); track user.id) {
+                  <option [value]="user.id">{{ user.fullName }}</option>
+                }
+              </select></label
+            >
+            <button
+              class="expense-remove"
+              type="button"
+              (click)="removeExpenseDraft(index)"
+              aria-label="Quitar movimiento"
+            >
+              <lo-icon name="trash" [size]="17" />
+            </button>
+          </div>
+        }
+      </div>
+      <button
+        class="button button--primary expense-save"
+        type="button"
+        (click)="saveExpenseBatch()"
+        [disabled]="expenseSaving()"
+      >
+        {{ expenseSaving() ? 'Guardando…' : 'Guardar movimientos' }}
+      </button>
+    </div>
+    <div class="expense-history">
+      <header>
+        <strong>Movimientos de {{ dateLabel(expenseDate) }}</strong>
+      </header>
+      @if (expenseLoading()) {
+        <div class="expense-loading">Cargando gastos…</div>
+      } @else if (expenses().length) {
+        @for (expense of expenses(); track expense.id) {
+          <article
+            [class.expense-deleted]="!expense.active"
+            [class.movement-income]="expense.type === 'INCOME'"
+          >
+            <div class="expense-history__main">
+              <strong>{{ expense.description }}</strong>
+              <small
+                >{{ expense.type === 'INCOME' ? 'Ingreso' : 'Gasto' }} ·
+                {{ expense.userName || 'General' }}</small
+              >
+              @if (!expense.active) {
+                <small>Eliminado por {{ expense.deletedByName || 'Administrador' }}</small>
+              }
+            </div>
+            <b>{{ expense.type === 'INCOME' ? '+' : '−' }}{{ money(expense.amount) }}</b>
+            @if (expense.active) {
+              <div class="expense-actions">
+                <button
+                  type="button"
+                  (click)="startEditExpense(expense)"
+                  aria-label="Editar movimiento"
+                >
+                  <lo-icon name="edit" [size]="17" />
+                </button>
+                <button
+                  type="button"
+                  (click)="deletingExpense.set(expense)"
+                  aria-label="Eliminar movimiento"
+                >
+                  <lo-icon name="trash" [size]="17" />
+                </button>
+              </div>
+            } @else {
+              <span class="expense-deleted__badge">Eliminado</span>
+            }
+          </article>
+        }
+      } @else {
+        <div class="expense-loading">No hay movimientos registrados en esta fecha.</div>
+      }
+    </div>
+  </section>
+}
+
+@if (editingExpenseId()) {
+  <div class="expense-modal" (click)="cancelEditExpense()">
+    <section role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <span class="eyebrow">Actualizar movimiento</span>
+      <h2>Editar gasto</h2>
+      <div class="expense-edit-grid">
+        <label
+          ><span>Tipo</span
+          ><select class="select" [(ngModel)]="editExpenseType">
+            <option value="EXPENSE">Gasto</option>
+            <option value="INCOME">Ingreso</option>
+          </select></label
+        >
+        <label
+          ><span>Fecha</span
+          ><input class="input" type="date" [(ngModel)]="editExpenseDate" [max]="today"
+        /></label>
+        <label
+          ><span>Monto</span
+          ><input
+            class="input"
+            type="number"
+            min="0.01"
+            step="0.01"
+            [(ngModel)]="editExpenseAmount"
+        /></label>
+        <label class="expense-edit-description"
+          ><span>Descripción</span
+          ><input class="input" maxlength="500" [(ngModel)]="editExpenseDescription"
+        /></label>
+        <label
+          ><span>Usuario</span
+          ><select class="select" [(ngModel)]="editExpenseUserId">
+            <option value="">Sin usuario</option>
+            @for (user of expenseUsers(); track user.id) {
+              <option [value]="user.id">{{ user.fullName }}</option>
+            }
+          </select></label
+        >
+      </div>
+      <footer>
+        <button class="button" type="button" (click)="cancelEditExpense()">Cancelar</button
+        ><button
+          class="button button--primary"
+          type="button"
+          (click)="saveEditedExpense()"
+          [disabled]="expenseSaving()"
+        >
+          Guardar
+        </button>
+      </footer>
+    </section>
+  </div>
+}
+
+@if (deletingExpense(); as expense) {
+  <div class="expense-modal" (click)="deletingExpense.set(null)">
+    <section role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <span class="eyebrow">Confirmar eliminación</span>
+      <h2>¿Eliminar este movimiento?</h2>
+      <p>
+        <strong>{{ expense.description }}</strong> · {{ money(expense.amount) }}
+      </p>
+      <p class="modal-note">
+        Dejará de afectar las utilidades, pero conservará quién lo eliminó y cuándo.
+      </p>
+      <footer>
+        <button class="button" type="button" (click)="deletingExpense.set(null)">Cancelar</button
+        ><button
+          class="button button--danger"
+          type="button"
+          (click)="confirmDeleteExpense()"
+          [disabled]="expenseSaving()"
+        >
+          Eliminar
+        </button>
+      </footer>
+    </section>
+  </div>
 }

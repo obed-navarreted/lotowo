@@ -221,6 +221,83 @@ export interface DrawClosure {
   createdAt: string;
 }
 
+export interface ExternalMountingInput {
+  number: string;
+  stakeAmount: number;
+  payoutMultiplier: number;
+}
+
+export interface BusinessSettlement {
+  drawId: string;
+  winningNumber: string;
+  grossSales: number;
+  localPrizes: number;
+  commissions: number;
+  externalStake: number;
+  externalPrize: number;
+  businessResult: number;
+}
+
+export interface BusinessFinanceSummary {
+  from: string;
+  to: string;
+  grossSales: number;
+  localPrizes: number;
+  commissions: number;
+  resultAfterCommission: number;
+  externalStake: number;
+  externalPrizes: number;
+  expenses: number;
+  extraIncome: number;
+  businessResult: number;
+}
+
+export type BusinessMovementType = 'EXPENSE' | 'INCOME';
+
+export interface BusinessMovementInput {
+  type: BusinessMovementType;
+  amount: number;
+  description: string;
+  userId: string | null;
+}
+
+export interface BusinessMovement {
+  id: string;
+  date: string;
+  type: BusinessMovementType;
+  amount: number;
+  description: string;
+  userId: string | null;
+  userName: string | null;
+  active: boolean;
+  createdAt: string;
+  createdBy: string;
+  deletedAt: string | null;
+  deletedBy: string | null;
+  deletedByName: string | null;
+}
+
+export interface ExpenseInput {
+  amount: number;
+  description: string;
+  userId: string | null;
+}
+
+export interface BusinessExpense {
+  id: string;
+  date: string;
+  amount: number;
+  description: string;
+  userId: string | null;
+  userName: string | null;
+  active: boolean;
+  createdAt: string;
+  createdBy: string;
+  deletedAt: string | null;
+  deletedBy: string | null;
+  deletedByName: string | null;
+}
+
 export interface DailyReport {
   date: string;
   drawCount: number;

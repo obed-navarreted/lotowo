@@ -14,6 +14,7 @@ import {
   DrawReport,
   DrawSettlementReport,
   SellerSettlement,
+  BusinessSettlement,
 } from '../../core/models/api.models';
 import { apiErrorMessage } from '../../shared/api-error';
 import { drawLabel } from '../../shared/draw-label';
@@ -38,6 +39,7 @@ export class ReportsPage {
   protected readonly draws = signal<DrawReport[]>([]);
   protected readonly report = signal<DrawNumberReport | null>(null);
   protected readonly settlement = signal<DrawSettlementReport | null>(null);
+  protected readonly businessSettlement = signal<BusinessSettlement | null>(null);
   protected readonly loading = signal(true);
   protected readonly filterLoading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
@@ -183,6 +185,7 @@ export class ReportsPage {
           this.draws.set([]);
           this.report.set(null);
           this.settlement.set(null);
+          this.businessSettlement.set(null);
           this.loading.set(false);
           if (error.status !== 404)
             this.errorMessage.set(apiErrorMessage(error, 'No pudimos cargar los reportes.'));
@@ -214,6 +217,7 @@ export class ReportsPage {
           this.draws.set([]);
           this.report.set(null);
           this.settlement.set(null);
+          this.businessSettlement.set(null);
           this.loading.set(false);
           this.filterLoading.set(false);
           if (error.status !== 404)
@@ -226,6 +230,7 @@ export class ReportsPage {
     if (!this.selectedDrawId) {
       this.report.set(null);
       this.settlement.set(null);
+      this.businessSettlement.set(null);
       this.loading.set(false);
       return;
     }
@@ -238,18 +243,24 @@ export class ReportsPage {
       settlement: this.api
         .getDrawSettlementReport(this.selectedDrawId, this.selectedSellerId || undefined)
         .pipe(catchError(() => of(null))),
+      business:
+        this.auth.isAdmin() && !this.selectedSellerId
+          ? this.api.getDrawBusinessSummary(this.selectedDrawId).pipe(catchError(() => of(null)))
+          : of(null),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: ({ numbers, settlement }) => {
+        next: ({ numbers, settlement, business }) => {
           this.report.set(numbers);
           this.settlement.set(settlement);
+          this.businessSettlement.set(business);
           this.activeTab = settlement ? 'SELLERS' : 'NUMBERS';
           this.loading.set(false);
         },
         error: (error: unknown) => {
           this.report.set(null);
           this.settlement.set(null);
+          this.businessSettlement.set(null);
           this.loading.set(false);
           this.errorMessage.set(
             apiErrorMessage(error, 'No pudimos generar el detalle por número.'),

@@ -88,6 +88,16 @@ describe('ReportsPage', () => {
       ],
     });
     http.expectOne('/api/v1/reports/draws/draw-id/settlement').flush(settlementReport());
+    http.expectOne('/api/v1/admin/finance/draws/draw-id').flush({
+      drawId: 'draw-id',
+      winningNumber: '03',
+      grossSales: 497,
+      localPrizes: 350,
+      commissions: 49.7,
+      externalStake: 100,
+      externalPrize: 0,
+      businessResult: -2.7,
+    });
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.report-tab--active')?.textContent).toContain(

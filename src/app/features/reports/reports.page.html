@@ -95,6 +95,31 @@
     </article>
   </section>
 
+  @if (businessSettlement(); as finance) {
+    <section class="draw-finance card">
+      <header>
+        <div><span class="eyebrow">Solo administración</span><strong>Resultado real</strong></div>
+        <b [class.loss]="finance.businessResult < 0" [class.profit]="finance.businessResult > 0">
+          {{ money(finance.businessResult) }}
+        </b>
+      </header>
+      <dl>
+        <div>
+          <dt>Comisiones</dt>
+          <dd>{{ money(finance.commissions) }}</dd>
+        </div>
+        <div>
+          <dt>Montada</dt>
+          <dd>{{ money(finance.externalStake) }}</dd>
+        </div>
+        <div>
+          <dt>Premio externo</dt>
+          <dd>{{ money(finance.externalPrize) }}</dd>
+        </div>
+      </dl>
+    </section>
+  }
+
   @if (settlement(); as closure) {
     <section class="settlement-guide card">
       <span class="settlement-guide__winner">{{ closure.winningNumber }}</span>
