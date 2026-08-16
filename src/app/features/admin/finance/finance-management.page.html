@@ -1,0 +1,243 @@
+<header class="page-header">
+  <div>
+    <span class="eyebrow">Administración financiera</span>
+    <h1>Gestión</h1>
+    <p class="page-subtitle">
+      Registra ingresos y gastos extraordinarios sin mezclarlos con los cierres.
+    </p>
+  </div>
+  <label class="management-date">
+    <span>Fecha de gestión</span>
+    <span class="date-picker">
+      <lo-icon name="calendar" [size]="19" />
+      <span class="date-picker__copy"
+        ><strong>{{ dateLabel(selectedDate) }}</strong
+        ><small>DD/MM/AAAA</small></span
+      >
+      <input
+        type="date"
+        [(ngModel)]="selectedDate"
+        [max]="today"
+        (change)="onDateChanged()"
+        aria-label="Fecha de gestión"
+      />
+    </span>
+  </label>
+</header>
+
+<section class="management-help">
+  <lo-icon name="info" [size]="19" />
+  <div>
+    <strong>¿Qué se registra aquí?</strong
+    ><span
+      >Gastos operativos e ingresos adicionales asociados a una fecha. Las montadas se registran con
+      el resultado de cada sorteo.</span
+    >
+  </div>
+</section>
+
+@if (message()) {
+  <div class="management-message">
+    {{ message() }}<button type="button" (click)="message.set(null)" aria-label="Cerrar">×</button>
+  </div>
+}
+@if (error()) {
+  <div class="management-error">{{ error() }}</div>
+}
+
+<section class="management-create card">
+  <header>
+    <div>
+      <span class="eyebrow">Nuevo registro</span>
+      <h2>Movimientos del día</h2>
+      <p>Puedes ingresar varios y guardarlos juntos.</p>
+    </div>
+    <button class="button" type="button" (click)="addDraft()">
+      <lo-icon name="plus" [size]="16" />Agregar
+    </button>
+  </header>
+  <div class="movement-drafts">
+    @for (item of drafts(); track $index; let index = $index) {
+      <article class="movement-draft">
+        <label
+          ><span>Tipo</span
+          ><select class="select" [(ngModel)]="item.type">
+            <option value="EXPENSE">Gasto</option>
+            <option value="INCOME">Ingreso</option>
+          </select></label
+        >
+        <label
+          ><span>Monto</span
+          ><input
+            class="input"
+            type="number"
+            inputmode="decimal"
+            min="0.01"
+            step="0.01"
+            [(ngModel)]="item.amount"
+        /></label>
+        <label class="movement-description"
+          ><span>Descripción obligatoria</span
+          ><input
+            class="input"
+            maxlength="500"
+            placeholder="Ej. Combustible de supervisión"
+            [(ngModel)]="item.description"
+        /></label>
+        <label
+          ><span>Usuario opcional</span
+          ><select class="select" [(ngModel)]="item.userId">
+            <option value="">General</option>
+            @for (user of users(); track user.id) {
+              <option [value]="user.id">{{ user.fullName }}</option>
+            }
+          </select></label
+        >
+        <button
+          class="icon-action icon-action--danger"
+          type="button"
+          (click)="removeDraft(index)"
+          aria-label="Quitar movimiento"
+        >
+          <lo-icon name="trash" [size]="17" />
+        </button>
+      </article>
+    }
+  </div>
+  <footer>
+    <button
+      class="button button--primary"
+      type="button"
+      (click)="saveBatch()"
+      [disabled]="saving()"
+    >
+      {{ saving() ? 'Guardando…' : 'Guardar movimientos' }}
+    </button>
+  </footer>
+</section>
+
+<section class="movement-history card">
+  <header>
+    <div>
+      <span class="eyebrow">Histórico diario</span>
+      <h2>{{ dateLabel(selectedDate) }}</h2>
+    </div>
+    <span>{{ movements().length }} registros</span>
+  </header>
+  @if (loading()) {
+    <div class="empty-row">Cargando movimientos…</div>
+  } @else if (movements().length) {
+    <div class="movement-list">
+      @for (movement of movements(); track movement.id) {
+        <article
+          [class.movement--deleted]="!movement.active"
+          [class.movement--income]="movement.type === 'INCOME'"
+        >
+          <span class="movement-type"
+            ><lo-icon [name]="movement.type === 'INCOME' ? 'trend' : 'wallet'" [size]="18"
+          /></span>
+          <div class="movement-copy">
+            <strong>{{ movement.description }}</strong
+            ><small
+              >{{ movement.type === 'INCOME' ? 'Ingreso' : 'Gasto' }} ·
+              {{ movement.userName || 'General' }}</small
+            >
+            @if (!movement.active) {
+              <small>Eliminado por {{ movement.deletedByName || 'Administrador' }}</small>
+            }
+          </div>
+          <b>{{ movement.type === 'INCOME' ? '+' : '−' }}{{ money(movement.amount) }}</b>
+          @if (movement.active) {
+            <div class="movement-actions">
+              <button type="button" (click)="startEdit(movement)" aria-label="Editar">
+                <lo-icon name="edit" [size]="17" /></button
+              ><button type="button" (click)="deleting.set(movement)" aria-label="Eliminar">
+                <lo-icon name="trash" [size]="17" />
+              </button>
+            </div>
+          } @else {
+            <span class="deleted-badge">Eliminado</span>
+          }
+        </article>
+      }
+    </div>
+  } @else {
+    <div class="empty-row">
+      <strong>Sin movimientos</strong
+      ><span>No hay ingresos ni gastos registrados en esta fecha.</span>
+    </div>
+  }
+</section>
+
+@if (editingId()) {
+  <div class="management-modal" (click)="cancelEdit()">
+    <section role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <span class="eyebrow">Actualizar registro</span>
+      <h2>Editar movimiento</h2>
+      <div class="edit-grid">
+        <label
+          ><span>Tipo</span
+          ><select class="select" [(ngModel)]="editType">
+            <option value="EXPENSE">Gasto</option>
+            <option value="INCOME">Ingreso</option>
+          </select></label
+        >
+        <label
+          ><span>Fecha</span><input class="input" type="date" [(ngModel)]="editDate" [max]="today"
+        /></label>
+        <label
+          ><span>Monto</span
+          ><input class="input" type="number" min="0.01" step="0.01" [(ngModel)]="editAmount"
+        /></label>
+        <label class="edit-description"
+          ><span>Descripción</span
+          ><input class="input" maxlength="500" [(ngModel)]="editDescription"
+        /></label>
+        <label
+          ><span>Usuario</span
+          ><select class="select" [(ngModel)]="editUserId">
+            <option value="">General</option>
+            @for (user of users(); track user.id) {
+              <option [value]="user.id">{{ user.fullName }}</option>
+            }
+          </select></label
+        >
+      </div>
+      <footer>
+        <button class="button" type="button" (click)="cancelEdit()">Cancelar</button
+        ><button
+          class="button button--primary"
+          type="button"
+          (click)="saveEdit()"
+          [disabled]="saving()"
+        >
+          Guardar
+        </button>
+      </footer>
+    </section>
+  </div>
+}
+
+@if (deleting(); as movement) {
+  <div class="management-modal" (click)="deleting.set(null)">
+    <section role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <span class="eyebrow">Confirmar eliminación</span>
+      <h2>¿Eliminar este movimiento?</h2>
+      <p>
+        <strong>{{ movement.description }}</strong> · {{ money(movement.amount) }}
+      </p>
+      <p class="modal-note">Dejará de afectar las utilidades, pero su auditoría se conservará.</p>
+      <footer>
+        <button class="button" type="button" (click)="deleting.set(null)">Cancelar</button
+        ><button
+          class="button button--danger"
+          type="button"
+          (click)="confirmDelete()"
+          [disabled]="saving()"
+        >
+          Eliminar
+        </button>
+      </footer>
+    </section>
+  </div>
+}

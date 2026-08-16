@@ -252,6 +252,35 @@ export interface BusinessFinanceSummary {
   businessResult: number;
 }
 
+export interface BusinessMountingItem {
+  number: string;
+  stakeAmount: number;
+  payoutMultiplier: number | null;
+  potentialExternalPayout: number | null;
+}
+
+export interface BusinessMountingDetail {
+  id: string;
+  drawId: string;
+  drawName: string;
+  drawType: Draw['drawType'];
+  scheduledAt: string;
+  winningNumber: string | null;
+  totalStake: number;
+  externalPrize: number;
+  source: 'POLICY' | 'MANUAL_LATE';
+  registeredAt: string;
+  registeredByName: string | null;
+  items: BusinessMountingItem[];
+}
+
+export interface BusinessFinanceDetails {
+  from: string;
+  to: string;
+  mountings: BusinessMountingDetail[];
+  movements: BusinessMovement[];
+}
+
 export type BusinessMovementType = 'EXPENSE' | 'INCOME';
 
 export interface BusinessMovementInput {

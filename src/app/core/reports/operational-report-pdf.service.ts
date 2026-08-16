@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import {
   BusinessFinanceSummary,
+  BusinessFinanceDetails,
   CommissionPayroll,
   DrawNumberReport,
   DrawSettlementReport,
@@ -38,6 +39,7 @@ export interface UtilityPdfOptions {
   includeMovements?: boolean;
   scopeLabel?: string;
   businessSummary?: BusinessFinanceSummary | null;
+  businessDetails?: BusinessFinanceDetails | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -100,6 +102,9 @@ export class OperationalReportPdfService {
       }
       adjustments.push(['Resultado neto', finance.businessResult]);
       y = this.a4UtilitySummary(document, y, 'AJUSTES ADMINISTRATIVOS', adjustments);
+    }
+    if (options.businessDetails) {
+      y = this.a4BusinessDetails(document, y, options.businessDetails, !!options.includeMovements);
     }
 
     if (report.pendingResults > 0) {
@@ -226,6 +231,93 @@ export class OperationalReportPdfService {
       });
     });
     return y + 31;
+  }
+
+  private a4BusinessDetails(
+    document: import('jspdf').jsPDF,
+    top: number,
+    details: BusinessFinanceDetails,
+    includeMovements: boolean,
+  ): number {
+    let y = this.ensureSpace(document, top, 14, 'Detalle administrativo');
+    document.setFont('helvetica', 'bold');
+    document.setFontSize(7.3);
+    document.setTextColor(171, 128, 47);
+    document.text(`MONTADAS DEL PERÍODO (${details.mountings.length})`, 17, y);
+    y += 6;
+    for (const mounting of details.mountings) {
+      const required = mounting.items.length ? 11 + Math.ceil(mounting.items.length / 4) * 5 : 12;
+      y = this.ensureSpace(document, y, required, 'Montadas del período');
+      document.setFont('helvetica', 'bold');
+      document.setFontSize(7.8);
+      document.setTextColor(40, 40, 38);
+      document.text(
+        `${mounting.drawType === 'NATIONAL_LOTTERY' ? 'Lotería' : 'LOTO'} · ${this.financeDateTime(mounting.scheduledAt)}`,
+        17,
+        y,
+      );
+      document.setFont('helvetica', 'normal');
+      document.setFontSize(7);
+      document.setTextColor(90, 88, 82);
+      document.text(`Ganador ${mounting.winningNumber ?? '—'}`, 88, y);
+      document.text(`Montada ${this.amount(mounting.totalStake)}`, 130, y, { align: 'right' });
+      document.text(`Premio ${this.amount(mounting.externalPrize)}`, 193, y, { align: 'right' });
+      y += 5;
+      if (mounting.items.length) {
+        const labels = mounting.items.map(
+          (item) =>
+            `${item.number}: ${this.amount(item.stakeAmount)} × ${this.amount(item.payoutMultiplier ?? 0)}`,
+        );
+        for (let index = 0; index < labels.length; index += 4) {
+          document.setFontSize(6.4);
+          document.setTextColor(110, 106, 98);
+          labels
+            .slice(index, index + 4)
+            .forEach((label, column) =>
+              document.text(label, 18 + column * 44, y, { maxWidth: 41 }),
+            );
+          y += 4.5;
+        }
+      } else {
+        document.setFont('helvetica', 'italic');
+        document.setFontSize(6.3);
+        document.setTextColor(125, 122, 116);
+        document.text('Registro histórico sin desglose individual de números.', 18, y);
+        y += 4.5;
+      }
+      this.line(document, y, 230);
+      y += 4;
+    }
+    if (includeMovements) {
+      y = this.ensureSpace(document, y + 2, 12, 'Ingresos y gastos del período');
+      document.setFont('helvetica', 'bold');
+      document.setFontSize(7.3);
+      document.setTextColor(171, 128, 47);
+      document.text(`INGRESOS Y GASTOS (${details.movements.length})`, 17, y);
+      y += 6;
+      for (const movement of details.movements) {
+        y = this.ensureSpace(document, y, 6, 'Ingresos y gastos del período');
+        document.setFont('helvetica', 'normal');
+        document.setFontSize(7);
+        document.setTextColor(55, 54, 51);
+        document.text(this.date(movement.date), 17, y);
+        document.text(this.clean(movement.description), 44, y, { maxWidth: 105 });
+        document.setFont('helvetica', 'bold');
+        document.setTextColor(
+          movement.type === 'INCOME' ? 42 : 178,
+          movement.type === 'INCOME' ? 122 : 65,
+          movement.type === 'INCOME' ? 103 : 65,
+        );
+        document.text(
+          `${movement.type === 'INCOME' ? '+' : '−'}${this.amount(movement.amount)}`,
+          193,
+          y,
+          { align: 'right' },
+        );
+        y += 5;
+      }
+    }
+    return y + 5;
   }
 
   /** Comprobante angosto y escaneable, inspirado en el recibo comercial móvil. */
@@ -1241,6 +1333,17 @@ export class OperationalReportPdfService {
       day: '2-digit',
       month: '2-digit',
       year: '2-digit',
+      timeZone: 'America/Managua',
+    }).format(new Date(value));
+  }
+
+  private financeDateTime(value: string): string {
+    return new Intl.DateTimeFormat('es-NI', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
+      hour: 'numeric',
+      minute: '2-digit',
       timeZone: 'America/Managua',
     }).format(new Date(value));
   }

@@ -303,11 +303,8 @@
     <section class="business-finance card">
       <header>
         <div>
-          <span class="eyebrow">Detalle financiero administrativo</span>
-          <h2>
-            Montadas aplicadas · movimientos
-            {{ includeMovements ? 'incluidos' : 'informativos' }}
-          </h2>
+          <span class="eyebrow">Balance administrativo</span>
+          <h2>Resultado real del período</h2>
         </div>
         <strong
           [class.loss]="finance.businessResult < 0"
@@ -343,6 +340,106 @@
         ingresos y gastos pertenecen a su fecha. No modifica los cierres de vendedores.
       </p>
     </section>
+    @if (businessDetails(); as details) {
+      <section class="finance-detail card">
+        <header>
+          <div>
+            <span class="eyebrow">Movimientos del período</span>
+            <h2>Detalle administrativo</h2>
+            <p>Cada montada pertenece a su sorteo; cada ingreso o gasto, a su fecha.</p>
+          </div>
+          <a class="button" routerLink="/management"
+            ><lo-icon name="wallet" [size]="17" /> Gestionar</a
+          >
+        </header>
+        <div class="finance-detail__section">
+          <div class="finance-detail__title">
+            <strong>Montadas</strong><span>{{ details.mountings.length }}</span>
+          </div>
+          @if (details.mountings.length) {
+            <div class="mounting-history">
+              @for (mounting of details.mountings; track mounting.id) {
+                <article>
+                  <header>
+                    <div>
+                      <strong>{{ mountingDraw(mounting) }}</strong
+                      ><small
+                        >Ganador {{ mounting.winningNumber || '—' }} ·
+                        {{ mounting.registeredByName || 'Administración' }}</small
+                      >
+                    </div>
+                    <dl>
+                      <div>
+                        <dt>Montada</dt>
+                        <dd>−{{ money(mounting.totalStake) }}</dd>
+                      </div>
+                      <div>
+                        <dt>Premio externo</dt>
+                        <dd>+{{ money(mounting.externalPrize) }}</dd>
+                      </div>
+                      <div
+                        [class.loss]="mountingResult(mounting) < 0"
+                        [class.profit]="mountingResult(mounting) > 0"
+                      >
+                        <dt>Resultado</dt>
+                        <dd>{{ signedMoney(mountingResult(mounting)) }}</dd>
+                      </div>
+                    </dl>
+                  </header>
+                  @if (mounting.items.length) {
+                    <div class="mounting-items">
+                      @for (item of mounting.items; track item.number) {
+                        <span
+                          ><b>{{ item.number }}</b
+                          ><small
+                            >{{ money(item.stakeAmount) }} ×
+                            {{ money(item.payoutMultiplier || 0) }} ·
+                            {{ money(item.potentialExternalPayout || 0) }}</small
+                          ></span
+                        >
+                      }
+                    </div>
+                  } @else {
+                    <p class="mounting-no-items">
+                      Registro histórico sin desglose individual de números.
+                    </p>
+                  }
+                </article>
+              }
+            </div>
+          } @else {
+            <p class="finance-empty">No hubo montadas en el período.</p>
+          }
+        </div>
+        <div class="finance-detail__section">
+          <div class="finance-detail__title">
+            <strong>Ingresos y gastos</strong
+            ><span
+              >{{ details.movements.length }} ·
+              {{
+                includeMovements ? 'incluidos en el resultado' : 'no incluidos en el resultado'
+              }}</span
+            >
+          </div>
+          @if (details.movements.length) {
+            <div class="period-movements">
+              @for (movement of details.movements; track movement.id) {
+                <article [class.period-movement--income]="movement.type === 'INCOME'">
+                  <span>{{ dateLabel(movement.date) }}</span>
+                  <div>
+                    <strong>{{ movement.description }}</strong
+                    ><small>{{ movement.userName || 'General' }}</small>
+                  </div>
+                  <b>{{ movement.type === 'INCOME' ? '+' : '−' }}{{ money(movement.amount) }}</b>
+                </article>
+              }
+            </div>
+          } @else {
+            <p class="finance-empty">No hubo ingresos ni gastos adicionales en el período.</p>
+          }
+        </div>
+      </section>
+    }
   }
   <section class="seller-utilities card">
     <header>
@@ -504,233 +601,4 @@
       <strong>No hay ventas para esta selección</strong>Prueba otro período, turno o vendedor.
     </div>
   </section>
-}
-
-@if (auth.isAdmin()) {
-  <section class="expense-manager card">
-    <header>
-      <div>
-        <span class="eyebrow">Control administrativo</span>
-        <h2>Ingresos y gastos</h2>
-        <p>Registra ajustes extraordinarios por fecha, con usuario opcional.</p>
-      </div>
-      <label class="expense-date"
-        ><span>Fecha</span
-        ><span class="date-picker"
-          ><lo-icon name="calendar" [size]="18" /><span class="date-picker__copy"
-            ><strong>{{ dateLabel(expenseDate) }}</strong
-            ><small>DD/MM/AAAA</small></span
-          ><input
-            type="date"
-            [(ngModel)]="expenseDate"
-            [max]="today"
-            (change)="onExpenseDateChanged()"
-            aria-label="Fecha de los movimientos" /></span
-      ></label>
-    </header>
-    @if (expenseMessage()) {
-      <div class="expense-message">
-        {{ expenseMessage() }}
-        <button type="button" (click)="expenseMessage.set(null)" aria-label="Cerrar">×</button>
-      </div>
-    }
-    @if (expenseError()) {
-      <div class="utility-error">{{ expenseError() }}</div>
-    }
-    <div class="expense-create">
-      <header>
-        <div><strong>Nuevos movimientos</strong><small>Puedes guardar varios a la vez.</small></div>
-        <button class="button" type="button" (click)="addExpenseDraft()">
-          <lo-icon name="plus" [size]="16" /> Agregar fila
-        </button>
-      </header>
-      <div class="expense-drafts">
-        @for (item of expenseDrafts(); track $index; let index = $index) {
-          <div class="expense-draft">
-            <label
-              ><span>Tipo</span
-              ><select class="select" [(ngModel)]="item.type">
-                <option value="EXPENSE">Gasto</option>
-                <option value="INCOME">Ingreso</option>
-              </select></label
-            >
-            <label
-              ><span>Monto</span
-              ><input
-                class="input"
-                type="number"
-                inputmode="decimal"
-                min="0.01"
-                step="0.01"
-                [(ngModel)]="item.amount"
-            /></label>
-            <label class="expense-description"
-              ><span>Descripción obligatoria</span
-              ><input
-                class="input"
-                type="text"
-                maxlength="500"
-                placeholder="Ej. Recarga semanal"
-                [(ngModel)]="item.description"
-            /></label>
-            <label
-              ><span>Asociar a usuario</span
-              ><select class="select" [(ngModel)]="item.userId">
-                <option value="">Sin usuario</option>
-                @for (user of expenseUsers(); track user.id) {
-                  <option [value]="user.id">{{ user.fullName }}</option>
-                }
-              </select></label
-            >
-            <button
-              class="expense-remove"
-              type="button"
-              (click)="removeExpenseDraft(index)"
-              aria-label="Quitar movimiento"
-            >
-              <lo-icon name="trash" [size]="17" />
-            </button>
-          </div>
-        }
-      </div>
-      <button
-        class="button button--primary expense-save"
-        type="button"
-        (click)="saveExpenseBatch()"
-        [disabled]="expenseSaving()"
-      >
-        {{ expenseSaving() ? 'Guardando…' : 'Guardar movimientos' }}
-      </button>
-    </div>
-    <div class="expense-history">
-      <header>
-        <strong>Movimientos de {{ dateLabel(expenseDate) }}</strong>
-      </header>
-      @if (expenseLoading()) {
-        <div class="expense-loading">Cargando gastos…</div>
-      } @else if (expenses().length) {
-        @for (expense of expenses(); track expense.id) {
-          <article
-            [class.expense-deleted]="!expense.active"
-            [class.movement-income]="expense.type === 'INCOME'"
-          >
-            <div class="expense-history__main">
-              <strong>{{ expense.description }}</strong>
-              <small
-                >{{ expense.type === 'INCOME' ? 'Ingreso' : 'Gasto' }} ·
-                {{ expense.userName || 'General' }}</small
-              >
-              @if (!expense.active) {
-                <small>Eliminado por {{ expense.deletedByName || 'Administrador' }}</small>
-              }
-            </div>
-            <b>{{ expense.type === 'INCOME' ? '+' : '−' }}{{ money(expense.amount) }}</b>
-            @if (expense.active) {
-              <div class="expense-actions">
-                <button
-                  type="button"
-                  (click)="startEditExpense(expense)"
-                  aria-label="Editar movimiento"
-                >
-                  <lo-icon name="edit" [size]="17" />
-                </button>
-                <button
-                  type="button"
-                  (click)="deletingExpense.set(expense)"
-                  aria-label="Eliminar movimiento"
-                >
-                  <lo-icon name="trash" [size]="17" />
-                </button>
-              </div>
-            } @else {
-              <span class="expense-deleted__badge">Eliminado</span>
-            }
-          </article>
-        }
-      } @else {
-        <div class="expense-loading">No hay movimientos registrados en esta fecha.</div>
-      }
-    </div>
-  </section>
-}
-
-@if (editingExpenseId()) {
-  <div class="expense-modal" (click)="cancelEditExpense()">
-    <section role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
-      <span class="eyebrow">Actualizar movimiento</span>
-      <h2>Editar gasto</h2>
-      <div class="expense-edit-grid">
-        <label
-          ><span>Tipo</span
-          ><select class="select" [(ngModel)]="editExpenseType">
-            <option value="EXPENSE">Gasto</option>
-            <option value="INCOME">Ingreso</option>
-          </select></label
-        >
-        <label
-          ><span>Fecha</span
-          ><input class="input" type="date" [(ngModel)]="editExpenseDate" [max]="today"
-        /></label>
-        <label
-          ><span>Monto</span
-          ><input
-            class="input"
-            type="number"
-            min="0.01"
-            step="0.01"
-            [(ngModel)]="editExpenseAmount"
-        /></label>
-        <label class="expense-edit-description"
-          ><span>Descripción</span
-          ><input class="input" maxlength="500" [(ngModel)]="editExpenseDescription"
-        /></label>
-        <label
-          ><span>Usuario</span
-          ><select class="select" [(ngModel)]="editExpenseUserId">
-            <option value="">Sin usuario</option>
-            @for (user of expenseUsers(); track user.id) {
-              <option [value]="user.id">{{ user.fullName }}</option>
-            }
-          </select></label
-        >
-      </div>
-      <footer>
-        <button class="button" type="button" (click)="cancelEditExpense()">Cancelar</button
-        ><button
-          class="button button--primary"
-          type="button"
-          (click)="saveEditedExpense()"
-          [disabled]="expenseSaving()"
-        >
-          Guardar
-        </button>
-      </footer>
-    </section>
-  </div>
-}
-
-@if (deletingExpense(); as expense) {
-  <div class="expense-modal" (click)="deletingExpense.set(null)">
-    <section role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
-      <span class="eyebrow">Confirmar eliminación</span>
-      <h2>¿Eliminar este movimiento?</h2>
-      <p>
-        <strong>{{ expense.description }}</strong> · {{ money(expense.amount) }}
-      </p>
-      <p class="modal-note">
-        Dejará de afectar las utilidades, pero conservará quién lo eliminó y cuándo.
-      </p>
-      <footer>
-        <button class="button" type="button" (click)="deletingExpense.set(null)">Cancelar</button
-        ><button
-          class="button button--danger"
-          type="button"
-          (click)="confirmDeleteExpense()"
-          [disabled]="expenseSaving()"
-        >
-          Eliminar
-        </button>
-      </footer>
-    </section>
-  </div>
 }

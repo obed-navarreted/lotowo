@@ -3,15 +3,14 @@ import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { catchError, finalize, forkJoin, map, of } from 'rxjs';
+import { catchError, forkJoin, map, of } from 'rxjs';
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ManagedUser, RouteSummary } from '../../core/models/admin.models';
 import {
   BusinessFinanceSummary,
-  BusinessMovement,
-  BusinessMovementInput,
-  BusinessMovementType,
+  BusinessFinanceDetails,
+  BusinessMountingDetail,
   Draw,
   UtilityDrawSummary,
   UtilitySellerSummary,
@@ -26,13 +25,6 @@ import { apiErrorMessage } from '../../shared/api-error';
 import { drawLabel } from '../../shared/draw-label';
 import { Icon } from '../../shared/icon/icon';
 import { groupUtilitiesByDay, UtilityDay } from '../../shared/utility-days';
-
-interface ExpenseDraft {
-  type: BusinessMovementType;
-  amount: number | null;
-  description: string;
-  userId: string;
-}
 
 @Component({
   selector: 'lo-utilities-page',
@@ -50,17 +42,9 @@ export class UtilitiesPage {
   protected readonly draws = signal<Draw[]>([]);
   protected readonly routes = signal<RouteSummary[]>([]);
   protected readonly sellers = signal<ManagedUser[]>([]);
-  protected readonly expenseUsers = signal<ManagedUser[]>([]);
   protected readonly summary = signal<UtilitySummary | null>(null);
   protected readonly businessSummary = signal<BusinessFinanceSummary | null>(null);
-  protected readonly expenses = signal<BusinessMovement[]>([]);
-  protected readonly expenseDrafts = signal<ExpenseDraft[]>([this.emptyExpense()]);
-  protected readonly expenseLoading = signal(false);
-  protected readonly expenseSaving = signal(false);
-  protected readonly expenseMessage = signal<string | null>(null);
-  protected readonly expenseError = signal<string | null>(null);
-  protected readonly editingExpenseId = signal<string | null>(null);
-  protected readonly deletingExpense = signal<BusinessMovement | null>(null);
+  protected readonly businessDetails = signal<BusinessFinanceDetails | null>(null);
   protected readonly loading = signal(true);
   protected readonly exporting = signal<'A4' | 'MOBILE' | 'ZIP' | null>(null);
   protected readonly filterLoading = signal(true);
@@ -76,12 +60,6 @@ export class UtilitiesPage {
   protected includeCommissions = false;
   protected includeMovements = false;
   protected includeDraws = true;
-  protected expenseDate = this.today;
-  protected editExpenseDate = this.today;
-  protected editExpenseAmount: number | null = null;
-  protected editExpenseDescription = '';
-  protected editExpenseUserId = '';
-  protected editExpenseType: BusinessMovementType = 'EXPENSE';
 
   constructor() {
     const earliest = new Date();
@@ -105,128 +83,11 @@ export class UtilitiesPage {
           catchError(() => of({ content: [] as ManagedUser[] })),
           takeUntilDestroyed(this.destroyRef),
         )
-        .subscribe((users) => {
-          this.expenseUsers.set(users.content);
-          this.sellers.set(users.content.filter((user) => user.role === 'SELLER'));
-        });
+        .subscribe((users) =>
+          this.sellers.set(users.content.filter((user) => user.role === 'SELLER')),
+        );
     }
-    if (this.auth.isAdmin()) this.loadExpenses();
     this.loadPeriod();
-  }
-
-  protected addExpenseDraft(): void {
-    this.expenseDrafts.update((items) => [...items, this.emptyExpense()]);
-  }
-
-  protected removeExpenseDraft(index: number): void {
-    this.expenseDrafts.update((items) =>
-      items.length === 1
-        ? [this.emptyExpense()]
-        : items.filter((_, itemIndex) => itemIndex !== index),
-    );
-  }
-
-  protected onExpenseDateChanged(): void {
-    this.loadExpenses();
-  }
-
-  protected saveExpenseBatch(): void {
-    const payload: BusinessMovementInput[] = this.expenseDrafts().map((item) => ({
-      type: item.type,
-      amount: Number(item.amount),
-      description: item.description.trim(),
-      userId: item.userId || null,
-    }));
-    if (payload.some((item) => !(item.amount > 0) || !item.description)) {
-      this.expenseError.set('Cada movimiento necesita un monto mayor que cero y una descripción.');
-      return;
-    }
-    this.expenseSaving.set(true);
-    this.expenseError.set(null);
-    this.api
-      .createBusinessMovements(this.expenseDate, payload)
-      .pipe(
-        finalize(() => this.expenseSaving.set(false)),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: () => {
-          this.expenseDrafts.set([this.emptyExpense()]);
-          this.expenseMessage.set('Movimientos registrados correctamente.');
-          this.loadExpenses();
-          this.loadBusinessSummary();
-        },
-        error: (error: unknown) =>
-          this.expenseError.set(apiErrorMessage(error, 'No pudimos registrar los movimientos.')),
-      });
-  }
-
-  protected startEditExpense(expense: BusinessMovement): void {
-    if (!expense.active) return;
-    this.editingExpenseId.set(expense.id);
-    this.editExpenseDate = expense.date;
-    this.editExpenseAmount = expense.amount;
-    this.editExpenseDescription = expense.description;
-    this.editExpenseUserId = expense.userId ?? '';
-    this.editExpenseType = expense.type;
-    this.expenseError.set(null);
-  }
-
-  protected cancelEditExpense(): void {
-    this.editingExpenseId.set(null);
-  }
-
-  protected saveEditedExpense(): void {
-    const id = this.editingExpenseId();
-    if (!id || !(Number(this.editExpenseAmount) > 0) || !this.editExpenseDescription.trim()) {
-      this.expenseError.set('El movimiento necesita un monto mayor que cero y una descripción.');
-      return;
-    }
-    this.expenseSaving.set(true);
-    this.api
-      .updateBusinessMovement(id, this.editExpenseDate, {
-        type: this.editExpenseType,
-        amount: Number(this.editExpenseAmount),
-        description: this.editExpenseDescription.trim(),
-        userId: this.editExpenseUserId || null,
-      })
-      .pipe(
-        finalize(() => this.expenseSaving.set(false)),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: () => {
-          this.editingExpenseId.set(null);
-          this.expenseDate = this.editExpenseDate;
-          this.expenseMessage.set('Movimiento actualizado correctamente.');
-          this.loadExpenses();
-          this.loadBusinessSummary();
-        },
-        error: (error: unknown) =>
-          this.expenseError.set(apiErrorMessage(error, 'No pudimos actualizar el movimiento.')),
-      });
-  }
-
-  protected confirmDeleteExpense(): void {
-    const expense = this.deletingExpense();
-    if (!expense) return;
-    this.expenseSaving.set(true);
-    this.api
-      .deleteBusinessMovement(expense.id)
-      .pipe(
-        finalize(() => this.expenseSaving.set(false)),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: () => {
-          this.deletingExpense.set(null);
-          this.expenseMessage.set('Movimiento eliminado. Se conservó su auditoría.');
-          this.loadExpenses();
-          this.loadBusinessSummary();
-        },
-        error: (error: unknown) =>
-          this.expenseError.set(apiErrorMessage(error, 'No pudimos eliminar el movimiento.')),
-      });
   }
 
   protected onFromDateChanged(): void {
@@ -267,6 +128,7 @@ export class UtilitiesPage {
       includeMovements: this.includeMovements,
       scopeLabel: this.selectedRoute()?.name,
       businessSummary: format === 'A4' ? this.businessSummary() : null,
+      businessDetails: format === 'A4' ? this.businessDetails() : null,
     };
     const exportOperation =
       format === 'MOBILE'
@@ -460,6 +322,20 @@ export class UtilitiesPage {
     }`;
   }
 
+  protected mountingResult(mounting: BusinessMountingDetail): number {
+    return mounting.externalPrize - mounting.totalStake;
+  }
+
+  protected mountingDraw(mounting: BusinessMountingDetail): string {
+    const date = new Intl.DateTimeFormat('es-NI', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
+      timeZone: 'America/Managua',
+    }).format(new Date(mounting.scheduledAt));
+    return `${mounting.drawType === 'NATIONAL_LOTTERY' ? 'Lotería' : 'LOTO'} · ${date} · ${this.hourLabel(mounting.scheduledAt)}`;
+  }
+
   protected sellerResultValue(seller: UtilitySummary['sellers'][number]): number {
     return this.includeCommissions ? seller.netAfterCommission : seller.netBeforeCommission;
   }
@@ -571,6 +447,7 @@ export class UtilitiesPage {
         error: (error: HttpErrorResponse) => {
           this.summary.set(null);
           this.businessSummary.set(null);
+          this.businessDetails.set(null);
           this.loading.set(false);
           if (error.status !== 404)
             this.errorMessage.set(apiErrorMessage(error, 'No pudimos calcular las utilidades.'));
@@ -586,48 +463,27 @@ export class UtilitiesPage {
       !this.allDrawsSelected
     ) {
       this.businessSummary.set(null);
+      this.businessDetails.set(null);
       return;
     }
-    this.api
-      .getBusinessFinanceSummary(
-        this.fromDate,
-        this.toDate,
-        this.includeCommissions,
-        this.includeMovements,
-      )
-      .pipe(
-        catchError(() => of(null)),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe((summary) => this.businessSummary.set(summary));
-  }
-
-  private loadExpenses(): void {
-    if (!this.auth.isAdmin()) return;
-    this.expenseLoading.set(true);
-    this.expenseError.set(null);
-    this.api
-      .getBusinessMovements(this.expenseDate, true)
-      .pipe(
-        catchError((error: HttpErrorResponse) =>
-          error.status === 404
-            ? of([] as BusinessMovement[])
-            : (() => {
-                throw error;
-              })(),
-        ),
-        finalize(() => this.expenseLoading.set(false)),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (expenses) => this.expenses.set(expenses),
-        error: (error: unknown) =>
-          this.expenseError.set(apiErrorMessage(error, 'No pudimos cargar los movimientos.')),
+    forkJoin({
+      summary: this.api
+        .getBusinessFinanceSummary(
+          this.fromDate,
+          this.toDate,
+          this.includeCommissions,
+          this.includeMovements,
+        )
+        .pipe(catchError(() => of(null))),
+      details: this.api
+        .getBusinessFinanceDetails(this.fromDate, this.toDate)
+        .pipe(catchError(() => of(null))),
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(({ summary, details }) => {
+        this.businessSummary.set(summary);
+        this.businessDetails.set(details);
       });
-  }
-
-  private emptyExpense(): ExpenseDraft {
-    return { type: 'EXPENSE', amount: null, description: '', userId: '' };
   }
 
   private isNativeRuntime(): boolean {

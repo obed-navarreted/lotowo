@@ -391,240 +391,158 @@
   color: var(--muted);
   font-size: 11px;
 }
-.expense-manager {
+.finance-detail {
   margin-top: 14px;
   overflow: hidden;
   padding: 0;
 }
-.expense-manager > header {
+.finance-detail > header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 17px;
+  gap: 14px;
+  padding: 17px 19px;
   border-bottom: 1px solid var(--line-soft);
 }
-.expense-manager > header h2 {
-  margin: 1px 0 0;
+.finance-detail > header h2 {
+  margin: 2px 0;
 }
-.expense-manager > header p {
-  margin: 4px 0 0;
-  color: var(--muted-strong);
+.finance-detail > header p {
+  margin: 0;
+  color: var(--muted);
   font-size: 12px;
 }
-.expense-date {
-  display: flex;
-  width: min(100%, 280px);
-  flex-direction: column;
-  gap: 5px;
+.finance-detail > header .button {
+  min-height: 39px;
 }
-.expense-date > span:first-child,
-.expense-draft label > span,
-.expense-edit-grid label > span {
-  color: var(--muted-strong);
-  font-size: 11px;
-  font-weight: 750;
+.finance-detail__section + .finance-detail__section {
+  border-top: 1px solid var(--line);
 }
-.expense-message {
+.finance-detail__title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin: 12px 15px 0;
-  padding: 10px 12px;
-  color: var(--mint-dark);
-  background: var(--mint-soft);
-  border-radius: 11px;
-  font-size: 12px;
+  padding: 11px 19px;
+  background: var(--surface-soft);
 }
-.expense-message button {
-  padding: 0 4px;
-  color: inherit;
-  background: none;
-  border: 0;
-  cursor: pointer;
-  font-size: 19px;
+.finance-detail__title strong {
+  font-size: 13px;
 }
-.expense-manager > .utility-error {
-  margin: 12px 15px 0;
-}
-.expense-create {
-  padding: 15px;
-}
-.expense-create > header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.expense-create > header > div {
-  display: flex;
-  flex-direction: column;
-}
-.expense-create > header small {
+.finance-detail__title span {
   color: var(--muted);
   font-size: 11px;
 }
-.expense-create > header .button {
-  min-height: 38px;
-  padding-inline: 11px;
-}
-.expense-drafts {
-  display: grid;
-  gap: 8px;
-  margin-top: 12px;
-}
-.expense-draft {
-  display: grid;
-  grid-template-columns: 130px 145px minmax(220px, 1.6fr) minmax(190px, 1fr) 42px;
-  align-items: end;
-  gap: 8px;
-  padding: 10px;
-  background: var(--surface-soft);
-  border: 1px solid var(--line-soft);
-  border-radius: 12px;
-}
-.expense-draft label,
-.expense-edit-grid label {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 5px;
-}
-.expense-remove,
-.expense-actions button {
-  display: grid;
-  place-items: center;
-  padding: 0;
-  color: var(--muted-strong);
-  background: white;
-  border: 1px solid var(--line-soft);
-  border-radius: 10px;
-  cursor: pointer;
-}
-.expense-remove {
-  width: 42px;
-  height: 42px;
-  color: var(--danger);
-}
-.expense-save {
-  min-width: 180px;
-  margin-top: 11px;
-  margin-left: auto;
-}
-.expense-history {
+.mounting-history > article {
+  padding: 14px 19px;
   border-top: 1px solid var(--line-soft);
 }
-.expense-history > header {
-  padding: 13px 17px;
-  background: var(--surface-soft);
-  font-size: 13px;
+.mounting-history > article:first-child {
+  border-top: 0;
 }
-.expense-history > article {
+.mounting-history article > header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(390px, 1.2fr);
   align-items: center;
-  gap: 13px;
-  min-height: 66px;
-  padding: 10px 17px;
+  gap: 18px;
+}
+.mounting-history article > header > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+.mounting-history article > header > div > strong {
+  font-size: 13px;
+}
+.mounting-history article > header small,
+.period-movements small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.mounting-history dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.mounting-history dl div {
+  padding: 7px 9px;
+  background: var(--surface-soft);
+  border-radius: 9px;
+}
+.mounting-history dt {
+  color: var(--muted);
+  font-size: 10px;
+}
+.mounting-history dd {
+  margin: 3px 0 0;
+  font-size: 13px;
+  font-weight: 800;
+}
+.mounting-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+.mounting-items > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  background: var(--violet-soft);
+  border-radius: 9px;
+}
+.mounting-items b {
+  color: var(--violet);
+  font-size: 13px;
+}
+.mounting-items small {
+  color: var(--muted-strong);
+  font-size: 10px;
+}
+.mounting-no-items,
+.finance-empty {
+  margin: 9px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.finance-empty {
+  margin: 0;
+  padding: 17px 19px;
+}
+.period-movements article {
+  display: grid;
+  grid-template-columns: 95px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 19px;
   border-top: 1px solid var(--line-soft);
 }
-.expense-history__main {
+.period-movements article:first-child {
+  border-top: 0;
+}
+.period-movements article > span {
+  color: var(--muted-strong);
+  font-size: 11px;
+}
+.period-movements article > div {
   display: flex;
   min-width: 0;
   flex-direction: column;
 }
-.expense-history__main strong {
+.period-movements strong {
   overflow: hidden;
-  font-size: 13px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.expense-history__main small {
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 11px;
+.period-movements b {
+  color: var(--danger);
+  font-size: 13px;
 }
-.expense-history > article > b {
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
-}
-.expense-history > article.movement-income > b {
+.period-movement--income b {
   color: var(--success);
-}
-.expense-actions {
-  display: flex;
-  gap: 6px;
-}
-.expense-actions button {
-  width: 35px;
-  height: 35px;
-}
-.expense-actions button:last-child {
-  color: var(--danger);
-}
-.expense-deleted {
-  opacity: 0.58;
-  background: var(--danger-soft);
-}
-.expense-deleted__badge {
-  padding: 5px 7px;
-  color: var(--danger);
-  background: white;
-  border-radius: 8px;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-.expense-loading {
-  padding: 20px 17px;
-  color: var(--muted);
-  font-size: 12px;
-}
-.expense-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 120;
-  display: grid;
-  place-items: center;
-  padding: 14px;
-  background: rgba(28, 26, 39, 0.48);
-  backdrop-filter: blur(5px);
-}
-.expense-modal > section {
-  width: min(100%, 590px);
-  padding: 20px;
-  background: white;
-  border-radius: 20px;
-  box-shadow: var(--shadow-md);
-}
-.expense-modal h2 {
-  margin: 3px 0 12px;
-}
-.expense-modal p {
-  color: var(--muted-strong);
-}
-.expense-modal .modal-note {
-  font-size: 12px;
-}
-.expense-edit-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-.expense-edit-description {
-  grid-column: 1 / -1;
-}
-.expense-modal footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-}
-.expense-modal .button--danger {
-  color: white;
-  background: var(--danger);
-  border-color: var(--danger);
 }
 .seller-utilities {
   margin-top: 14px;
@@ -870,8 +788,7 @@
     min-width: 0;
     flex: 1;
   }
-  .business-finance > header,
-  .expense-manager > header {
+  .business-finance > header {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -881,36 +798,34 @@
   .business-finance dl {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .expense-date {
+  .finance-detail > header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .finance-detail > header .button {
     width: 100%;
   }
-  .expense-draft {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) 42px;
+  .mounting-history article > header {
+    grid-template-columns: 1fr;
+    gap: 9px;
   }
-  .expense-description,
-  .expense-draft label:nth-child(4) {
-    grid-column: 1 / -1;
+  .mounting-history dl {
+    gap: 5px;
   }
-  .expense-remove {
-    grid-column: 3;
-    grid-row: 1;
+  .mounting-history dl div {
+    padding: 7px;
   }
-  .expense-save {
-    width: 100%;
+  .mounting-history dt {
+    font-size: 9px;
   }
-  .expense-history > article {
+  .mounting-history dd {
+    font-size: 12px;
+  }
+  .period-movements article {
     grid-template-columns: minmax(0, 1fr) auto;
   }
-  .expense-actions,
-  .expense-deleted__badge {
+  .period-movements article > span {
     grid-column: 1 / -1;
-    justify-self: end;
-  }
-  .expense-edit-grid {
-    grid-template-columns: 1fr;
-  }
-  .expense-edit-description {
-    grid-column: auto;
   }
   .turn-selector__summary {
     align-items: flex-start;

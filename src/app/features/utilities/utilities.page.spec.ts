@@ -65,9 +65,6 @@ describe('UtilitiesPage', () => {
     http
       .expectOne((request) => request.url === '/api/v1/routes')
       .flush([{ id: 'route-id', code: 'R-01', name: 'Ruta Norte', active: true }]);
-    http
-      .expectOne((request) => request.url === '/api/v1/admin/finance/movements')
-      .flush({ detail: 'No hay movimientos' }, { status: 404, statusText: 'Not Found' });
     const initial = http.expectOne(
       (request) => request.url === '/api/v1/reports/utilities/summary',
     );

@@ -1,0 +1,340 @@
+:host {
+  display: block;
+}
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+.page-header h1 {
+  margin: 4px 0;
+}
+.page-subtitle {
+  margin: 0;
+  color: var(--muted-strong);
+}
+.management-date {
+  display: flex;
+  width: min(100%, 285px);
+  flex-direction: column;
+  gap: 6px;
+}
+.management-date > span:first-child,
+.movement-draft label > span,
+.edit-grid label > span {
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 750;
+}
+.management-help {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0 14px;
+  padding: 13px 15px;
+  color: var(--violet);
+  background: var(--violet-soft);
+  border: 1px solid #dcd4ff;
+  border-radius: 15px;
+}
+.management-help div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.management-help span {
+  color: var(--muted-strong);
+  font-size: 12px;
+}
+.management-message,
+.management-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+.management-message {
+  color: var(--mint-dark);
+  background: var(--mint-soft);
+}
+.management-error {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+.management-message button {
+  padding: 0 4px;
+  color: inherit;
+  background: none;
+  border: 0;
+  font-size: 20px;
+  cursor: pointer;
+}
+.management-create,
+.movement-history {
+  overflow: hidden;
+  padding: 0;
+}
+.management-create > header,
+.movement-history > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 17px 19px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.management-create h2,
+.movement-history h2 {
+  margin: 2px 0 0;
+}
+.management-create header p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.management-create .button {
+  min-height: 40px;
+}
+.movement-drafts {
+  display: grid;
+  gap: 9px;
+  padding: 15px 17px;
+}
+.movement-draft {
+  display: grid;
+  grid-template-columns: 125px 140px minmax(220px, 1.7fr) minmax(180px, 1fr) 42px;
+  align-items: end;
+  gap: 9px;
+  padding: 11px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line-soft);
+  border-radius: 13px;
+}
+.movement-draft label,
+.edit-grid label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+.icon-action,
+.movement-actions button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: white;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.icon-action {
+  width: 42px;
+  height: 42px;
+}
+.icon-action--danger,
+.movement-actions button:last-child {
+  color: var(--danger);
+}
+.management-create > footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 17px 17px;
+}
+.management-create > footer .button {
+  min-width: 190px;
+}
+.movement-history {
+  margin-top: 14px;
+}
+.movement-history > header > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.movement-list > article {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  padding: 11px 18px;
+  border-top: 1px solid var(--line-soft);
+}
+.movement-list > article:first-child {
+  border-top: 0;
+}
+.movement-type {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-radius: 11px;
+}
+.movement--income .movement-type {
+  color: var(--success);
+  background: var(--mint-soft);
+}
+.movement-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.movement-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.movement-copy small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.movement-list article > b {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.movement--income > b {
+  color: var(--success);
+}
+.movement-actions {
+  display: flex;
+  gap: 6px;
+}
+.movement-actions button {
+  width: 36px;
+  height: 36px;
+  color: var(--muted-strong);
+}
+.movement--deleted {
+  opacity: 0.58;
+  background: var(--danger-soft);
+}
+.deleted-badge {
+  padding: 5px 7px;
+  color: var(--danger);
+  background: white;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.empty-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 24px 19px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.management-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  background: rgba(28, 26, 39, 0.48);
+  backdrop-filter: blur(5px);
+}
+.management-modal > section {
+  width: min(100%, 590px);
+  padding: 21px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: var(--shadow-md);
+}
+.management-modal h2 {
+  margin: 3px 0 13px;
+}
+.management-modal p {
+  color: var(--muted-strong);
+}
+.modal-note {
+  font-size: 12px;
+}
+.edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.edit-description {
+  grid-column: 1 / -1;
+}
+.management-modal footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 17px;
+}
+.button--danger {
+  color: white;
+  background: var(--danger);
+  border-color: var(--danger);
+}
+@media (max-width: 720px) {
+  .page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .management-date {
+    width: 100%;
+  }
+  .management-create > header {
+    align-items: flex-start;
+  }
+  .movement-draft {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) 42px;
+  }
+  .movement-description,
+  .movement-draft label:nth-child(4) {
+    grid-column: 1 / -1;
+  }
+  .icon-action {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .movement-list > article {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    padding-inline: 13px;
+  }
+  .movement-actions,
+  .deleted-badge {
+    grid-column: 2 / -1;
+    justify-self: end;
+  }
+}
+@media (max-width: 430px) {
+  .management-help {
+    align-items: flex-start;
+  }
+  .management-create > header {
+    flex-direction: column;
+  }
+  .management-create > header .button,
+  .management-create > footer .button {
+    width: 100%;
+  }
+  .movement-draft {
+    grid-template-columns: minmax(0, 1fr) 42px;
+  }
+  .movement-draft label,
+  .movement-description,
+  .movement-draft label:nth-child(4) {
+    grid-column: 1 / -1;
+  }
+  .icon-action {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .edit-grid {
+    grid-template-columns: 1fr;
+  }
+  .edit-description {
+    grid-column: auto;
+  }
+}

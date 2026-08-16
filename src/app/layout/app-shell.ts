@@ -73,6 +73,13 @@ export class AppShell {
       roles: ['ADMIN'],
     },
     {
+      label: 'Gestión',
+      shortLabel: 'Gestión',
+      icon: 'wallet',
+      route: '/management',
+      roles: ['ADMIN'],
+    },
+    {
       label: 'Boletos',
       shortLabel: 'Boletos',
       icon: 'ticket',

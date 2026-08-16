@@ -29,6 +29,7 @@ import {
   BusinessSettlement,
   ExternalMountingInput,
   BusinessFinanceSummary,
+  BusinessFinanceDetails,
   BusinessMovement,
   BusinessMovementInput,
   BusinessExpense,
@@ -300,6 +301,11 @@ export class LotoApiService {
       .set('includeCommissions', includeCommissions)
       .set('includeMovements', includeMovements);
     return this.http.get<BusinessFinanceSummary>('/api/v1/admin/finance/summary', { params });
+  }
+
+  getBusinessFinanceDetails(from: string, to: string) {
+    const params = new HttpParams().set('from', from).set('to', to);
+    return this.http.get<BusinessFinanceDetails>('/api/v1/admin/finance/details', { params });
   }
 
   getDrawBusinessSummary(drawId: string) {

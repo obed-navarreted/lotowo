@@ -132,6 +132,15 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'management',
+        title: 'Gestión financiera · Suerte',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/admin/finance/finance-management.page').then(
+            (component) => component.FinanceManagementPage,
+          ),
+      },
+      {
         path: 'users',
         title: 'Usuarios · Suerte',
         canActivate: [adminGuard],
