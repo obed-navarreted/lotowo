@@ -38,6 +38,9 @@ export class TicketDetailPage {
   private readonly destroyRef = inject(DestroyRef);
   private readonly receiptOutput = inject(ReceiptOutputService);
   private readonly ticketId = this.route.snapshot.paramMap.get('id') ?? '';
+  protected readonly backRoute: string;
+  protected readonly backLabel: string;
+  protected readonly backQueryParams: Record<string, string>;
 
   protected readonly ticket = signal<Ticket | null>(null);
   protected readonly previousVersion = signal<Ticket | null>(null);
@@ -111,7 +114,26 @@ export class TicketDetailPage {
   });
 
   constructor() {
+    const query = this.route.snapshot.queryParamMap;
+    const queryValue = (key: string): string | null => query?.get(key) ?? null;
+    const reportsOrigin = queryValue('back') === 'reports';
+    this.backRoute = reportsOrigin ? '/reports' : '/tickets';
+    this.backLabel = reportsOrigin ? 'Resultado' : 'Boletos';
+    this.backQueryParams = {
+      ...(queryValue('date') ? { date: queryValue('date')! } : {}),
+      ...(queryValue('drawId') ? { drawId: queryValue('drawId')! } : {}),
+      ...(queryValue('sellerId') ? { sellerId: queryValue('sellerId')! } : {}),
+      ...(queryValue('search') ? { search: queryValue('search')! } : {}),
+      ...(reportsOrigin ? { tab: 'TICKETS' } : {}),
+    };
     this.load();
+  }
+
+  protected detailQuery(): Record<string, string> {
+    return {
+      back: this.backRoute === '/reports' ? 'reports' : 'tickets',
+      ...this.backQueryParams,
+    };
   }
 
   protected openDeleteDialog(): void {

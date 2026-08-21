@@ -140,14 +140,14 @@
       <button
         type="button"
         [class.report-tab--active]="activeTab === 'SELLERS'"
-        (click)="activeTab = 'SELLERS'"
+        (click)="selectTab('SELLERS')"
       >
         <lo-icon name="users" [size]="18" /> Por vendedor
       </button>
       <button
         type="button"
         [class.report-tab--active]="activeTab === 'TICKETS'"
-        (click)="activeTab = 'TICKETS'"
+        (click)="selectTab('TICKETS')"
       >
         <lo-icon name="ticket" [size]="18" /> Boletos premiados
         <b>{{ closure.winningTicketCount }}</b>
@@ -155,7 +155,7 @@
       <button
         type="button"
         [class.report-tab--active]="activeTab === 'NUMBERS'"
-        (click)="activeTab = 'NUMBERS'"
+        (click)="selectTab('NUMBERS')"
       >
         <lo-icon name="table" [size]="18" /> Por número
       </button>
@@ -236,7 +236,7 @@
         @if (closure.winningTickets.length) {
           <div class="winning-ticket-list">
             @for (ticket of closure.winningTickets; track ticket.ticketId) {
-              <a [routerLink]="['/tickets', ticket.ticketId]">
+              <a [routerLink]="['/tickets', ticket.ticketId]" [queryParams]="ticketDetailQuery()">
                 <span class="winning-receipt"
                   ><small>Recibo</small><strong>#{{ ticket.receiptNumber }}</strong></span
                 >
@@ -277,8 +277,11 @@
           <p>Montos agrupados únicamente con boletos vigentes.</p>
         </div>
         <label class="sales-toggle"
-          ><input type="checkbox" [(ngModel)]="showOnlyWithSales" /><span></span> Solo números
-          vendidos</label
+          ><input
+            type="checkbox"
+            [(ngModel)]="showOnlyWithSales"
+            (change)="onNumberVisibilityChanged()"
+          /><span></span> Solo números vendidos</label
         >
       </header>
       @if (visibleNumbers().length) {

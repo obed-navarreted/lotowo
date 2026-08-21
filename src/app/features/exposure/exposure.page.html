@@ -8,9 +8,9 @@
   </div>
   <div class="heading-actions">
     @if (auth.isAdmin()) {
-      <button class="button" type="button" (click)="openAlertSettings()"
-        ><lo-icon name="bell" [size]="18" /><span>Alertas</span></button
-      >
+      <button class="button" type="button" (click)="openAlertSettings()">
+        <lo-icon name="bell" [size]="18" /><span>Alertas</span>
+      </button>
     }
     <button
       class="button button--primary"
@@ -36,7 +36,9 @@
 <section class="exposure-filters card">
   <div class="filter-intro">
     <span><lo-icon name="calendar" [size]="17" /></span>
-    <div><strong>Elige qué quieres revisar</strong><small>Selecciona el día y el sorteo.</small></div>
+    <div>
+      <strong>Elige qué quieres revisar</strong><small>Selecciona el día y el sorteo.</small>
+    </div>
   </div>
   <label>
     <span>Fecha</span>
@@ -55,7 +57,7 @@
     </span>
   </label>
   <label>
-      <span>Sorteo</span>
+    <span>Sorteo</span>
     <select class="select" [(ngModel)]="selectedDrawId" (change)="onDrawChanged()">
       <option value="">Selecciona un sorteo</option>
       @for (draw of draws(); track draw.drawId) {
@@ -75,7 +77,7 @@
     </label>
     <label>
       <span>Vendedor</span>
-      <select class="select" [(ngModel)]="selectedSellerId" (change)="loadReport()">
+      <select class="select" [(ngModel)]="selectedSellerId" (change)="onSellerChanged()">
         <option value="">Todos los vendedores</option>
         @for (seller of availableSellers(); track seller.id) {
           <option [value]="seller.id">{{ seller.fullName }}</option>
@@ -115,6 +117,51 @@
     </article>
   </section>
 
+  <section class="ideal-profit card">
+    <header>
+      <span class="ideal-profit__icon"><lo-icon name="trend" [size]="20" /></span>
+      <div>
+        <span class="eyebrow">Análisis inmediato</span>
+        <h2>Ganancia ideal</h2>
+        <p>Encuentra qué números dejarían al menos la ganancia indicada si resultan ganadores.</p>
+      </div>
+      <label>
+        <span>Ganancia mínima</span>
+        <input
+          class="input"
+          type="number"
+          min="0"
+          step="100"
+          inputmode="numeric"
+          [(ngModel)]="idealProfit"
+          (ngModelChange)="onIdealProfitChanged()"
+          aria-label="Ganancia ideal"
+        />
+      </label>
+    </header>
+    <div class="ideal-profit__result">
+      <div>
+        <strong>{{ idealNumbers().length }}</strong>
+        <span>{{ idealNumbers().length === 1 ? 'número cumple' : 'números cumplen' }}</span>
+        <small>Venta total menos premio potencial, antes de comisión y otros gastos.</small>
+      </div>
+      @if (idealNumbers().length) {
+        <div class="ideal-number-list">
+          @for (item of idealNumbers(); track item.number) {
+            <span [title]="'Dejaría ' + money(profitIfWinner(item))">
+              <b>{{ item.number }}</b
+              ><small>{{ money(profitIfWinner(item)) }}</small>
+            </span>
+          }
+        </div>
+      } @else {
+        <p class="ideal-profit__empty">
+          Ninguna terminación alcanza esa ganancia con la venta actual.
+        </p>
+      }
+    </div>
+  </section>
+
   <section class="number-exposure card">
     <header>
       <div>
@@ -123,7 +170,11 @@
         <p>{{ updatedLabel() }} · montos según los filtros elegidos.</p>
       </div>
       <label class="sold-toggle"
-        ><input type="checkbox" [(ngModel)]="showOnlyWithSales" /><span></span> Solo vendidos</label
+        ><input
+          type="checkbox"
+          [(ngModel)]="showOnlyWithSales"
+          (change)="onVisibilityChanged()"
+        /><span></span> Solo vendidos</label
       >
     </header>
     @if (auth.isAdmin() && notificationSettings()?.numberExposureEnabled) {
@@ -182,7 +233,9 @@
         <div class="alert-dialog__loading">Cargando configuración…</div>
       } @else {
         <label class="alert-switch">
-          <span><strong>Enviar alerta</strong><small>A todos los administradores activos.</small></span>
+          <span
+            ><strong>Enviar alerta</strong><small>A todos los administradores activos.</small></span
+          >
           <input type="checkbox" [(ngModel)]="alertEnabled" /><i></i>
         </label>
 

@@ -1,11 +1,19 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { catchError, of } from 'rxjs';
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
+import { FilterStateService } from '../../core/navigation/filter-state.service';
 import { ManagedUser } from '../../core/models/admin.models';
 import { DailyReport, DrawReport } from '../../core/models/api.models';
 import { apiErrorMessage } from '../../shared/api-error';
@@ -23,6 +31,7 @@ export class ReportHistoryPage {
   protected readonly auth = inject(AuthService);
   private readonly api = inject(LotoApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly filterState = inject(FilterStateService);
   protected readonly sellers = signal<ManagedUser[]>([]);
   protected readonly days = signal<DailyReport[]>([]);
   protected readonly dayDraws = signal<DrawReport[]>([]);
@@ -37,8 +46,13 @@ export class ReportHistoryPage {
     this.days().slice(this.page() * this.pageSize, (this.page() + 1) * this.pageSize),
   );
   protected selectedSellerId = '';
+  private restoredExpandedDate: string | null;
 
   constructor() {
+    const stored = this.filterState.restore<HistoryFilterState>('report-history');
+    this.selectedSellerId = this.auth.user()?.role === 'SELLER' ? '' : (stored?.sellerId ?? '');
+    this.restoredExpandedDate = stored?.expandedDate ?? null;
+    this.page.set(Math.max(0, stored?.page ?? 0));
     if (this.auth.user()?.role !== 'SELLER') {
       this.api
         .getUsers(0, 100)
@@ -55,23 +69,28 @@ export class ReportHistoryPage {
 
   protected onSellerChanged(): void {
     this.page.set(0);
+    this.restoredExpandedDate = null;
     this.expandedDate.set(null);
     this.dayDraws.set([]);
+    this.rememberFilters();
     this.loadDays();
   }
 
   protected previousPage(): void {
     this.page.update((value) => Math.max(0, value - 1));
+    this.rememberFilters();
   }
 
   protected nextPage(): void {
     this.page.update((value) => Math.min(this.totalPages() - 1, value + 1));
+    this.rememberFilters();
   }
 
   protected toggleDay(day: DailyReport): void {
     if (this.expandedDate() === day.date) {
       this.expandedDate.set(null);
       this.dayDraws.set([]);
+      this.rememberFilters();
       return;
     }
     this.loadDraws(day);
@@ -93,15 +112,14 @@ export class ReportHistoryPage {
 
   private loadDraws(day: DailyReport): void {
     this.expandedDate.set(day.date);
+    this.rememberFilters();
     this.drawsLoading.set(true);
     this.api
       .getDrawReports(day.date, this.selectedSellerId || undefined)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (draws) => {
-          this.dayDraws.set(
-            draws.filter((draw) => draw.ticketCount > 0).sort(newestDrawFirst),
-          );
+          this.dayDraws.set(draws.filter((draw) => draw.ticketCount > 0).sort(newestDrawFirst));
           this.drawsLoading.set(false);
         },
         error: (error: unknown) => {
@@ -167,10 +185,14 @@ export class ReportHistoryPage {
         next: (days) => {
           const newestFirst = [...days].sort(newestDayFirst);
           this.days.set(newestFirst);
-          this.page.set(0);
+          this.page.set(
+            Math.min(this.page(), Math.max(0, Math.ceil(newestFirst.length / this.pageSize) - 1)),
+          );
           this.loading.set(false);
-          const firstDay = newestFirst[0];
-          if (firstDay) this.loadDraws(firstDay);
+          const restoredDay = newestFirst.find((day) => day.date === this.restoredExpandedDate);
+          const firstVisible = newestFirst[this.page() * this.pageSize];
+          this.restoredExpandedDate = null;
+          if (restoredDay ?? firstVisible) this.loadDraws((restoredDay ?? firstVisible)!);
         },
         error: (error: HttpErrorResponse) => {
           this.days.set([]);
@@ -180,4 +202,18 @@ export class ReportHistoryPage {
         },
       });
   }
+
+  private rememberFilters(): void {
+    this.filterState.save<HistoryFilterState>('report-history', {
+      sellerId: this.selectedSellerId,
+      expandedDate: this.expandedDate(),
+      page: this.page(),
+    });
+  }
+}
+
+interface HistoryFilterState {
+  sellerId: string;
+  expandedDate: string | null;
+  page: number;
 }

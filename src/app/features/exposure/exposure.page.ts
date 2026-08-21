@@ -25,6 +25,7 @@ import {
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ManagedUser, RouteSummary } from '../../core/models/admin.models';
+import { FilterStateService } from '../../core/navigation/filter-state.service';
 import {
   DrawNumberReport,
   DrawReport,
@@ -48,6 +49,7 @@ export class ExposurePage {
   private readonly api = inject(LotoApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly filterState = inject(FilterStateService);
 
   protected readonly routes = signal<RouteSummary[]>([]);
   protected readonly sellers = signal<ManagedUser[]>([]);
@@ -69,6 +71,7 @@ export class ExposurePage {
   protected selectedRouteId = '';
   protected selectedSellerId = '';
   protected showOnlyWithSales = true;
+  protected idealProfit: number | null = 5_000;
   protected alertEnabled = false;
   protected alertThreshold: number | null = 40_000;
   private readonly requestedDrawId: string;
@@ -93,8 +96,13 @@ export class ExposurePage {
 
   constructor() {
     const query = this.route.snapshot.queryParamMap;
-    this.selectedDate = query.get('date') ?? this.localDate(new Date());
-    this.selectedDrawId = query.get('drawId') ?? '';
+    const stored = this.filterState.restore<ExposureFilterState>('exposure');
+    this.selectedDate = query.get('date') ?? stored?.date ?? this.localDate(new Date());
+    this.selectedDrawId = query.get('drawId') ?? stored?.drawId ?? '';
+    this.selectedRouteId = this.auth.user()?.role === 'SELLER' ? '' : (stored?.routeId ?? '');
+    this.selectedSellerId = this.auth.user()?.role === 'SELLER' ? '' : (stored?.sellerId ?? '');
+    this.showOnlyWithSales = stored?.showOnlyWithSales ?? true;
+    this.idealProfit = stored?.idealProfit ?? 5_000;
     this.requestedDrawId = this.selectedDrawId;
     const earliest = new Date();
     earliest.setDate(earliest.getDate() - 15);
@@ -108,10 +116,12 @@ export class ExposurePage {
 
   protected onDateChanged(): void {
     this.selectedDrawId = '';
+    this.rememberFilters();
     this.loadDraws();
   }
 
   protected onDrawChanged(): void {
+    this.rememberFilters();
     this.loadReport();
   }
 
@@ -119,7 +129,33 @@ export class ExposurePage {
     if (!this.availableSellers().some((seller) => seller.id === this.selectedSellerId)) {
       this.selectedSellerId = '';
     }
+    this.rememberFilters();
     this.loadReport();
+  }
+
+  protected onSellerChanged(): void {
+    this.rememberFilters();
+    this.loadReport();
+  }
+
+  protected onVisibilityChanged(): void {
+    this.rememberFilters();
+  }
+
+  protected onIdealProfitChanged(): void {
+    if (this.idealProfit !== null && this.idealProfit < 0) this.idealProfit = 0;
+    this.rememberFilters();
+  }
+
+  protected idealNumbers(): NumberReport[] {
+    const report = this.report();
+    const target = this.idealProfit;
+    if (!report || target === null || !Number.isFinite(target) || target < 0) return [];
+    return report.numbers.filter((item) => this.profitIfWinner(item) >= target);
+  }
+
+  protected profitIfWinner(item: NumberReport): number {
+    return (this.report()?.grossSales ?? 0) - item.potentialPayout;
   }
 
   protected availableSellers(): ManagedUser[] {
@@ -331,6 +367,7 @@ export class ExposurePage {
           this.errorMessage.set(null);
           this.loading.set(false);
           this.refreshing.set(false);
+          this.rememberFilters();
         },
         error: (error: unknown) => {
           if (!background) this.report.set(null);
@@ -343,6 +380,17 @@ export class ExposurePage {
       });
   }
 
+  private rememberFilters(): void {
+    this.filterState.save<ExposureFilterState>('exposure', {
+      date: this.selectedDate,
+      drawId: this.selectedDrawId,
+      routeId: this.selectedRouteId,
+      sellerId: this.selectedSellerId,
+      showOnlyWithSales: this.showOnlyWithSales,
+      idealProfit: this.idealProfit,
+    });
+  }
+
   private localDate(date: Date): string {
     const parts = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Managua',
@@ -353,4 +401,13 @@ export class ExposurePage {
     const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
     return `${value['year']}-${value['month']}-${value['day']}`;
   }
+}
+
+interface ExposureFilterState {
+  date: string;
+  drawId: string;
+  routeId: string;
+  sellerId: string;
+  showOnlyWithSales: boolean;
+  idealProfit: number | null;
 }

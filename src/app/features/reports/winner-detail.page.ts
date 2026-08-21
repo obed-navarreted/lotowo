@@ -8,6 +8,7 @@ import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ApiProblem, WinnerDrawSummary } from '../../core/models/api.models';
 import { OperationalReportPdfService } from '../../core/reports/operational-report-pdf.service';
+import { FilterStateService } from '../../core/navigation/filter-state.service';
 import { drawLabel } from '../../shared/draw-label';
 import { Icon } from '../../shared/icon/icon';
 
@@ -23,6 +24,7 @@ export class WinnerDetailPage {
   private readonly api = inject(LotoApiService);
   private readonly pdf = inject(OperationalReportPdfService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly filterState = inject(FilterStateService);
   protected readonly winners = signal<WinnerDrawSummary[]>([]);
   protected readonly loading = signal(true);
   protected readonly error = signal('');
@@ -35,6 +37,10 @@ export class WinnerDetailPage {
   protected to = '';
 
   constructor() {
+    const stored = this.filterState.restore<WinnerFilterState>('winner-detail');
+    this.from = stored?.from ?? '';
+    this.to = stored?.to ?? '';
+    this.page.set(Math.max(0, stored?.page ?? 0));
     const earliest = new Date();
     earliest.setDate(earliest.getDate() - 14);
     this.historyMinDate = this.auth.isAdmin() ? '' : this.localDate(earliest);
@@ -51,6 +57,7 @@ export class WinnerDetailPage {
       return;
     }
     this.page.set(0);
+    this.rememberFilters();
     this.load();
   }
 
@@ -58,18 +65,21 @@ export class WinnerDetailPage {
     this.from = '';
     this.to = '';
     this.page.set(0);
+    this.rememberFilters();
     this.load();
   }
 
   protected previous(): void {
     if (this.page() === 0) return;
     this.page.update((value) => value - 1);
+    this.rememberFilters();
     this.load();
   }
 
   protected next(): void {
     if (this.page() + 1 >= this.totalPages()) return;
     this.page.update((value) => value + 1);
+    this.rememberFilters();
     this.load();
   }
 
@@ -127,6 +137,7 @@ export class WinnerDetailPage {
   }
 
   private load(): void {
+    this.rememberFilters();
     this.loading.set(true);
     this.error.set('');
     this.api
@@ -148,6 +159,14 @@ export class WinnerDetailPage {
             this.error.set(this.message(error, 'No pudimos cargar los ganadores.'));
         },
       });
+  }
+
+  private rememberFilters(): void {
+    this.filterState.save<WinnerFilterState>('winner-detail', {
+      from: this.from,
+      to: this.to,
+      page: this.page(),
+    });
   }
 
   private scopeLabel(): string {
@@ -173,4 +192,10 @@ export class WinnerDetailPage {
     const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
     return `${values['year']}-${values['month']}-${values['day']}`;
   }
+}
+
+interface WinnerFilterState {
+  from: string;
+  to: string;
+  page: number;
 }

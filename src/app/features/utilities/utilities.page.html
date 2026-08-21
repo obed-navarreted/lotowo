@@ -169,12 +169,23 @@
       </label>
     }
     <label class="commission-choice">
+      <span class="commission-choice__icon"><lo-icon name="clock" [size]="19" /></span>
+      <span class="commission-choice__copy"
+        ><strong>Considerar resultados provisionales</strong
+        ><small
+          >Incluye sorteos todavía sin ganador. Mientras estén pendientes, sus premios se consideran
+          en cero.</small
+        ></span
+      >
+      <input type="checkbox" [(ngModel)]="includeProvisional" (change)="onProvisionalChanged()" />
+    </label>
+    <label class="commission-choice">
       <span class="commission-choice__icon"><lo-icon name="table" [size]="19" /></span>
       <span class="commission-choice__copy"
         ><strong>Detalle por sorteo en PDF</strong
         ><small>Incluye cada turno dentro del día y del vendedor.</small></span
       >
-      <input type="checkbox" [(ngModel)]="includeDraws" />
+      <input type="checkbox" [(ngModel)]="includeDraws" (change)="onReportDetailChanged()" />
     </label>
   </div>
   <div class="filter-actions">
@@ -340,106 +351,105 @@
         ingresos y gastos pertenecen a su fecha. No modifica los cierres de vendedores.
       </p>
     </section>
-    @if (businessDetails(); as details) {
-      <section class="finance-detail card">
-        <header>
-          <div>
-            <span class="eyebrow">Movimientos del período</span>
-            <h2>Detalle administrativo</h2>
-            <p>Cada montada pertenece a su sorteo; cada ingreso o gasto, a su fecha.</p>
-          </div>
-          <a class="button" routerLink="/management"
-            ><lo-icon name="wallet" [size]="17" /> Gestionar</a
-          >
-        </header>
-        <div class="finance-detail__section">
-          <div class="finance-detail__title">
-            <strong>Montadas</strong><span>{{ details.mountings.length }}</span>
-          </div>
-          @if (details.mountings.length) {
-            <div class="mounting-history">
-              @for (mounting of details.mountings; track mounting.id) {
-                <article>
-                  <header>
-                    <div>
-                      <strong>{{ mountingDraw(mounting) }}</strong
-                      ><small
-                        >Ganador {{ mounting.winningNumber || '—' }} ·
-                        {{ mounting.registeredByName || 'Administración' }}</small
-                      >
-                    </div>
-                    <dl>
-                      <div>
-                        <dt>Montada</dt>
-                        <dd>−{{ money(mounting.totalStake) }}</dd>
-                      </div>
-                      <div>
-                        <dt>Premio externo</dt>
-                        <dd>+{{ money(mounting.externalPrize) }}</dd>
-                      </div>
-                      <div
-                        [class.loss]="mountingResult(mounting) < 0"
-                        [class.profit]="mountingResult(mounting) > 0"
-                      >
-                        <dt>Resultado</dt>
-                        <dd>{{ signedMoney(mountingResult(mounting)) }}</dd>
-                      </div>
-                    </dl>
-                  </header>
-                  @if (mounting.items.length) {
-                    <div class="mounting-items">
-                      @for (item of mounting.items; track item.number) {
-                        <span
-                          ><b>{{ item.number }}</b
-                          ><small
-                            >{{ money(item.stakeAmount) }} ×
-                            {{ money(item.payoutMultiplier || 0) }} ·
-                            {{ money(item.potentialExternalPayout || 0) }}</small
-                          ></span
-                        >
-                      }
-                    </div>
-                  } @else {
-                    <p class="mounting-no-items">
-                      Registro histórico sin desglose individual de números.
-                    </p>
-                  }
-                </article>
-              }
-            </div>
-          } @else {
-            <p class="finance-empty">No hubo montadas en el período.</p>
-          }
+  }
+  @if (auth.isAdmin() && businessDetails(); as details) {
+    <section class="finance-detail card">
+      <header>
+        <div>
+          <span class="eyebrow">Movimientos del período</span>
+          <h2>Detalle administrativo</h2>
+          <p>Cada montada pertenece a su sorteo; cada ingreso o gasto, a su fecha.</p>
         </div>
-        <div class="finance-detail__section">
-          <div class="finance-detail__title">
-            <strong>Ingresos y gastos</strong
-            ><span
-              >{{ details.movements.length }} ·
-              {{
-                includeMovements ? 'incluidos en el resultado' : 'no incluidos en el resultado'
-              }}</span
-            >
-          </div>
-          @if (details.movements.length) {
-            <div class="period-movements">
-              @for (movement of details.movements; track movement.id) {
-                <article [class.period-movement--income]="movement.type === 'INCOME'">
-                  <span>{{ dateLabel(movement.date) }}</span>
+        <a class="button" routerLink="/management"
+          ><lo-icon name="wallet" [size]="17" /> Gestionar</a
+        >
+      </header>
+      <div class="finance-detail__section">
+        <div class="finance-detail__title">
+          <strong>Montadas</strong><span>{{ details.mountings.length }}</span>
+        </div>
+        @if (details.mountings.length) {
+          <div class="mounting-history">
+            @for (mounting of details.mountings; track mounting.id) {
+              <article>
+                <header>
                   <div>
-                    <strong>{{ movement.description }}</strong
-                    ><small>{{ movement.userName || 'General' }}</small>
+                    <strong>{{ mountingDraw(mounting) }}</strong
+                    ><small
+                      >Ganador {{ mounting.winningNumber || '—' }} ·
+                      {{ mounting.registeredByName || 'Administración' }}</small
+                    >
                   </div>
-                  <b>{{ movement.type === 'INCOME' ? '+' : '−' }}{{ money(movement.amount) }}</b>
-                </article>
-              }
-            </div>
-          } @else {
-            <p class="finance-empty">No hubo ingresos ni gastos adicionales en el período.</p>
-          }
+                  <dl>
+                    <div>
+                      <dt>Montada</dt>
+                      <dd>−{{ money(mounting.totalStake) }}</dd>
+                    </div>
+                    <div>
+                      <dt>Premio externo</dt>
+                      <dd>+{{ money(mounting.externalPrize) }}</dd>
+                    </div>
+                    <div
+                      [class.loss]="mountingResult(mounting) < 0"
+                      [class.profit]="mountingResult(mounting) > 0"
+                    >
+                      <dt>Resultado</dt>
+                      <dd>{{ signedMoney(mountingResult(mounting)) }}</dd>
+                    </div>
+                  </dl>
+                </header>
+                @if (mounting.items.length) {
+                  <div class="mounting-items">
+                    @for (item of mounting.items; track item.number) {
+                      <span
+                        ><b>{{ item.number }}</b
+                        ><small
+                          >{{ money(item.stakeAmount) }} × {{ money(item.payoutMultiplier || 0) }} ·
+                          {{ money(item.potentialExternalPayout || 0) }}</small
+                        ></span
+                      >
+                    }
+                  </div>
+                } @else {
+                  <p class="mounting-no-items">
+                    Registro histórico sin desglose individual de números.
+                  </p>
+                }
+              </article>
+            }
+          </div>
+        } @else {
+          <p class="finance-empty">No hubo montadas en el período.</p>
+        }
+      </div>
+      <div class="finance-detail__section">
+        <div class="finance-detail__title">
+          <strong>Ingresos y gastos</strong
+          ><span
+            >{{ details.movements.length }} ·
+            {{
+              includeMovements ? 'incluidos en el resultado' : 'no incluidos en el resultado'
+            }}</span
+          >
         </div>
-      </section>
-    }
+        @if (details.movements.length) {
+          <div class="period-movements">
+            @for (movement of details.movements; track movement.id) {
+              <article [class.period-movement--income]="movement.type === 'INCOME'">
+                <span>{{ dateLabel(movement.date) }}</span>
+                <div>
+                  <strong>{{ movement.description }}</strong
+                  ><small>{{ movement.userName || 'General' }}</small>
+                </div>
+                <b>{{ movement.type === 'INCOME' ? '+' : '−' }}{{ money(movement.amount) }}</b>
+              </article>
+            }
+          </div>
+        } @else {
+          <p class="finance-empty">No hubo ingresos ni gastos adicionales en el período.</p>
+        }
+      </div>
+    </section>
   }
   <section class="seller-utilities card">
     <header>
@@ -455,7 +465,7 @@
       >
     </header>
     <div class="seller-utility-list">
-      @for (seller of result.sellers; track seller.sellerId) {
+      @for (seller of result.sellers; track seller.sellerId + ':' + (seller.routeId || '')) {
         @let sellerDays = days(seller);
         <article
           [class.seller-utility--loss]="resultState(sellerResultValue(seller)) === 'loss'"
@@ -464,8 +474,11 @@
           <header class="seller-header">
             <div>
               <strong>{{ seller.sellerName }}</strong>
-              <small
-                >{{ seller.ticketCount }}
+              <small>
+                @if (seller.routeName) {
+                  {{ seller.routeName }} ·
+                }
+                {{ seller.ticketCount }}
                 {{ seller.ticketCount === 1 ? 'boleto' : 'boletos' }}</small
               >
             </div>

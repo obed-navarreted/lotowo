@@ -182,6 +182,9 @@ export interface UtilitySummary {
 export interface UtilitySellerSummary {
   sellerId: string;
   sellerName: string;
+  routeId?: string | null;
+  routeCode?: string | null;
+  routeName?: string | null;
   ticketCount: number;
   grossSales: number;
   prizesPaid: number;

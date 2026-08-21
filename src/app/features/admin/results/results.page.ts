@@ -13,6 +13,7 @@ import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { LotoApiService } from '../../../core/api/loto-api.service';
 import { BusinessSettlement, Draw, ExternalMountingInput } from '../../../core/models/api.models';
+import { FilterStateService } from '../../../core/navigation/filter-state.service';
 import { apiErrorMessage } from '../../../shared/api-error';
 import { drawLabel } from '../../../shared/draw-label';
 import { Icon } from '../../../shared/icon/icon';
@@ -28,6 +29,7 @@ import { newestDrawFirst } from '../../../shared/result-order';
 export class ResultsPage {
   private readonly api = inject(LotoApiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly filterState = inject(FilterStateService);
   protected readonly draws = signal<Draw[]>([]);
   protected readonly loading = signal(true);
   protected readonly errorMessage = signal<string | null>(null);
@@ -54,7 +56,7 @@ export class ResultsPage {
         ),
     ),
   );
-  protected selectedDate = this.localDate(new Date());
+  protected selectedDate: string;
   protected readonly pending = computed(() =>
     this.draws().filter((draw) => this.canRegister(draw)),
   );
@@ -65,10 +67,14 @@ export class ResultsPage {
   );
 
   constructor() {
+    this.selectedDate =
+      this.filterState.restore<{ date: string }>('admin-results')?.date ??
+      this.localDate(new Date());
     this.load();
   }
 
   protected load(): void {
+    this.filterState.save('admin-results', { date: this.selectedDate });
     this.loading.set(true);
     this.errorMessage.set(null);
     const from = new Date(`${this.selectedDate}T00:00:00-06:00`);

@@ -157,8 +157,12 @@ export class LotoApiService {
     drawIds: string[] = [],
     sellerId?: string,
     routeId?: string,
+    includeProvisional = true,
   ) {
-    let params = new HttpParams().set('from', from).set('to', to);
+    let params = new HttpParams()
+      .set('from', from)
+      .set('to', to)
+      .set('includeProvisional', includeProvisional);
     for (const drawId of drawIds) params = params.append('drawIds', drawId);
     if (sellerId) params = params.set('sellerId', sellerId);
     if (routeId) params = params.set('routeId', routeId);
@@ -294,12 +298,14 @@ export class LotoApiService {
     to: string,
     includeCommissions = true,
     includeMovements = true,
+    includeProvisional = true,
   ) {
     const params = new HttpParams()
       .set('from', from)
       .set('to', to)
       .set('includeCommissions', includeCommissions)
-      .set('includeMovements', includeMovements);
+      .set('includeMovements', includeMovements)
+      .set('includeProvisional', includeProvisional);
     return this.http.get<BusinessFinanceSummary>('/api/v1/admin/finance/summary', { params });
   }
 

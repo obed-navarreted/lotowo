@@ -121,6 +121,7 @@
           <a
             class="ticket-row__main"
             [routerLink]="['/tickets', ticket.id]"
+            [queryParams]="detailQuery()"
             [attr.aria-label]="
               'Ver boleto ' +
               ticket.receiptNumber +
@@ -161,6 +162,7 @@
             <a
               class="ticket-detail-button"
               [routerLink]="['/tickets', ticket.id]"
+              [queryParams]="detailQuery()"
               [attr.aria-label]="'Ver detalle del recibo ' + ticket.receiptNumber"
               >Detalle <lo-icon name="arrow" [size]="15"
             /></a>

@@ -271,6 +271,7 @@ describe('LotoApiService', () => {
     expect(summary.request.params.get('to')).toBe('2026-08-02');
     expect(summary.request.params.get('sellerId')).toBe('seller-id');
     expect(summary.request.params.get('routeId')).toBe('route-id');
+    expect(summary.request.params.get('includeProvisional')).toBe('true');
     expect(summary.request.params.getAll('drawIds')).toEqual(['draw-1', 'draw-2']);
     summary.flush({});
 

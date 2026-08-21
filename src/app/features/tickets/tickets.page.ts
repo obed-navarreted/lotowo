@@ -7,6 +7,7 @@ import { catchError, of } from 'rxjs';
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ReceiptOutputService } from '../../core/receipts/receipt-output.service';
+import { FilterStateService } from '../../core/navigation/filter-state.service';
 import { ManagedUser } from '../../core/models/admin.models';
 import { Draw, NumberExposure, Ticket, TicketFilters } from '../../core/models/api.models';
 import { apiErrorMessage } from '../../shared/api-error';
@@ -27,6 +28,7 @@ export class TicketsPage {
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly receiptOutput = inject(ReceiptOutputService);
+  private readonly filterState = inject(FilterStateService);
   protected readonly tickets = signal<Ticket[]>([]);
   protected readonly draws = signal<Draw[]>([]);
   protected readonly sellers = signal<ManagedUser[]>([]);
@@ -47,15 +49,17 @@ export class TicketsPage {
 
   constructor() {
     const query = this.route.snapshot.queryParamMap;
-    const requestedDate = query.get('date');
+    const stored = this.filterState.restore<TicketFilterState>('tickets');
+    const requestedDate = query.get('date') ?? stored?.date;
     this.selectedDate =
       requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate)
         ? requestedDate
         : this.localDate(new Date());
-    this.selectedDrawId = query.get('drawId') ?? '';
+    this.selectedDrawId = query.get('drawId') ?? stored?.drawId ?? '';
     this.selectedSellerId =
-      this.auth.user()?.role === 'SELLER' ? '' : (query.get('sellerId') ?? '');
-    this.hasRequestedFilters = Boolean(this.selectedDrawId || query.get('date'));
+      this.auth.user()?.role === 'SELLER' ? '' : (query.get('sellerId') ?? stored?.sellerId ?? '');
+    this.search = query.get('search') ?? stored?.search ?? '';
+    this.hasRequestedFilters = Boolean(this.selectedDrawId || requestedDate || stored);
     const earliest = new Date();
     earliest.setDate(earliest.getDate() - 15);
     this.historyMinDate = this.auth.isAdmin() ? '' : this.localDate(earliest);
@@ -64,15 +68,18 @@ export class TicketsPage {
 
   protected onDateChanged(): void {
     this.selectedDrawId = '';
+    this.rememberFilters();
     this.loadDay();
   }
   protected applyFilters(): void {
+    this.rememberFilters();
     this.load(0);
   }
   protected clearFilters(): void {
     this.search = '';
     this.selectedSellerId = '';
     this.selectedDrawId = '';
+    this.rememberFilters();
     this.load(0);
   }
   protected previous(): void {
@@ -83,6 +90,16 @@ export class TicketsPage {
   }
   protected drawName(draw: Draw): string {
     return drawLabel(draw);
+  }
+
+  protected detailQuery(): Record<string, string> {
+    return {
+      back: 'tickets',
+      date: this.selectedDate,
+      ...(this.selectedDrawId ? { drawId: this.selectedDrawId } : {}),
+      ...(this.selectedSellerId ? { sellerId: this.selectedSellerId } : {}),
+      ...(this.search.trim() ? { search: this.search.trim() } : {}),
+    };
   }
 
   protected money(value: number): string {
@@ -215,6 +232,7 @@ export class TicketsPage {
   }
 
   private load(page = 0): void {
+    this.rememberFilters();
     this.loading.set(true);
     this.errorMessage.set(null);
     const filters: TicketFilters = {
@@ -251,6 +269,15 @@ export class TicketsPage {
       });
   }
 
+  private rememberFilters(): void {
+    this.filterState.save<TicketFilterState>('tickets', {
+      date: this.selectedDate,
+      drawId: this.selectedDrawId,
+      sellerId: this.selectedSellerId,
+      search: this.search,
+    });
+  }
+
   private loadExposure(): void {
     if (!this.selectedDrawId) {
       this.exposure.set([]);
@@ -272,4 +299,11 @@ export class TicketsPage {
     const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
     return `${value['year']}-${value['month']}-${value['day']}`;
   }
+}
+
+interface TicketFilterState {
+  date: string;
+  drawId: string;
+  sellerId: string;
+  search: string;
 }

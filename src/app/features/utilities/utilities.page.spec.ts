@@ -48,6 +48,7 @@ describe('UtilitiesPage', () => {
       selectedRouteId: string;
       includeCommissions: boolean;
       includeMovements: boolean;
+      includeProvisional: boolean;
       applyFilters(): void;
       ticketsQuery(): Record<string, string>;
       resultValue(result: UtilitySummary): number;
@@ -88,6 +89,7 @@ describe('UtilitiesPage', () => {
     expect(summary.request.params.getAll('drawIds')).toEqual(['draw-id', 'draw-id-2']);
     expect(summary.request.params.get('sellerId')).toBe('seller-id');
     expect(summary.request.params.get('routeId')).toBe('route-id');
+    expect(summary.request.params.get('includeProvisional')).toBe('true');
     const report: UtilitySummary = {
       from: '2026-08-01',
       to: '2026-08-01',
@@ -103,6 +105,9 @@ describe('UtilitiesPage', () => {
         {
           sellerId: 'seller-id',
           sellerName: 'Vendedora Uno',
+          routeId: 'route-id',
+          routeCode: 'R-01',
+          routeName: 'Ruta Norte',
           ticketCount: 4,
           grossSales: 100,
           prizesPaid: 40,
@@ -147,6 +152,14 @@ describe('UtilitiesPage', () => {
       ],
     };
     summary.flush(report);
+    http
+      .expectOne(
+        (request) =>
+          request.url === '/api/v1/admin/finance/details' &&
+          request.params.get('from') === '2026-08-01' &&
+          request.params.get('to') === '2026-08-01',
+      )
+      .flush({ detail: 'Sin movimientos' }, { status: 404, statusText: 'Not Found' });
     fixture.detectChanges();
 
     expect(component.ticketsQuery()).toEqual({
@@ -155,10 +168,13 @@ describe('UtilitiesPage', () => {
     });
     expect(component.includeCommissions).toBe(false);
     expect(component.includeMovements).toBe(false);
+    expect(component.includeProvisional).toBe(true);
     expect(component.resultValue(report)).toBe(60);
     expect(fixture.nativeElement.textContent).toContain('LOTO - 01/08/26 - 11AM');
     expect(fixture.nativeElement.textContent).toContain('Vendedora Uno');
-    expect(fixture.nativeElement.textContent).toContain('Ruta Norte');
+    expect(fixture.nativeElement.querySelector('.seller-header')?.textContent).toContain(
+      'Ruta Norte',
+    );
     expect(fixture.nativeElement.querySelector('.utility-mobile-summary')).not.toBeNull();
     expect(fixture.nativeElement.querySelectorAll('.utility-draw-mobile')).toHaveLength(2);
     expect(fixture.nativeElement.querySelector('details.utility-day[open]')).toBeNull();
@@ -170,5 +186,114 @@ describe('UtilitiesPage', () => {
     ).toContain('-70');
     component.includeCommissions = true;
     expect(component.resultValue(report)).toBe(50);
+  });
+
+  it('shows dated expenses when the utility period contains a single day', () => {
+    sessionStorage.setItem(
+      'suerte.filters.admin-id.utilities',
+      JSON.stringify({
+        fromDate: '2026-08-08',
+        toDate: '2026-08-08',
+        selectedDrawIds: [],
+        allDrawsSelected: true,
+        sellerId: '',
+        routeId: '',
+        includeCommissions: false,
+        includeMovements: false,
+        includeDraws: true,
+      }),
+    );
+    const fixture = TestBed.createComponent(UtilitiesPage);
+
+    http
+      .expectOne((request) => request.url === '/api/v1/users')
+      .flush({
+        content: [],
+        page: 0,
+        size: 100,
+        totalElements: 0,
+        totalPages: 0,
+      });
+    http.expectOne('/api/v1/routes').flush([]);
+    http
+      .expectOne((request) => request.url === '/api/v1/draws')
+      .flush([
+        {
+          id: 'draw-id',
+          drawType: 'DAILY',
+          name: 'Sorteo diario 11 AM',
+          nationalSequence: null,
+          scheduledAt: '2026-08-08T17:00:00Z',
+          salesCloseAt: '2026-08-08T17:00:00Z',
+          status: 'CLOSED',
+          salesEnabled: false,
+          salesBlockedAt: null,
+          winningNumber: '11',
+          resultRegisteredAt: '2026-08-08T18:00:00Z',
+          settledAt: null,
+          version: 1,
+          createdAt: '2026-08-08T12:00:00Z',
+        },
+      ]);
+    http
+      .expectOne((request) => request.url === '/api/v1/reports/utilities/summary')
+      .flush({
+        from: '2026-08-08',
+        to: '2026-08-08',
+        ticketCount: 1,
+        grossSales: 100,
+        prizesPaid: 0,
+        commissionAmount: 10,
+        netResult: 100,
+        netAfterCommission: 90,
+        pendingResults: 0,
+        commissionProvisional: false,
+        sellers: [],
+      });
+    http
+      .expectOne((request) => request.url === '/api/v1/admin/finance/summary')
+      .flush({
+        from: '2026-08-08',
+        to: '2026-08-08',
+        grossSales: 100,
+        localPrizes: 0,
+        commissions: 10,
+        resultAfterCommission: 100,
+        externalStake: 0,
+        externalPrizes: 0,
+        expenses: 350,
+        extraIncome: 0,
+        businessResult: 100,
+      });
+    http
+      .expectOne((request) => request.url === '/api/v1/admin/finance/details')
+      .flush({
+        from: '2026-08-08',
+        to: '2026-08-08',
+        mountings: [],
+        movements: [
+          {
+            id: 'expense-id',
+            date: '2026-08-08',
+            type: 'EXPENSE',
+            amount: 350,
+            description: 'Combustible y almuerzo',
+            userId: null,
+            userName: null,
+            active: true,
+            createdAt: '2026-08-08T18:00:00Z',
+            createdBy: 'admin-id',
+            deletedAt: null,
+            deletedBy: null,
+            deletedByName: null,
+          },
+        ],
+      });
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.period-movements')?.textContent).toContain(
+      'Combustible y almuerzo',
+    );
+    expect(fixture.nativeElement.querySelector('.period-movements')?.textContent).toContain('350');
   });
 });

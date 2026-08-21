@@ -7,6 +7,7 @@ import { catchError, forkJoin, map, of } from 'rxjs';
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ManagedUser, RouteSummary } from '../../core/models/admin.models';
+import { FilterStateService } from '../../core/navigation/filter-state.service';
 import {
   BusinessFinanceSummary,
   BusinessFinanceDetails,
@@ -39,6 +40,7 @@ export class UtilitiesPage {
   private readonly pdf = inject(OperationalReportPdfService);
   private readonly weeklyZip = inject(WeeklySalesZipService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly filterState = inject(FilterStateService);
   protected readonly draws = signal<Draw[]>([]);
   protected readonly routes = signal<RouteSummary[]>([]);
   protected readonly sellers = signal<ManagedUser[]>([]);
@@ -60,8 +62,20 @@ export class UtilitiesPage {
   protected includeCommissions = false;
   protected includeMovements = false;
   protected includeDraws = true;
+  protected includeProvisional = true;
 
   constructor() {
+    const stored = this.filterState.restore<UtilityFilterState>('utilities');
+    if (stored?.fromDate) this.fromDate = stored.fromDate;
+    if (stored?.toDate) this.toDate = stored.toDate;
+    this.selectedDrawIds = stored?.selectedDrawIds ?? [];
+    this.allDrawsSelected = stored?.allDrawsSelected ?? true;
+    this.selectedSellerId = this.auth.user()?.role === 'SELLER' ? '' : (stored?.sellerId ?? '');
+    this.selectedRouteId = this.auth.user()?.role === 'SELLER' ? '' : (stored?.routeId ?? '');
+    this.includeCommissions = stored?.includeCommissions ?? false;
+    this.includeMovements = this.auth.isAdmin() ? (stored?.includeMovements ?? false) : false;
+    this.includeDraws = stored?.includeDraws ?? true;
+    this.includeProvisional = stored?.includeProvisional ?? true;
     const earliest = new Date();
     earliest.setDate(earliest.getDate() - 14);
     this.historyMinDate = this.auth.isAdmin() ? '' : this.localDate(earliest);
@@ -93,12 +107,14 @@ export class UtilitiesPage {
   protected onFromDateChanged(): void {
     if (this.toDate < this.fromDate) this.toDate = this.fromDate;
     this.resetDrawSelection();
+    this.rememberFilters();
     this.loadPeriod();
   }
 
   protected onToDateChanged(): void {
     if (this.fromDate > this.toDate) this.fromDate = this.toDate;
     this.resetDrawSelection();
+    this.rememberFilters();
     this.loadPeriod();
   }
 
@@ -110,11 +126,22 @@ export class UtilitiesPage {
     if (this.selectedRouteId || this.selectedSellerId || !this.allDrawsSelected) {
       this.includeMovements = false;
     }
+    this.rememberFilters();
     this.loadSummary();
   }
 
   protected onFinanceOptionsChanged(): void {
+    this.rememberFilters();
     this.loadBusinessSummary();
+  }
+
+  protected onReportDetailChanged(): void {
+    this.rememberFilters();
+  }
+
+  protected onProvisionalChanged(): void {
+    this.rememberFilters();
+    this.loadSummary();
   }
 
   protected exportReport(format: 'A4' | 'MOBILE'): void {
@@ -165,16 +192,25 @@ export class UtilitiesPage {
     this.exporting.set('ZIP');
     this.errorMessage.set(null);
     const routeReports = this.routes().map((route) =>
-      this.api.getUtilitySummary(this.fromDate, this.toDate, [], undefined, route.id).pipe(
-        map((routeReport) => ({ route, report: routeReport }) satisfies WeeklyRouteSales),
-        catchError((error: HttpErrorResponse) =>
-          error.status === 404
-            ? of(null)
-            : (() => {
-                throw error;
-              })(),
+      this.api
+        .getUtilitySummary(
+          this.fromDate,
+          this.toDate,
+          [],
+          undefined,
+          route.id,
+          this.includeProvisional,
+        )
+        .pipe(
+          map((routeReport) => ({ route, report: routeReport }) satisfies WeeklyRouteSales),
+          catchError((error: HttpErrorResponse) =>
+            error.status === 404
+              ? of(null)
+              : (() => {
+                  throw error;
+                })(),
+          ),
         ),
-      ),
     );
     forkJoin(routeReports)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -196,12 +232,14 @@ export class UtilitiesPage {
     this.allDrawsSelected = selected;
     if (selected) this.selectedDrawIds = [];
     else this.includeMovements = false;
+    this.rememberFilters();
   }
 
   protected toggleDraw(drawId: string, selected: boolean): void {
     this.selectedDrawIds = selected
       ? [...new Set([...this.selectedDrawIds, drawId])]
       : this.selectedDrawIds.filter((id) => id !== drawId);
+    this.rememberFilters();
   }
 
   protected drawSelected(drawId: string): boolean {
@@ -243,6 +281,11 @@ export class UtilitiesPage {
     this.resetDrawSelection();
     this.selectedSellerId = '';
     this.selectedRouteId = '';
+    this.includeCommissions = false;
+    this.includeMovements = false;
+    this.includeDraws = true;
+    this.includeProvisional = true;
+    this.rememberFilters();
     this.loadPeriod();
   }
 
@@ -256,6 +299,7 @@ export class UtilitiesPage {
     ) {
       this.selectedSellerId = '';
     }
+    this.rememberFilters();
     this.applyFilters();
   }
 
@@ -427,6 +471,7 @@ export class UtilitiesPage {
   }
 
   private loadSummary(): void {
+    this.rememberFilters();
     this.loading.set(true);
     this.errorMessage.set(null);
     this.api
@@ -436,6 +481,7 @@ export class UtilitiesPage {
         this.allDrawsSelected ? [] : this.selectedDrawIds,
         this.selectedSellerId || undefined,
         this.selectedRouteId || undefined,
+        this.includeProvisional,
       )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -455,15 +501,36 @@ export class UtilitiesPage {
       });
   }
 
+  private rememberFilters(): void {
+    this.filterState.save<UtilityFilterState>('utilities', {
+      fromDate: this.fromDate,
+      toDate: this.toDate,
+      selectedDrawIds: this.selectedDrawIds,
+      allDrawsSelected: this.allDrawsSelected,
+      sellerId: this.selectedSellerId,
+      routeId: this.selectedRouteId,
+      includeCommissions: this.includeCommissions,
+      includeMovements: this.includeMovements,
+      includeDraws: this.includeDraws,
+      includeProvisional: this.includeProvisional,
+    });
+  }
+
   private loadBusinessSummary(): void {
-    if (
-      !this.auth.isAdmin() ||
-      this.selectedRouteId ||
-      this.selectedSellerId ||
-      !this.allDrawsSelected
-    ) {
+    if (!this.auth.isAdmin()) {
       this.businessSummary.set(null);
       this.businessDetails.set(null);
+      return;
+    }
+    if (this.selectedRouteId || this.selectedSellerId || !this.allDrawsSelected) {
+      this.businessSummary.set(null);
+      this.api
+        .getBusinessFinanceDetails(this.fromDate, this.toDate)
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
+        .subscribe((details) => this.businessDetails.set(details));
       return;
     }
     forkJoin({
@@ -473,6 +540,7 @@ export class UtilitiesPage {
           this.toDate,
           this.includeCommissions,
           this.includeMovements,
+          this.includeProvisional,
         )
         .pipe(catchError(() => of(null))),
       details: this.api
@@ -526,4 +594,17 @@ export class UtilitiesPage {
     this.allDrawsSelected = true;
     this.selectedDrawIds = [];
   }
+}
+
+interface UtilityFilterState {
+  fromDate: string;
+  toDate: string;
+  selectedDrawIds: string[];
+  allDrawsSelected: boolean;
+  sellerId: string;
+  routeId: string;
+  includeCommissions: boolean;
+  includeMovements: boolean;
+  includeDraws: boolean;
+  includeProvisional: boolean;
 }

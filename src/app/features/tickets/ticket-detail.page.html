@@ -1,7 +1,9 @@
 <header class="page-header detail-header">
   <div class="page-header__copy">
     <nav class="detail-breadcrumb" aria-label="Ruta de navegación">
-      <a routerLink="/tickets"><lo-icon name="arrow" [size]="14" /> Boletos</a>
+      <a [routerLink]="backRoute" [queryParams]="backQueryParams"
+        ><lo-icon name="arrow" [size]="14" /> {{ backLabel }}</a
+      >
       <span>/</span>
       <strong>Detalle de venta</strong>
     </nav>
@@ -41,7 +43,9 @@
   <section class="card detail-error">
     <strong>No se pudo abrir el boleto</strong>
     <p>{{ error() }}</p>
-    <a class="button" routerLink="/tickets">Volver a boletos</a>
+    <a class="button" [routerLink]="backRoute" [queryParams]="backQueryParams"
+      >Volver a {{ backLabel.toLowerCase() }}</a
+    >
   </section>
 } @else if (ticket(); as current) {
   @if (printError()) {
@@ -204,7 +208,10 @@
         </p>
       </div>
       @if (current.previousTicketId) {
-        <a class="previous-link" [routerLink]="['/tickets', current.previousTicketId]"
+        <a
+          class="previous-link"
+          [routerLink]="['/tickets', current.previousTicketId]"
+          [queryParams]="detailQuery()"
           ><lo-icon name="arrow" [size]="14" /> Ver versión anterior</a
         >
       }

@@ -87,6 +87,15 @@ describe('ExposurePage', () => {
 
     expect(fixture.nativeElement.querySelector('.number-grid')?.textContent).toContain('45,000');
 
+    const profitInput = fixture.nativeElement.querySelector(
+      'input[aria-label="Ganancia ideal"]',
+    ) as HTMLInputElement;
+    profitInput.value = '500';
+    profitInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.ideal-profit')?.textContent).toContain('04');
+    expect(fixture.nativeElement.querySelector('.ideal-profit')?.textContent).toContain('550');
+
     const component = fixture.componentInstance as unknown as {
       selectedRouteId: string;
       selectedSellerId: string;
@@ -109,21 +118,21 @@ describe('ExposurePage', () => {
   it('configures risk alerts without leaving the exposure screen', () => {
     const fixture = TestBed.createComponent(ExposurePage);
     http.expectOne('/api/v1/routes').flush([]);
-    http.expectOne((request) => request.url === '/api/v1/users').flush({
-      content: [],
-      page: 0,
-      size: 100,
-      totalElements: 0,
-      totalPages: 0,
-    });
+    http
+      .expectOne((request) => request.url === '/api/v1/users')
+      .flush({
+        content: [],
+        page: 0,
+        size: 100,
+        totalElements: 0,
+        totalPages: 0,
+      });
     http.expectOne('/api/v1/notifications/settings').flush({
       numberExposureEnabled: false,
       numberExposureThreshold: 40_000,
       updatedAt: '2026-08-04T12:00:00Z',
     });
-    http
-      .expectOne((request) => request.url === '/api/v1/reports/draws')
-      .flush([draw()]);
+    http.expectOne((request) => request.url === '/api/v1/reports/draws').flush([draw()]);
     http.expectOne('/api/v1/reports/draws/draw-id/numbers').flush(report());
 
     const component = fixture.componentInstance as unknown as {
@@ -175,6 +184,7 @@ function report() {
     ...draw(),
     numbers: [
       { number: '03', ticketCount: 2, salesAmount: 650, potentialPayout: 45_000, prizesPaid: 0 },
+      { number: '04', ticketCount: 0, salesAmount: 0, potentialPayout: 100, prizesPaid: 0 },
     ],
   };
 }

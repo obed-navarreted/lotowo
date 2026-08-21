@@ -7,6 +7,7 @@ import { catchError, forkJoin, of } from 'rxjs';
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { OperationalReportPdfService } from '../../core/reports/operational-report-pdf.service';
+import { FilterStateService } from '../../core/navigation/filter-state.service';
 import { ManagedUser } from '../../core/models/admin.models';
 import {
   DailyReport,
@@ -34,6 +35,7 @@ export class ReportsPage {
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly reportPdf = inject(OperationalReportPdfService);
+  private readonly filterState = inject(FilterStateService);
   protected readonly sellers = signal<ManagedUser[]>([]);
   protected readonly days = signal<DailyReport[]>([]);
   protected readonly draws = signal<DrawReport[]>([]);
@@ -54,11 +56,17 @@ export class ReportsPage {
 
   constructor() {
     const query = this.route.snapshot.queryParamMap;
-    this.selectedDate = query.get('date') ?? '';
-    this.selectedDrawId = query.get('drawId') ?? '';
+    const stored = this.filterState.restore<ReportFilterState>('reports');
+    this.selectedDate = query.get('date') ?? stored?.date ?? '';
+    this.selectedDrawId = query.get('drawId') ?? stored?.drawId ?? '';
     this.requestedDrawId = this.selectedDrawId;
     this.selectedSellerId =
-      this.auth.user()?.role === 'SELLER' ? '' : (query.get('sellerId') ?? '');
+      this.auth.user()?.role === 'SELLER' ? '' : (query.get('sellerId') ?? stored?.sellerId ?? '');
+    const requestedTab = query.get('tab') ?? stored?.activeTab;
+    if (requestedTab === 'SELLERS' || requestedTab === 'TICKETS' || requestedTab === 'NUMBERS') {
+      this.activeTab = requestedTab;
+    }
+    this.showOnlyWithSales = stored?.showOnlyWithSales ?? true;
     const earliest = new Date();
     earliest.setDate(earliest.getDate() - 15);
     this.historyMinDate = this.auth.isAdmin() ? '' : this.localDate(earliest);
@@ -68,17 +76,38 @@ export class ReportsPage {
 
   protected onDateChanged(): void {
     this.selectedDrawId = '';
+    this.rememberFilters();
     this.loadDraws();
   }
 
   protected onSellerChanged(): void {
     this.selectedDrawId = '';
+    this.rememberFilters();
     this.loadDays();
   }
 
   protected onDrawChanged(): void {
     this.activeTab = 'SELLERS';
+    this.rememberFilters();
     this.loadDetail();
+  }
+
+  protected selectTab(tab: 'SELLERS' | 'TICKETS' | 'NUMBERS'): void {
+    this.activeTab = tab;
+    this.rememberFilters();
+  }
+
+  protected onNumberVisibilityChanged(): void {
+    this.rememberFilters();
+  }
+
+  protected ticketDetailQuery(): Record<string, string> {
+    return {
+      back: 'reports',
+      date: this.selectedDate,
+      drawId: this.selectedDrawId,
+      ...(this.selectedSellerId ? { sellerId: this.selectedSellerId } : {}),
+    };
   }
 
   protected visibleNumbers() {
@@ -254,7 +283,8 @@ export class ReportsPage {
           this.report.set(numbers);
           this.settlement.set(settlement);
           this.businessSettlement.set(business);
-          this.activeTab = settlement ? 'SELLERS' : 'NUMBERS';
+          if (!settlement) this.activeTab = 'NUMBERS';
+          this.rememberFilters();
           this.loading.set(false);
         },
         error: (error: unknown) => {
@@ -269,6 +299,16 @@ export class ReportsPage {
       });
   }
 
+  private rememberFilters(): void {
+    this.filterState.save<ReportFilterState>('reports', {
+      date: this.selectedDate,
+      drawId: this.selectedDrawId,
+      sellerId: this.selectedSellerId,
+      activeTab: this.activeTab,
+      showOnlyWithSales: this.showOnlyWithSales,
+    });
+  }
+
   private localDate(date: Date): string {
     const parts = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Managua',
@@ -279,4 +319,12 @@ export class ReportsPage {
     const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
     return `${value['year']}-${value['month']}-${value['day']}`;
   }
+}
+
+interface ReportFilterState {
+  date: string;
+  drawId: string;
+  sellerId: string;
+  activeTab: 'SELLERS' | 'TICKETS' | 'NUMBERS';
+  showOnlyWithSales: boolean;
 }
