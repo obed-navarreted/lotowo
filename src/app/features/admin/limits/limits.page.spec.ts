@@ -143,4 +143,80 @@ describe('LimitsPage', () => {
     );
     expect(fixture.nativeElement.textContent).toContain('Solo verás la regla general');
   });
+
+  it('manages mandatory blocks and one-number seller limits from a single view', () => {
+    const fixture = TestBed.createComponent(LimitsPage);
+    fixture.detectChanges();
+    http.expectOne('/api/v1/system-number-limits').flush(generalLimits(true));
+    http
+      .expectOne((request) => request.url === '/api/v1/routes/manage')
+      .flush({
+        content: [route('route-1', 'TIC', 'Ticuantepe')],
+        page: 0,
+        size: 100,
+        totalElements: 1,
+        totalPages: 1,
+      });
+    http
+      .expectOne((request) => request.url === '/api/v1/users')
+      .flush({
+        content: [seller('seller-1', 'Luz Torres', 'luz')],
+        page: 0,
+        size: 100,
+        totalElements: 1,
+        totalPages: 1,
+      });
+
+    const component = fixture.componentInstance as unknown as {
+      selectScope(scope: 'NUMBER'): void;
+      setGlobalBlock(blocked: boolean): void;
+      setSellerLimit(sellerId: string, value: string): void;
+      saveNumberControl(): void;
+    };
+    component.selectScope('NUMBER');
+    const loaded = http.expectOne('/api/v1/number-controls/03/DAILY');
+    const control = {
+      number: '03',
+      drawType: 'DAILY',
+      globalBlocked: false,
+      routes: [{ id: 'route-1', code: 'TIC', name: 'Ticuantepe', blocked: false }],
+      sellers: [
+        {
+          id: 'seller-1',
+          username: 'luz',
+          fullName: 'Luz Torres',
+          enabled: true,
+          routeId: 'route-1',
+          routeName: 'Ticuantepe',
+          source: 'SELLER',
+          limit: 0,
+        },
+      ],
+    };
+    loaded.flush(control);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.seller-number-list')?.textContent).toContain(
+      'Luz Torres',
+    );
+
+    component.setGlobalBlock(true);
+    component.setSellerLimit('seller-1', '5000');
+    component.saveNumberControl();
+    const saved = http.expectOne('/api/v1/number-controls/03/DAILY');
+    expect(saved.request.method).toBe('PUT');
+    expect(saved.request.body).toEqual({
+      globalBlocked: true,
+      blockedRouteIds: [],
+      sellerLimits: [{ sellerId: 'seller-1', limit: 5000 }],
+    });
+    saved.flush({
+      ...control,
+      globalBlocked: true,
+      sellers: [{ ...control.sellers[0], limit: 5000 }],
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(
+      'El control del número 03 fue guardado correctamente.',
+    );
+  });
 });

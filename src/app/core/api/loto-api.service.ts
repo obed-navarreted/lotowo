@@ -42,10 +42,12 @@ import {
   ManagedRoute,
   ManagedUser,
   NationalSequence,
+  NumberControl,
   RouteSummary,
   SaveRouteNumberLimitsRequest,
   SaveSellerNumberLimitsRequest,
   SaveSystemNumberLimitsRequest,
+  SaveNumberControlRequest,
   SystemSalesSettings,
   SystemNumberLimits,
   UpdateSystemSalesSettingsRequest,
@@ -486,6 +488,14 @@ export class LotoApiService {
 
   updateSystemNumberLimits(drawType: string, request: SaveSystemNumberLimitsRequest) {
     return this.http.put<SystemNumberLimits>(`/api/v1/system-number-limits/${drawType}`, request);
+  }
+
+  getNumberControl(number: string, drawType: string) {
+    return this.http.get<NumberControl>(`/api/v1/number-controls/${number}/${drawType}`);
+  }
+
+  updateNumberControl(number: string, drawType: string, request: SaveNumberControlRequest) {
+    return this.http.put<NumberControl>(`/api/v1/number-controls/${number}/${drawType}`, request);
   }
 
   updateSystemSettings(request: UpdateSystemSalesSettingsRequest) {

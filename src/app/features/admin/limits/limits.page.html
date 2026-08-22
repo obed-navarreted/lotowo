@@ -16,6 +16,15 @@
     >
       <lo-icon name="check" [size]="18" /> {{ saving() ? 'Guardando…' : 'Guardar' }}
     </button>
+  } @else if (selectedScope() === 'NUMBER') {
+    <button
+      class="button button--primary desktop-save"
+      type="button"
+      (click)="saveNumberControl()"
+      [disabled]="numberLoading() || saving() || !numberDraft()"
+    >
+      <lo-icon name="check" [size]="18" /> {{ saving() ? 'Guardando…' : 'Guardar' }}
+    </button>
   }
 </header>
 
@@ -69,6 +78,14 @@
     <div>
       <strong>Vendedores</strong><small>{{ sellers().length }} registrados</small>
     </div>
+  </button>
+  <button
+    type="button"
+    [class.scope-tabs__item--active]="selectedScope() === 'NUMBER'"
+    (click)="selectScope('NUMBER')"
+  >
+    <span><lo-icon name="lock" [size]="21" /></span>
+    <div><strong>Por número</strong><small>Bloqueo y ajuste rápido</small></div>
   </button>
 </nav>
 
@@ -240,6 +257,183 @@
       [disabled]="saving()"
     >
       {{ saving() ? 'Guardando…' : 'Guardar regla general' }}
+    </button>
+  </div>
+} @else if (selectedScope() === 'NUMBER') {
+  <section class="number-workspace card">
+    <header class="workspace-heading number-control-heading">
+      <div>
+        <span class="eyebrow">Control transversal</span>
+        <h2>Gestionar un número</h2>
+        <p>
+          Un bloqueo es obligatorio. Un límite en 0 solo bloquea al vendedor dentro de su propia
+          regla.
+        </p>
+      </div>
+      <label class="number-picker">
+        <span>Número</span>
+        <select
+          [ngModel]="selectedNumber()"
+          (ngModelChange)="selectNumber($event)"
+          [disabled]="saving()"
+          aria-label="Número a gestionar"
+        >
+          @for (number of numbers; track number) {
+            <option [value]="number">{{ number }}</option>
+          }
+        </select>
+      </label>
+    </header>
+
+    <div class="draw-tabs" role="tablist" aria-label="Familia de sorteo">
+      <button
+        type="button"
+        [class.draw-tabs__item--active]="selectedType() === 'DAILY'"
+        (click)="selectType('DAILY')"
+      >
+        <strong>Sorteos diarios</strong><small>Incluye todos los turnos de LOTO</small>
+      </button>
+      <button
+        type="button"
+        [class.draw-tabs__item--active]="selectedType() === 'NATIONAL_LOTTERY'"
+        (click)="selectType('NATIONAL_LOTTERY')"
+      >
+        <strong>Lotería Nacional</strong><small>Sorteos creados manualmente</small>
+      </button>
+    </div>
+
+    @if (numberLoading()) {
+      <div class="limits-loading">Cargando el número {{ selectedNumber() }}…</div>
+    } @else if (numberControl(); as control) {
+      <section class="hard-block-section">
+        <header>
+          <div>
+            <span class="eyebrow">Bloqueos obligatorios</span>
+            <h2>Número {{ control.number }}</h2>
+            <p>Se rechaza la venta aunque el vendedor tenga un límite propio mayor.</p>
+          </div>
+        </header>
+
+        <label
+          class="global-block-card"
+          [class.global-block-card--active]="numberDraft()?.globalBlocked"
+        >
+          <span class="global-block-card__icon"><lo-icon name="lock" [size]="22" /></span>
+          <span>
+            <strong>Bloquear para todos</strong>
+            <small>{{ typeLabel(selectedType()) }}</small>
+          </span>
+          <input
+            type="checkbox"
+            [checked]="numberDraft()?.globalBlocked"
+            (change)="setGlobalBlock($any($event.target).checked)"
+          />
+        </label>
+
+        <div class="route-block-heading">
+          <div><strong>Bloquear por ruta</strong><small>Elige una o varias rutas.</small></div>
+          <span>{{ numberDraft()?.blockedRouteIds?.size ?? 0 }} seleccionadas</span>
+        </div>
+        <div class="route-block-grid">
+          @for (route of control.routes; track route.id) {
+            <label
+              [class.route-block--active]="numberDraft()?.blockedRouteIds?.has(route.id)"
+              [class.route-block--covered]="numberDraft()?.globalBlocked"
+            >
+              <input
+                type="checkbox"
+                [checked]="numberDraft()?.blockedRouteIds?.has(route.id)"
+                (change)="toggleRouteBlock(route.id, $any($event.target).checked)"
+                [disabled]="numberDraft()?.globalBlocked"
+              />
+              <span
+                ><strong>{{ route.name }}</strong
+                ><small>{{ route.code }}</small></span
+              >
+            </label>
+          } @empty {
+            <div class="empty-state">No hay rutas activas.</div>
+          }
+        </div>
+      </section>
+
+      <section class="seller-number-section">
+        <header class="seller-number-heading">
+          <div>
+            <span class="eyebrow">Ajuste individual</span>
+            <h2>Límite del {{ control.number }} por vendedor</h2>
+            <p>Los valores representan premio máximo. Escribe 0 para bloquear solo a uno.</p>
+          </div>
+          <label class="entity-search">
+            <lo-icon name="search" [size]="19" />
+            <input
+              type="search"
+              [value]="numberQuery()"
+              (input)="numberQuery.set($any($event.target).value)"
+              placeholder="Buscar vendedor o ruta"
+            />
+          </label>
+        </header>
+
+        <div class="seller-number-list">
+          @for (seller of filteredNumberSellers(); track seller.id) {
+            <article
+              class="seller-number-row"
+              [class.seller-number-row--blocked]="
+                sellerHardBlocked(seller) || sellerLimitBlocked(seller.id)
+              "
+            >
+              <span class="entity-avatar">{{ seller.fullName.slice(0, 2).toUpperCase() }}</span>
+              <div class="seller-number-person">
+                <strong>{{ seller.fullName }}</strong>
+                <small>{{ seller.routeName || 'Sin ruta' }} · @{{ seller.username }}</small>
+              </div>
+              <span class="seller-number-source">{{ sourceLabel(seller.source) }}</span>
+              @if (sellerHardBlocked(seller)) {
+                <span class="hard-blocked-label"
+                  ><lo-icon name="lock" [size]="15" /> Bloqueado</span
+                >
+              }
+              <label class="seller-limit-input">
+                <span>Premio máximo</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="Sin límite"
+                  [ngModel]="numberDraft()?.sellerLimits?.[seller.id]"
+                  (ngModelChange)="setSellerLimit(seller.id, $event)"
+                />
+              </label>
+              <div class="seller-limit-actions">
+                <button type="button" (click)="blockSeller(seller.id)">Bloquear</button>
+                @if (sellerLimitChanged(seller.id)) {
+                  <button
+                    class="seller-limit-actions__restore"
+                    type="button"
+                    (click)="restoreSellerLimit(seller.id)"
+                  >
+                    Deshacer
+                  </button>
+                }
+              </div>
+            </article>
+          } @empty {
+            <div class="empty-state">No encontramos vendedores con ese criterio.</div>
+          }
+        </div>
+      </section>
+    }
+  </section>
+
+  <div class="mobile-save">
+    <button
+      class="button button--primary button--block"
+      type="button"
+      (click)="saveNumberControl()"
+      [disabled]="numberLoading() || saving() || !numberDraft()"
+    >
+      {{ saving() ? 'Guardando…' : 'Guardar número ' + selectedNumber() }}
     </button>
   </div>
 } @else {

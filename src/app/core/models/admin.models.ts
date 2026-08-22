@@ -174,3 +174,35 @@ export interface SaveRouteNumberLimitsRequest extends SaveSellerNumberLimitsRequ
   appliesToAll: boolean;
   sellerIds: string[];
 }
+
+export interface NumberControlRoute {
+  id: string;
+  code: string;
+  name: string;
+  blocked: boolean;
+}
+
+export interface NumberControlSeller {
+  id: string;
+  username: string;
+  fullName: string;
+  enabled: boolean;
+  routeId: string | null;
+  routeName: string | null;
+  source: 'SELLER' | 'ROUTE' | 'SYSTEM' | 'NONE';
+  limit: number | null;
+}
+
+export interface NumberControl {
+  number: string;
+  drawType: LimitDrawType;
+  globalBlocked: boolean;
+  routes: NumberControlRoute[];
+  sellers: NumberControlSeller[];
+}
+
+export interface SaveNumberControlRequest {
+  globalBlocked: boolean;
+  blockedRouteIds: string[];
+  sellerLimits: { sellerId: string; limit: number }[];
+}
