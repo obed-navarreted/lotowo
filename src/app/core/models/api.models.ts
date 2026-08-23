@@ -369,15 +369,21 @@ export interface MountingItem {
   potentialPayout: number;
   excessPayout: number;
   stakeToRequest: number;
+  resultIfWinner: number;
 }
+
+export type MountingMode = 'FREE' | 'ZERO_LOSS_WITH_COST' | 'ZERO_LOSS_WITHOUT_COST';
 
 export interface MountingReport {
   drawId: string;
   drawType: Draw['drawType'];
   scheduledAt: string;
-  assumedPayout: number;
+  mode: MountingMode;
+  grossSales: number;
+  assumedPayout: number | null;
   externalMultiplier: number;
   totalStakeToRequest: number;
+  minimumResultAfterMounting: number;
   generatedAt: string;
   items: MountingItem[];
 }

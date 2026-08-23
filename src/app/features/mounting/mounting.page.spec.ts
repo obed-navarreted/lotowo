@@ -64,9 +64,12 @@ describe('MountingPage', () => {
       drawId: 'current-draw',
       drawType: 'DAILY',
       scheduledAt: '2026-08-12T15:00:00-06:00',
+      mode: 'FREE',
+      grossSales: 10_000,
       assumedPayout: 25_000,
       externalMultiplier: 80,
       totalStakeToRequest: 72.5,
+      minimumResultAfterMounting: -15_000,
       generatedAt: '2026-08-12T18:30:00-06:00',
       items: [
         {
@@ -74,12 +77,14 @@ describe('MountingPage', () => {
           potentialPayout: 30_000,
           excessPayout: 5_000,
           stakeToRequest: 62.5,
+          resultIfWinner: -72.5,
         },
         {
           number: '08',
           potentialPayout: 25_800,
           excessPayout: 800,
           stakeToRequest: 10,
+          resultIfWinner: -72.5,
         },
       ],
     });
@@ -90,5 +95,31 @@ describe('MountingPage', () => {
     expect(fixture.nativeElement.textContent).toContain('62.5');
     expect(fixture.nativeElement.textContent).toContain('08');
     expect(fixture.nativeElement.textContent).toContain('72.5');
+
+    const component = fixture.componentInstance as unknown as {
+      selectMode(mode: 'ZERO_LOSS_WITH_COST'): void;
+    };
+    component.selectMode('ZERO_LOSS_WITH_COST');
+    const zeroLoss = http.expectOne(
+      (request) => request.url === '/api/v1/reports/draws/current-draw/mounting',
+    );
+    expect(zeroLoss.request.params.get('mode')).toBe('ZERO_LOSS_WITH_COST');
+    expect(zeroLoss.request.params.has('assumedPayout')).toBe(false);
+    zeroLoss.flush({
+      drawId: 'current-draw',
+      drawType: 'DAILY',
+      scheduledAt: '2026-08-12T15:00:00-06:00',
+      mode: 'ZERO_LOSS_WITH_COST',
+      grossSales: 10_000,
+      assumedPayout: null,
+      externalMultiplier: 80,
+      totalStakeToRequest: 550,
+      minimumResultAfterMounting: 0,
+      generatedAt: '2026-08-12T18:31:00-06:00',
+      items: [],
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Cero pérdida');
+    expect(fixture.nativeElement.textContent).toContain('ya está incluida');
   });
 });

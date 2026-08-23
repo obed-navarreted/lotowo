@@ -36,9 +36,12 @@ const report: MountingReport = {
   drawId: 'draw-id',
   drawType: 'DAILY',
   scheduledAt: '2026-08-12T15:00:00-06:00',
+  mode: 'FREE',
+  grossSales: 8_000,
   assumedPayout: 25_000,
   externalMultiplier: 80,
   totalStakeToRequest: 62.5,
+  minimumResultAfterMounting: -10_000,
   generatedAt: '2026-08-12T14:00:00-06:00',
   items: [],
 };

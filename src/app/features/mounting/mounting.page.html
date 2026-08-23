@@ -24,7 +24,39 @@
       <strong>Calcula la cobertura</strong><small>{{ scopeLabel() }} · pago externo ×80</small>
     </div>
   </header>
-  <div class="mounting-control-grid">
+  <div class="mounting-modes" role="radiogroup" aria-label="Forma de calcular la montada">
+    <button
+      type="button"
+      [class.mounting-mode--active]="selectedMode === 'FREE'"
+      [attr.aria-pressed]="selectedMode === 'FREE'"
+      (click)="selectMode('FREE')"
+    >
+      <span><lo-icon name="stack" [size]="19" /></span>
+      <div><strong>Libre</strong><small>Tú decides cuánto premio asumir.</small></div>
+    </button>
+    <button
+      type="button"
+      [class.mounting-mode--active]="selectedMode === 'ZERO_LOSS_WITH_COST'"
+      [attr.aria-pressed]="selectedMode === 'ZERO_LOSS_WITH_COST'"
+      (click)="selectMode('ZERO_LOSS_WITH_COST')"
+    >
+      <span><lo-icon name="lock" [size]="19" /></span>
+      <div><strong>Cero pérdida</strong><small>Incluye el costo total de la montada.</small></div>
+    </button>
+    <button
+      type="button"
+      [class.mounting-mode--active]="selectedMode === 'ZERO_LOSS_WITHOUT_COST'"
+      [attr.aria-pressed]="selectedMode === 'ZERO_LOSS_WITHOUT_COST'"
+      (click)="selectMode('ZERO_LOSS_WITHOUT_COST')"
+    >
+      <span><lo-icon name="trend" [size]="19" /></span>
+      <div><strong>Ventas vs. premios</strong><small>No suma el costo entre números.</small></div>
+    </button>
+  </div>
+  <div
+    class="mounting-control-grid"
+    [class.mounting-control-grid--without-amount]="selectedMode !== 'FREE'"
+  >
     <label>
       <span>Fecha</span>
       <span class="date-picker">
@@ -58,19 +90,21 @@
         }
       </select>
     </label>
-    <label>
-      <span>Premio que deseas asumir</span>
-      <div class="mounting-amount">
-        <input
-          type="number"
-          min="0"
-          step="100"
-          inputmode="decimal"
-          [(ngModel)]="assumedPayout"
-          (keydown.enter)="calculate()"
-        />
-      </div>
-    </label>
+    @if (selectedMode === 'FREE') {
+      <label>
+        <span>Premio que deseas asumir</span>
+        <div class="mounting-amount">
+          <input
+            type="number"
+            min="0"
+            step="100"
+            inputmode="decimal"
+            [(ngModel)]="assumedPayout"
+            (keydown.enter)="calculate()"
+          />
+        </div>
+      </label>
+    }
     <button
       class="button button--primary"
       type="button"
@@ -98,9 +132,20 @@
     <header class="mounting-sheet__header">
       <span class="eyebrow">{{ drawName(detail) }}</span>
       <h2>Números a pedir</h2>
+      <p class="mounting-sheet__mode">{{ modeLabel(detail.mode) }}</p>
       <div class="mounting-totals">
         <div>
-          <small>A asumir</small><strong>{{ money(detail.assumedPayout) }}</strong>
+          <small>Ventas</small><strong>{{ money(detail.grossSales) }}</strong>
+        </div>
+        <div>
+          @if (detail.mode === 'FREE') {
+            <small>A asumir</small><strong>{{ money(detail.assumedPayout ?? 0) }}</strong>
+          } @else {
+            <small>Resultado mínimo real</small
+            ><strong [class]="resultClass(detail.minimumResultAfterMounting)">{{
+              money(detail.minimumResultAfterMounting)
+            }}</strong>
+          }
         </div>
         <div>
           <small>Números</small><strong>{{ detail.items.length }}</strong>
@@ -110,6 +155,18 @@
         </div>
       </div>
     </header>
+
+    @if (detail.mode === 'ZERO_LOSS_WITH_COST') {
+      <div class="mounting-method-note mounting-method-note--safe">
+        La inversión completa de {{ money(detail.totalStakeToRequest) }} ya está incluida en cada
+        cálculo. El resultado mínimo proyectado es {{ money(detail.minimumResultAfterMounting) }}.
+      </div>
+    } @else if (detail.mode === 'ZERO_LOSS_WITHOUT_COST') {
+      <div class="mounting-method-note">
+        Cada número se compara solamente contra las ventas. El resultado mínimo real sí descuenta
+        los {{ money(detail.totalStakeToRequest) }} pedidos en total.
+      </div>
+    }
 
     @if (detail.items.length) {
       <div class="mounting-grid">
@@ -127,7 +184,13 @@
       <div class="mounting-empty">
         <span><lo-icon name="check" [size]="22" /></span>
         <strong>No hay números que pedir</strong>
-        <p>Todos los premios están dentro del monto que decidiste asumir.</p>
+        <p>
+          @if (detail.mode === 'FREE') {
+            Todos los premios están dentro del monto que decidiste asumir.
+          } @else {
+            Las ventas actuales ya cubren todos los premios potenciales.
+          }
+        </p>
       </div>
     }
 

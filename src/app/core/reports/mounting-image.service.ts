@@ -64,7 +64,7 @@ export class MountingImageService {
     const width = 1080;
     const columns = report.items.length <= 2 ? Math.max(report.items.length, 1) : 4;
     const rows = Math.max(1, Math.ceil(report.items.length / columns));
-    const headerHeight = 400;
+    const headerHeight = 430;
     const cardHeight = 176;
     const footerHeight = 130;
     const height = Math.max(900, headerHeight + rows * cardHeight + footerHeight);
@@ -86,21 +86,48 @@ export class MountingImageService {
     context.fillStyle = '#68655e';
     context.font = '400 28px Arial, sans-serif';
     context.fillText(drawLabel(report), width / 2, 205);
+    context.fillStyle = '#6d4bed';
+    context.font = '700 21px Arial, sans-serif';
+    context.fillText(`${this.modeLabel(report.mode)} · PAGO ×80`, width / 2, 244);
     context.strokeStyle = '#c29849';
     context.lineWidth = 2;
     context.beginPath();
-    context.moveTo(100, 240);
-    context.lineTo(width - 100, 240);
+    context.moveTo(100, 270);
+    context.lineTo(width - 100, 270);
     context.stroke();
 
     context.font = '400 21px Arial, sans-serif';
     context.fillStyle = '#858078';
-    context.fillText('PREMIO A ASUMIR', width * 0.32, 294);
-    context.fillText('PAGO EXTERNO', width * 0.68, 294);
+    context.fillText('VENTAS', width * 0.2, 320);
+    context.fillText(report.mode === 'FREE' ? 'A ASUMIR' : 'TOTAL A PEDIR', width * 0.5, 320);
+    context.fillText(
+      report.mode === 'FREE' ? 'TOTAL A PEDIR' : 'RESULTADO MÍNIMO',
+      width * 0.8,
+      320,
+    );
     context.font = '700 35px Arial, sans-serif';
     context.fillStyle = '#292824';
-    context.fillText(this.amount(report.assumedPayout), width * 0.32, 338);
-    context.fillText(`×${this.amount(report.externalMultiplier)}`, width * 0.68, 338);
+    context.fillText(this.amount(report.grossSales), width * 0.2, 367);
+    context.fillText(
+      this.amount(
+        report.mode === 'FREE' ? (report.assumedPayout ?? 0) : report.totalStakeToRequest,
+      ),
+      width * 0.5,
+      367,
+    );
+    context.fillStyle =
+      report.mode === 'FREE'
+        ? '#292824'
+        : report.minimumResultAfterMounting < 0
+          ? '#c34747'
+          : '#2f7b67';
+    context.fillText(
+      this.amount(
+        report.mode === 'FREE' ? report.totalStakeToRequest : report.minimumResultAfterMounting,
+      ),
+      width * 0.8,
+      367,
+    );
 
     if (!report.items.length) {
       context.fillStyle = '#2f7b67';
@@ -108,7 +135,7 @@ export class MountingImageService {
       context.fillText('No hay números que pedir', width / 2, 530);
       context.fillStyle = '#77736b';
       context.font = '400 24px Arial, sans-serif';
-      context.fillText('Todos están dentro del premio asumido.', width / 2, 575);
+      context.fillText('No se requiere cobertura con el criterio elegido.', width / 2, 575);
     } else {
       const gap = 18;
       const horizontalMargin = columns === 1 ? 290 : 44;
@@ -151,6 +178,14 @@ export class MountingImageService {
 
   private amount(value: number): string {
     return new Intl.NumberFormat('es-NI', { maximumFractionDigits: 2 }).format(value);
+  }
+
+  private modeLabel(mode: MountingReport['mode']): string {
+    return {
+      FREE: 'MODO LIBRE',
+      ZERO_LOSS_WITH_COST: 'CERO PÉRDIDA',
+      ZERO_LOSS_WITHOUT_COST: 'VENTAS VS. PREMIOS',
+    }[mode];
   }
 
   private roundedRectangle(

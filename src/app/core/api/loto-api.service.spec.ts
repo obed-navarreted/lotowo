@@ -292,6 +292,14 @@ describe('LotoApiService', () => {
     expect(request.request.method).toBe('GET');
     expect(request.request.params.get('assumedPayout')).toBe('25000');
     request.flush({});
+
+    service.getMountingReport('draw-id', null, 'ZERO_LOSS_WITH_COST').subscribe();
+    const zeroLoss = http.expectOne(
+      (candidate) => candidate.url === '/api/v1/reports/draws/draw-id/mounting',
+    );
+    expect(zeroLoss.request.params.get('mode')).toBe('ZERO_LOSS_WITH_COST');
+    expect(zeroLoss.request.params.has('assumedPayout')).toBe(false);
+    zeroLoss.flush({});
   });
 
   it('requests winner history with pagination and the selected range', () => {

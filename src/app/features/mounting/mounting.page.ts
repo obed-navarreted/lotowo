@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { catchError, finalize, of } from 'rxjs';
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { Draw, MountingReport } from '../../core/models/api.models';
+import { Draw, MountingMode, MountingReport } from '../../core/models/api.models';
 import { MountingImageService } from '../../core/reports/mounting-image.service';
 import { apiErrorMessage } from '../../shared/api-error';
 import { drawLabel } from '../../shared/draw-label';
@@ -35,6 +35,7 @@ export class MountingPage {
   protected selectedDate: string;
   protected selectedDrawId = '';
   protected assumedPayout: number | null = 25_000;
+  protected selectedMode: MountingMode = 'FREE';
   private drawLoadSequence = 0;
 
   constructor() {
@@ -105,18 +106,18 @@ export class MountingPage {
       this.errorMessage.set('Selecciona un sorteo.');
       return;
     }
-    if (
-      this.assumedPayout === null ||
-      !Number.isFinite(this.assumedPayout) ||
-      this.assumedPayout < 0
-    ) {
+    if (this.selectedMode === 'FREE' && !this.validAssumedPayout()) {
       this.report.set(null);
       this.errorMessage.set('Ingresa un premio a asumir igual o mayor que cero.');
       return;
     }
     this.calculating.set(true);
     this.api
-      .getMountingReport(this.selectedDrawId, this.assumedPayout)
+      .getMountingReport(
+        this.selectedDrawId,
+        this.selectedMode === 'FREE' ? this.assumedPayout : null,
+        this.selectedMode,
+      )
       .pipe(
         finalize(() => this.calculating.set(false)),
         takeUntilDestroyed(this.destroyRef),
@@ -132,6 +133,25 @@ export class MountingPage {
 
   protected onDrawChanged(): void {
     this.calculate();
+  }
+
+  protected selectMode(mode: MountingMode): void {
+    if (this.calculating() || this.selectedMode === mode) return;
+    this.selectedMode = mode;
+    this.report.set(null);
+    this.calculate();
+  }
+
+  protected modeLabel(mode: MountingMode): string {
+    return {
+      FREE: 'Libre',
+      ZERO_LOSS_WITH_COST: 'Cero pérdida',
+      ZERO_LOSS_WITHOUT_COST: 'Ventas vs. premios',
+    }[mode];
+  }
+
+  protected resultClass(value: number): string {
+    return value < 0 ? 'loss' : value > 0 ? 'profit' : '';
   }
 
   protected async exportImage(): Promise<void> {
@@ -199,6 +219,12 @@ export class MountingPage {
           (draw) => draw.status !== 'CANCELLED' && new Date(draw.scheduledAt).getTime() <= now,
         ) ??
       draws[0]
+    );
+  }
+
+  private validAssumedPayout(): boolean {
+    return (
+      this.assumedPayout !== null && Number.isFinite(this.assumedPayout) && this.assumedPayout >= 0
     );
   }
 
