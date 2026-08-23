@@ -52,6 +52,18 @@
       <span><lo-icon name="trend" [size]="19" /></span>
       <div><strong>Ventas vs. premios</strong><small>No suma el costo entre números.</small></div>
     </button>
+    <button
+      type="button"
+      [class.mounting-mode--active]="selectedMode === 'STRATEGY'"
+      [attr.aria-pressed]="selectedMode === 'STRATEGY'"
+      (click)="selectMode('STRATEGY')"
+    >
+      <span><lo-icon name="chart" [size]="19" /></span>
+      <div>
+        <strong>Estrategia</strong>
+        <small>Prioriza los riesgos mayores con presupuesto limitado.</small>
+      </div>
+    </button>
   </div>
   <div
     class="mounting-control-grid"
@@ -115,6 +127,63 @@
       {{ calculating() ? 'Calculando…' : 'Calcular' }}
     </button>
   </div>
+  @if (selectedMode === 'STRATEGY') {
+    <section class="mounting-strategy-settings" aria-label="Parámetros de estrategia">
+      <header>
+        <div>
+          <strong>Cobertura priorizada</strong>
+          <small>Ajusta cuánto riesgo y presupuesto estás dispuesto a asumir.</small>
+        </div>
+      </header>
+      <div class="mounting-strategy-grid">
+        <label>
+          <span>Pérdida tolerada</span>
+          <input
+            type="number"
+            min="0"
+            step="100"
+            inputmode="decimal"
+            [(ngModel)]="strategyTargetLoss"
+          />
+        </label>
+        <label>
+          <span>Reserva de gastos</span>
+          <input
+            type="number"
+            min="0"
+            step="50"
+            inputmode="decimal"
+            [(ngModel)]="strategyExpenseReserve"
+          />
+        </label>
+        <label>
+          <span>Presupuesto máximo</span>
+          <span class="mounting-suffixed-input">
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              inputmode="decimal"
+              [(ngModel)]="strategyBudgetPercent"
+            />
+            <b>%</b>
+          </span>
+        </label>
+        <label>
+          <span>Máximo de números</span>
+          <input
+            type="number"
+            min="1"
+            max="30"
+            step="1"
+            inputmode="numeric"
+            [(ngModel)]="strategyMaxNumbers"
+          />
+        </label>
+      </div>
+    </section>
+  }
 </section>
 
 @if (errorMessage()) {
@@ -140,6 +209,8 @@
         <div>
           @if (detail.mode === 'FREE') {
             <small>A asumir</small><strong>{{ money(detail.assumedPayout ?? 0) }}</strong>
+          } @else if (detail.mode === 'STRATEGY') {
+            <small>Disponible neto</small><strong>{{ money(detail.netAvailable ?? 0) }}</strong>
           } @else {
             <small>Resultado mínimo real</small
             ><strong [class]="resultClass(detail.minimumResultAfterMounting)">{{
@@ -166,6 +237,91 @@
         Cada número se compara solamente contra las ventas. El resultado mínimo real sí descuenta
         los {{ money(detail.totalStakeToRequest) }} pedidos en total.
       </div>
+    } @else if (detail.mode === 'STRATEGY') {
+      <div
+        class="mounting-strategy-result"
+        [class.mounting-strategy-result--safe]="detail.targetAchieved"
+      >
+        <header>
+          <span><lo-icon [name]="detail.targetAchieved ? 'check' : 'info'" [size]="18" /></span>
+          <div>
+            <strong>{{ detail.targetAchieved ? 'Objetivo cubierto' : 'Cobertura parcial' }}</strong>
+            <small>
+              Resultado mínimo {{ money(detail.minimumResultAfterMounting) }} · objetivo −{{
+                money(detail.targetLoss ?? 0)
+              }}
+            </small>
+          </div>
+        </header>
+        <dl>
+          <div>
+            <dt>Comisión estimada</dt>
+            <dd>{{ money(detail.estimatedCommission ?? 0) }}</dd>
+          </div>
+          <div>
+            <dt>Reserva</dt>
+            <dd>{{ money(detail.expenseReserve ?? 0) }}</dd>
+          </div>
+          <div>
+            <dt>Presupuesto</dt>
+            <dd>{{ money(detail.mountingBudget ?? 0) }}</dd>
+          </div>
+          <div>
+            <dt>Riesgos detectados</dt>
+            <dd>{{ detail.strategyCandidateCount ?? 0 }} · máximo {{ detail.maxNumbers ?? 0 }}</dd>
+          </div>
+        </dl>
+        <p>
+          Como solo cae una terminación, no cubre todos por igual: prioriza los premios más altos y
+          reduce el peor escenario con el presupuesto elegido.
+        </p>
+      </div>
+    }
+
+    @if (detail.retrospectiveResult !== null && detail.retrospectiveResult !== undefined) {
+      <section class="mounting-retrospective">
+        <header>
+          <div>
+            <span class="eyebrow">Ensayo retrospectivo</span>
+            <h3>Así habría terminado</h3>
+            <p>Decisión al minuto :50 y ventas admitidas hasta el cierre del minuto :55.</p>
+          </div>
+          <strong [class]="resultClass(detail.retrospectiveResult)">
+            {{ detail.retrospectiveResult > 0 ? '+' : '' }}{{ money(detail.retrospectiveResult) }}
+          </strong>
+        </header>
+        <div class="mounting-retrospective__facts">
+          <div class="mounting-retrospective__winner">
+            <small>Ganador real</small><b>{{ detail.winningNumber }}</b>
+          </div>
+          <dl>
+            <div>
+              <dt>Venta al cierre</dt>
+              <dd>{{ money(detail.retrospectiveGrossSales ?? 0) }}</dd>
+            </div>
+            <div>
+              <dt>Pedido al ganador</dt>
+              <dd>
+                {{
+                  (detail.winningStake ?? 0) > 0
+                    ? money(detail.winningStake ?? 0)
+                    : 'No se habría pedido'
+                }}
+              </dd>
+            </div>
+            <div>
+              <dt>Premio externo</dt>
+              <dd>{{ money(detail.externalPrize ?? 0) }}</dd>
+            </div>
+            @if (detail.mode === 'STRATEGY') {
+              <div>
+                <dt>Comisión al cierre</dt>
+                <dd>{{ money(detail.retrospectiveCommission ?? 0) }}</dd>
+              </div>
+            }
+          </dl>
+        </div>
+      </section>
     }
 
     @if (detail.items.length) {
@@ -177,6 +333,11 @@
               <small>Pedir</small><strong>{{ money(item.stakeToRequest) }}</strong>
             </div>
             <span>Premio {{ money(item.potentialPayout) }}</span>
+            @if (detail.mode === 'STRATEGY') {
+              <em [class]="resultClass(item.resultIfWinner)">
+                Resultado {{ money(item.resultIfWinner) }}
+              </em>
+            }
           </article>
         }
       </div>
@@ -187,6 +348,8 @@
         <p>
           @if (detail.mode === 'FREE') {
             Todos los premios están dentro del monto que decidiste asumir.
+          } @else if (detail.mode === 'STRATEGY') {
+            Ningún número supera la pérdida que decidiste tolerar con la fotografía actual.
           } @else {
             Las ventas actuales ya cubren todos los premios potenciales.
           }

@@ -64,7 +64,9 @@ export class MountingImageService {
     const width = 1080;
     const columns = report.items.length <= 2 ? Math.max(report.items.length, 1) : 4;
     const rows = Math.max(1, Math.ceil(report.items.length / columns));
-    const headerHeight = 430;
+    const hasRetrospective =
+      report.retrospectiveResult !== null && report.retrospectiveResult !== undefined;
+    const headerHeight = hasRetrospective ? 540 : 430;
     const cardHeight = 176;
     const footerHeight = 130;
     const height = Math.max(900, headerHeight + rows * cardHeight + footerHeight);
@@ -99,9 +101,17 @@ export class MountingImageService {
     context.font = '400 21px Arial, sans-serif';
     context.fillStyle = '#858078';
     context.fillText('VENTAS', width * 0.2, 320);
-    context.fillText(report.mode === 'FREE' ? 'A ASUMIR' : 'TOTAL A PEDIR', width * 0.5, 320);
     context.fillText(
-      report.mode === 'FREE' ? 'TOTAL A PEDIR' : 'RESULTADO MÍNIMO',
+      report.mode === 'FREE'
+        ? 'A ASUMIR'
+        : report.mode === 'STRATEGY'
+          ? 'DISPONIBLE NETO'
+          : 'TOTAL A PEDIR',
+      width * 0.5,
+      320,
+    );
+    context.fillText(
+      report.mode === 'FREE' || report.mode === 'STRATEGY' ? 'TOTAL A PEDIR' : 'RESULTADO MÍNIMO',
       width * 0.8,
       320,
     );
@@ -110,32 +120,74 @@ export class MountingImageService {
     context.fillText(this.amount(report.grossSales), width * 0.2, 367);
     context.fillText(
       this.amount(
-        report.mode === 'FREE' ? (report.assumedPayout ?? 0) : report.totalStakeToRequest,
+        report.mode === 'FREE'
+          ? (report.assumedPayout ?? 0)
+          : report.mode === 'STRATEGY'
+            ? (report.netAvailable ?? 0)
+            : report.totalStakeToRequest,
       ),
       width * 0.5,
       367,
     );
     context.fillStyle =
-      report.mode === 'FREE'
+      report.mode === 'FREE' || report.mode === 'STRATEGY'
         ? '#292824'
         : report.minimumResultAfterMounting < 0
           ? '#c34747'
           : '#2f7b67';
     context.fillText(
       this.amount(
-        report.mode === 'FREE' ? report.totalStakeToRequest : report.minimumResultAfterMounting,
+        report.mode === 'FREE' || report.mode === 'STRATEGY'
+          ? report.totalStakeToRequest
+          : report.minimumResultAfterMounting,
       ),
       width * 0.8,
       367,
     );
 
+    if (hasRetrospective) {
+      context.fillStyle = '#ffffff';
+      context.strokeStyle = '#dfd9cd';
+      context.lineWidth = 2;
+      this.roundedRectangle(context, 90, 397, width - 180, 112, 18);
+      context.fill();
+      context.stroke();
+      const xPositions = [0.2, 0.4, 0.6, 0.8];
+      const labels = ['GANADOR', 'PEDIDO', 'PREMIO EXTERNO', 'RESULTADO'];
+      const values = [
+        report.winningNumber ?? '—',
+        this.amount(report.winningStake ?? 0),
+        this.amount(report.externalPrize ?? 0),
+        this.signedAmount(report.retrospectiveResult ?? 0),
+      ];
+      context.font = '400 17px Arial, sans-serif';
+      context.fillStyle = '#858078';
+      labels.forEach((label, index) => context.fillText(label, width * xPositions[index]!, 430));
+      values.forEach((value, index) => {
+        context.font = index === 0 ? '700 35px Arial, sans-serif' : '700 28px Arial, sans-serif';
+        context.fillStyle =
+          index === 3
+            ? (report.retrospectiveResult ?? 0) < 0
+              ? '#c34747'
+              : '#2f7b67'
+            : index === 0
+              ? '#6d4bed'
+              : '#292824';
+        context.fillText(value, width * xPositions[index]!, 478);
+      });
+    }
+
     if (!report.items.length) {
       context.fillStyle = '#2f7b67';
       context.font = '700 38px Arial, sans-serif';
-      context.fillText('No hay números que pedir', width / 2, 530);
+      context.fillText('No hay números que pedir', width / 2, headerHeight + 100);
       context.fillStyle = '#77736b';
       context.font = '400 24px Arial, sans-serif';
-      context.fillText('No se requiere cobertura con el criterio elegido.', width / 2, 575);
+      context.fillText(
+        'No se requiere cobertura con el criterio elegido.',
+        width / 2,
+        headerHeight + 145,
+      );
     } else {
       const gap = 18;
       const horizontalMargin = columns === 1 ? 290 : 44;
@@ -160,7 +212,13 @@ export class MountingImageService {
         context.fillText(this.amount(item.stakeToRequest), x + cardWidth / 2, y + 100);
         context.fillStyle = '#8a857d';
         context.font = '400 17px Arial, sans-serif';
-        context.fillText(`de ${this.amount(item.potentialPayout)}`, x + cardWidth / 2, y + 130);
+        context.fillText(
+          report.mode === 'STRATEGY'
+            ? `queda ${this.signedAmount(item.resultIfWinner)}`
+            : `de ${this.amount(item.potentialPayout)}`,
+          x + cardWidth / 2,
+          y + 130,
+        );
       });
     }
 
@@ -185,7 +243,12 @@ export class MountingImageService {
       FREE: 'MODO LIBRE',
       ZERO_LOSS_WITH_COST: 'CERO PÉRDIDA',
       ZERO_LOSS_WITHOUT_COST: 'VENTAS VS. PREMIOS',
+      STRATEGY: 'ESTRATEGIA',
     }[mode];
+  }
+
+  private signedAmount(value: number): string {
+    return `${value > 0 ? '+' : ''}${this.amount(value)}`;
   }
 
   private roundedRectangle(

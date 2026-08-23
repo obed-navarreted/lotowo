@@ -372,7 +372,14 @@ export interface MountingItem {
   resultIfWinner: number;
 }
 
-export type MountingMode = 'FREE' | 'ZERO_LOSS_WITH_COST' | 'ZERO_LOSS_WITHOUT_COST';
+export type MountingMode = 'FREE' | 'ZERO_LOSS_WITH_COST' | 'ZERO_LOSS_WITHOUT_COST' | 'STRATEGY';
+
+export interface MountingStrategyOptions {
+  targetLoss: number;
+  expenseReserve: number;
+  budgetPercent: number;
+  maxNumbers: number;
+}
 
 export interface MountingReport {
   drawId: string;
@@ -385,6 +392,23 @@ export interface MountingReport {
   totalStakeToRequest: number;
   minimumResultAfterMounting: number;
   generatedAt: string;
+  estimatedCommission?: number | null;
+  expenseReserve?: number | null;
+  netAvailable?: number | null;
+  targetLoss?: number | null;
+  budgetPercent?: number | null;
+  mountingBudget?: number | null;
+  maxNumbers?: number | null;
+  strategyCandidateCount?: number | null;
+  targetAchieved?: boolean | null;
+  calculationSnapshotAt?: string | null;
+  retrospectiveSalesCloseAt?: string | null;
+  winningNumber?: string | null;
+  winningStake?: number | null;
+  externalPrize?: number | null;
+  retrospectiveGrossSales?: number | null;
+  retrospectiveCommission?: number | null;
+  retrospectiveResult?: number | null;
   items: MountingItem[];
 }
 

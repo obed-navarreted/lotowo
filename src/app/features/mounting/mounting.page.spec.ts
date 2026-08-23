@@ -121,5 +121,60 @@ describe('MountingPage', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Cero pérdida');
     expect(fixture.nativeElement.textContent).toContain('ya está incluida');
+
+    const strategyComponent = fixture.componentInstance as unknown as {
+      selectMode(mode: 'STRATEGY'): void;
+    };
+    strategyComponent.selectMode('STRATEGY');
+    const strategy = http.expectOne(
+      (request) => request.url === '/api/v1/reports/draws/current-draw/mounting',
+    );
+    expect(strategy.request.params.get('mode')).toBe('STRATEGY');
+    expect(strategy.request.params.get('targetLoss')).toBe('3000');
+    expect(strategy.request.params.get('expenseReserve')).toBe('200');
+    expect(strategy.request.params.get('budgetPercent')).toBe('35');
+    expect(strategy.request.params.get('maxNumbers')).toBe('10');
+    strategy.flush({
+      drawId: 'current-draw',
+      drawType: 'DAILY',
+      scheduledAt: '2026-08-12T15:00:00-06:00',
+      mode: 'STRATEGY',
+      grossSales: 10_000,
+      externalMultiplier: 80,
+      totalStakeToRequest: 3_500,
+      minimumResultAfterMounting: -4_200,
+      estimatedCommission: 1_000,
+      expenseReserve: 200,
+      netAvailable: 8_800,
+      targetLoss: 3_000,
+      budgetPercent: 35,
+      mountingBudget: 3_500,
+      maxNumbers: 10,
+      strategyCandidateCount: 14,
+      targetAchieved: false,
+      calculationSnapshotAt: '2026-08-12T14:50:00-06:00',
+      retrospectiveSalesCloseAt: '2026-08-12T14:55:00-06:00',
+      winningNumber: '08',
+      winningStake: 0,
+      externalPrize: 0,
+      retrospectiveGrossSales: 10_500,
+      retrospectiveCommission: 1_050,
+      retrospectiveResult: -4_050,
+      generatedAt: '2026-08-12T18:32:00-06:00',
+      items: [
+        {
+          number: '03',
+          potentialPayout: 40_000,
+          excessPayout: 28_200,
+          stakeToRequest: 3_500,
+          resultIfWinner: -6_700,
+        },
+      ],
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Cobertura parcial');
+    expect(fixture.nativeElement.textContent).toContain('Riesgos detectados');
+    expect(fixture.nativeElement.textContent).toContain('Así habría terminado');
+    expect(fixture.nativeElement.textContent).toContain('No se habría pedido');
   });
 });

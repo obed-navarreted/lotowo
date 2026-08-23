@@ -300,6 +300,24 @@ describe('LotoApiService', () => {
     expect(zeroLoss.request.params.get('mode')).toBe('ZERO_LOSS_WITH_COST');
     expect(zeroLoss.request.params.has('assumedPayout')).toBe(false);
     zeroLoss.flush({});
+
+    service
+      .getMountingReport('draw-id', null, 'STRATEGY', {
+        targetLoss: 3_000,
+        expenseReserve: 200,
+        budgetPercent: 35,
+        maxNumbers: 10,
+      })
+      .subscribe();
+    const strategy = http.expectOne(
+      (candidate) => candidate.url === '/api/v1/reports/draws/draw-id/mounting',
+    );
+    expect(strategy.request.params.get('mode')).toBe('STRATEGY');
+    expect(strategy.request.params.get('targetLoss')).toBe('3000');
+    expect(strategy.request.params.get('expenseReserve')).toBe('200');
+    expect(strategy.request.params.get('budgetPercent')).toBe('35');
+    expect(strategy.request.params.get('maxNumbers')).toBe('10');
+    strategy.flush({});
   });
 
   it('requests winner history with pagination and the selected range', () => {

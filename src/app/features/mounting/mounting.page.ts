@@ -36,6 +36,10 @@ export class MountingPage {
   protected selectedDrawId = '';
   protected assumedPayout: number | null = 25_000;
   protected selectedMode: MountingMode = 'FREE';
+  protected strategyTargetLoss: number | null = 3_000;
+  protected strategyExpenseReserve: number | null = 200;
+  protected strategyBudgetPercent: number | null = 35;
+  protected strategyMaxNumbers: number | null = 10;
   private drawLoadSequence = 0;
 
   constructor() {
@@ -111,12 +115,27 @@ export class MountingPage {
       this.errorMessage.set('Ingresa un premio a asumir igual o mayor que cero.');
       return;
     }
+    if (this.selectedMode === 'STRATEGY' && !this.validStrategy()) {
+      this.report.set(null);
+      this.errorMessage.set(
+        'Revisa la pérdida objetivo, la reserva, el presupuesto y el máximo de números.',
+      );
+      return;
+    }
     this.calculating.set(true);
     this.api
       .getMountingReport(
         this.selectedDrawId,
         this.selectedMode === 'FREE' ? this.assumedPayout : null,
         this.selectedMode,
+        this.selectedMode === 'STRATEGY'
+          ? {
+              targetLoss: this.strategyTargetLoss!,
+              expenseReserve: this.strategyExpenseReserve!,
+              budgetPercent: this.strategyBudgetPercent!,
+              maxNumbers: this.strategyMaxNumbers!,
+            }
+          : undefined,
       )
       .pipe(
         finalize(() => this.calculating.set(false)),
@@ -147,6 +166,7 @@ export class MountingPage {
       FREE: 'Libre',
       ZERO_LOSS_WITH_COST: 'Cero pérdida',
       ZERO_LOSS_WITHOUT_COST: 'Ventas vs. premios',
+      STRATEGY: 'Estrategia',
     }[mode];
   }
 
@@ -226,6 +246,20 @@ export class MountingPage {
     return (
       this.assumedPayout !== null && Number.isFinite(this.assumedPayout) && this.assumedPayout >= 0
     );
+  }
+
+  private validStrategy(): boolean {
+    return (
+      this.validNumber(this.strategyTargetLoss, 0, 1_000_000_000) &&
+      this.validNumber(this.strategyExpenseReserve, 0, 1_000_000_000) &&
+      this.validNumber(this.strategyBudgetPercent, 0, 100) &&
+      this.validNumber(this.strategyMaxNumbers, 1, 30) &&
+      Number.isInteger(this.strategyMaxNumbers)
+    );
+  }
+
+  private validNumber(value: number | null, minimum: number, maximum: number): value is number {
+    return value !== null && Number.isFinite(value) && value >= minimum && value <= maximum;
   }
 
   private localDate(date: Date): string {

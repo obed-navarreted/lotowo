@@ -8,6 +8,7 @@ import {
   DrawNumberReport,
   MountingReport,
   MountingMode,
+  MountingStrategyOptions,
   DrawReport,
   DrawSettlementReport,
   NumberExposure,
@@ -392,10 +393,22 @@ export class LotoApiService {
     return this.http.get<DrawNumberReport>(`/api/v1/reports/draws/${drawId}/numbers`, { params });
   }
 
-  getMountingReport(drawId: string, assumedPayout: number | null, mode: MountingMode = 'FREE') {
+  getMountingReport(
+    drawId: string,
+    assumedPayout: number | null,
+    mode: MountingMode = 'FREE',
+    strategy?: MountingStrategyOptions,
+  ) {
     let params = new HttpParams();
     if (assumedPayout !== null) params = params.set('assumedPayout', assumedPayout);
     if (mode !== 'FREE') params = params.set('mode', mode);
+    if (mode === 'STRATEGY' && strategy) {
+      params = params
+        .set('targetLoss', strategy.targetLoss)
+        .set('expenseReserve', strategy.expenseReserve)
+        .set('budgetPercent', strategy.budgetPercent)
+        .set('maxNumbers', strategy.maxNumbers);
+    }
     return this.http.get<MountingReport>(`/api/v1/reports/draws/${drawId}/mounting`, {
       params,
     });

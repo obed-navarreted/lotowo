@@ -77,34 +77,7 @@
               aria-label="Hora del sorteo"
             />
           </div>
-        </div>
-        <div class="field">
-          <label for="salesCloseDate">Cierre de ventas</label>
-          <div class="date-time-inputs">
-            <span class="date-picker">
-              <lo-icon name="calendar" [size]="19" />
-              <span class="date-picker__copy"
-                ><strong>{{ dateLabel(salesCloseDate) }}</strong
-                ><small>DD/MM/AAAA</small></span
-              >
-              <input
-                id="salesCloseDate"
-                name="salesCloseDate"
-                type="date"
-                [(ngModel)]="salesCloseDate"
-                [min]="today"
-                [max]="scheduledDate"
-                aria-label="Fecha de cierre de ventas"
-              />
-            </span>
-            <input
-              class="input time-input"
-              name="salesCloseTime"
-              type="time"
-              [(ngModel)]="salesCloseTime"
-              aria-label="Hora de cierre"
-            />
-          </div>
+          <small>Las ventas cerrarán automáticamente cinco minutos antes del sorteo.</small>
         </div>
       </div>
       @if (formError()) {

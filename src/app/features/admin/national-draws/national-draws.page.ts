@@ -29,8 +29,6 @@ export class NationalDrawsPage implements OnInit {
   protected readonly today = this.defaultLocalDate(0);
   protected scheduledDate = this.defaultLocalDate(7);
   protected scheduledTime = '20:00';
-  protected salesCloseDate = this.defaultLocalDate(7);
-  protected salesCloseTime = '20:00';
 
   ngOnInit(): void {
     this.load();
@@ -46,15 +44,11 @@ export class NationalDrawsPage implements OnInit {
       return;
     }
     const scheduled = this.nicaraguaInstant(this.scheduledDate, this.scheduledTime);
-    const closes = this.nicaraguaInstant(this.salesCloseDate, this.salesCloseTime);
-    if (!scheduled || !closes) {
-      this.formError.set('Ingrese fechas válidas con formato DD/MM/AAAA y sus respectivas horas.');
+    if (!scheduled) {
+      this.formError.set('Ingrese una fecha válida con formato DD/MM/AAAA y su hora.');
       return;
     }
-    if (new Date(closes) > new Date(scheduled)) {
-      this.formError.set('El cierre de ventas no puede ser posterior al sorteo.');
-      return;
-    }
+    const closes = new Date(new Date(scheduled).getTime() - 5 * 60_000).toISOString();
 
     this.saving.set(true);
     this.formError.set('');
