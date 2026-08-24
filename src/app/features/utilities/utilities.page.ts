@@ -364,12 +364,19 @@ export class UtilitiesPage {
   }
 
   protected allocatedMovementAmount(amount: number): number {
+    return this.allocatedAdjustmentAmount(amount);
+  }
+
+  protected allocatedAdjustmentAmount(amount: number): number {
     if (!this.selectedRouteId || this.movementAllocation === 'FULL') return amount;
     return Math.round(amount * (this.businessSummary()?.movementAllocationRate ?? 0) * 100) / 100;
   }
 
   protected mountingResult(mounting: BusinessMountingDetail): number {
-    return mounting.externalPrize - mounting.totalStake;
+    return (
+      this.allocatedAdjustmentAmount(mounting.externalPrize) -
+      this.allocatedAdjustmentAmount(mounting.totalStake)
+    );
   }
 
   protected mountingDraw(mounting: BusinessMountingDetail): string {
@@ -590,7 +597,19 @@ export class UtilitiesPage {
     if (!this.selectedRouteId) return details;
     return {
       ...details,
-      mountings: [],
+      mountings: details.mountings.map((mounting) => ({
+        ...mounting,
+        totalStake: this.allocatedAdjustmentAmount(mounting.totalStake),
+        externalPrize: this.allocatedAdjustmentAmount(mounting.externalPrize),
+        items: mounting.items.map((item) => ({
+          ...item,
+          stakeAmount: this.allocatedAdjustmentAmount(item.stakeAmount),
+          potentialExternalPayout:
+            item.potentialExternalPayout === null
+              ? null
+              : this.allocatedAdjustmentAmount(item.potentialExternalPayout),
+        })),
+      })),
       movements: details.movements.map((movement) => ({
         ...movement,
         amount: this.allocatedMovementAmount(movement.amount),

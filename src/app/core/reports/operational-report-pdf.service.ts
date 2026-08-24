@@ -90,13 +90,10 @@ export class OperationalReportPdfService {
     y = this.a4UtilitySummary(document, y, 'RESULTADO DEL PERÍODO', totals);
     if (options.businessSummary) {
       const finance = options.businessSummary;
-      const adjustments: Array<[string, number]> = [];
-      if (!finance.routeId) {
-        adjustments.push(
-          ['Montadas', -finance.externalStake],
-          ['Premios externos', finance.externalPrizes],
-        );
-      }
+      const adjustments: Array<[string, number]> = [
+        ['Montadas', -finance.externalStake],
+        ['Premios externos', finance.externalPrizes],
+      ];
       if (options.includeMovements) {
         adjustments.push(
           ['Otros ingresos', finance.extraIncome],
