@@ -90,10 +90,13 @@ export class OperationalReportPdfService {
     y = this.a4UtilitySummary(document, y, 'RESULTADO DEL PERÍODO', totals);
     if (options.businessSummary) {
       const finance = options.businessSummary;
-      const adjustments: Array<[string, number]> = [
-        ['Montadas', -finance.externalStake],
-        ['Premios externos', finance.externalPrizes],
-      ];
+      const adjustments: Array<[string, number]> = [];
+      if (!finance.routeId) {
+        adjustments.push(
+          ['Montadas', -finance.externalStake],
+          ['Premios externos', finance.externalPrizes],
+        );
+      }
       if (options.includeMovements) {
         adjustments.push(
           ['Otros ingresos', finance.extraIncome],
@@ -101,7 +104,13 @@ export class OperationalReportPdfService {
         );
       }
       adjustments.push(['Resultado neto', finance.businessResult]);
-      y = this.a4UtilitySummary(document, y, 'AJUSTES ADMINISTRATIVOS', adjustments);
+      const allocation =
+        finance.routeId && finance.movementAllocation === 'PROPORTIONAL'
+          ? ' · ' + this.amount((finance.movementAllocationRate ?? 0) * 100) + ' % DE VENTAS'
+          : '';
+      const adjustmentTitle =
+        (finance.routeId ? 'AJUSTES DE RUTA' : 'AJUSTES ADMINISTRATIVOS') + allocation;
+      y = this.a4UtilitySummary(document, y, adjustmentTitle, adjustments);
     }
     if (options.businessDetails) {
       y = this.a4BusinessDetails(document, y, options.businessDetails, !!options.includeMovements);

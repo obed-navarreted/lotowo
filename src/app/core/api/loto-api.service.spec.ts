@@ -133,6 +133,30 @@ describe('LotoApiService', () => {
     request.flush({});
   });
 
+  it('requests proportional financial movements for a selected route', () => {
+    service
+      .getBusinessFinanceSummary(
+        '2026-08-24',
+        '2026-08-24',
+        false,
+        true,
+        true,
+        'route-id',
+        'PROPORTIONAL',
+      )
+      .subscribe();
+
+    const request = http.expectOne(
+      (candidate) => candidate.url === '/api/v1/admin/finance/summary',
+    );
+    expect(request.request.params.get('from')).toBe('2026-08-24');
+    expect(request.request.params.get('to')).toBe('2026-08-24');
+    expect(request.request.params.get('includeMovements')).toBe('true');
+    expect(request.request.params.get('routeId')).toBe('route-id');
+    expect(request.request.params.get('movementAllocation')).toBe('PROPORTIONAL');
+    request.flush({});
+  });
+
   it('uses the separate soft-delete operation for users', () => {
     service.deleteUser('seller-id').subscribe();
 

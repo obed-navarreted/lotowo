@@ -163,6 +163,51 @@
   flex: 0 0 auto;
   accent-color: var(--violet);
 }
+.movement-allocation {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) repeat(2, minmax(150px, 0.7fr));
+  gap: 9px;
+  padding: 11px 13px;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+}
+.movement-allocation > div,
+.movement-allocation label span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+}
+.movement-allocation > div > strong,
+.movement-allocation label strong {
+  font-size: 12px;
+}
+.movement-allocation small {
+  margin-top: 2px;
+  color: var(--muted-strong);
+  font-size: 10.5px;
+}
+.movement-allocation label {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 11px;
+  cursor: pointer;
+}
+.movement-allocation label.movement-allocation__option--active {
+  background: var(--violet-soft);
+  border-color: rgba(108, 75, 237, 0.3);
+}
+.movement-allocation input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--violet);
+}
 .utility-error {
   margin-bottom: 14px;
   padding: 12px 14px;
@@ -766,6 +811,12 @@
 }
 
 @media (max-width: 520px) {
+  .movement-allocation {
+    grid-template-columns: 1fr 1fr;
+  }
+  .movement-allocation > div {
+    grid-column: 1 / -1;
+  }
   .page-header {
     width: 100%;
     align-items: stretch;

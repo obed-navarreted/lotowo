@@ -296,5 +296,52 @@ describe('UtilitiesPage', () => {
       'Combustible y almuerzo',
     );
     expect(fixture.nativeElement.querySelector('.period-movements')?.textContent).toContain('350');
+
+    const component = fixture.componentInstance as unknown as {
+      selectedRouteId: string;
+      selectedSellerId: string;
+      allDrawsSelected: boolean;
+    };
+    component.selectedRouteId = 'route-id';
+    component.selectedSellerId = '';
+    component.allDrawsSelected = true;
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    const movementChoice = [...fixture.nativeElement.querySelectorAll('.commission-choice')].find(
+      (choice: Element) => choice.textContent?.includes('Considerar otros ingresos y gastos'),
+    ) as HTMLLabelElement;
+    const movementInput = movementChoice.querySelector('input') as HTMLInputElement;
+    expect(movementInput.disabled).toBe(false);
+    movementInput.checked = true;
+    movementInput.dispatchEvent(new Event('change'));
+    http
+      .expectOne(
+        (request) =>
+          request.url === '/api/v1/admin/finance/summary' &&
+          request.params.get('routeId') === 'route-id' &&
+          request.params.get('movementAllocation') === 'PROPORTIONAL' &&
+          request.params.get('includeMovements') === 'true',
+      )
+      .flush({
+        from: '2026-08-08',
+        to: '2026-08-08',
+        grossSales: 100,
+        localPrizes: 0,
+        commissions: 10,
+        resultAfterCommission: 100,
+        externalStake: 0,
+        externalPrizes: 0,
+        expenses: 350,
+        extraIncome: 0,
+        routeId: 'route-id',
+        movementAllocation: 'PROPORTIONAL',
+        movementAllocationRate: 1,
+        businessResult: -250,
+      });
+    http
+      .expectOne((request) => request.url === '/api/v1/admin/finance/details')
+      .flush({ from: '2026-08-08', to: '2026-08-08', mountings: [], movements: [] });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.movement-allocation')).not.toBeNull();
   });
 });

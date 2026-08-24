@@ -163,10 +163,50 @@
         <input
           type="checkbox"
           [(ngModel)]="includeMovements"
-          [disabled]="!!selectedRouteId || !!selectedSellerId || !allDrawsSelected"
+          [disabled]="!!selectedSellerId || !allDrawsSelected"
           (change)="onFinanceOptionsChanged()"
         />
       </label>
+      @if (includeMovements && selectedRouteId && !selectedSellerId && allDrawsSelected) {
+        <div
+          class="movement-allocation"
+          role="group"
+          aria-label="Distribución de ingresos y gastos"
+        >
+          <div>
+            <strong>Aplicación a la ruta</strong>
+            <small>Elige cuánto de los movimientos generales corresponde a esta ruta.</small>
+          </div>
+          <label
+            [class.movement-allocation__option--active]="movementAllocation === 'PROPORTIONAL'"
+          >
+            <input
+              type="radio"
+              name="movementAllocation"
+              value="PROPORTIONAL"
+              [(ngModel)]="movementAllocation"
+              (change)="onFinanceOptionsChanged()"
+            />
+            <span
+              ><strong>Proporcional</strong
+              ><small>Según su porcentaje de ventas del período.</small></span
+            >
+          </label>
+          <label [class.movement-allocation__option--active]="movementAllocation === 'FULL'">
+            <input
+              type="radio"
+              name="movementAllocation"
+              value="FULL"
+              [(ngModel)]="movementAllocation"
+              (change)="onFinanceOptionsChanged()"
+            />
+            <span
+              ><strong>Todo</strong
+              ><small>Aplica el 100 % de ingresos y gastos a la ruta.</small></span
+            >
+          </label>
+        </div>
+      }
     }
     <label class="commission-choice">
       <span class="commission-choice__icon"><lo-icon name="clock" [size]="19" /></span>
@@ -338,17 +378,24 @@
           <dd>+{{ money(finance.externalPrizes) }}</dd>
         </div>
         <div>
-          <dt>Otros gastos</dt>
+          <dt>{{ selectedRouteId ? 'Gastos aplicados' : 'Otros gastos' }}</dt>
           <dd>−{{ money(finance.expenses) }}</dd>
         </div>
         <div>
-          <dt>Otros ingresos</dt>
+          <dt>{{ selectedRouteId ? 'Ingresos aplicados' : 'Otros ingresos' }}</dt>
           <dd>+{{ money(finance.extraIncome) }}</dd>
         </div>
       </dl>
       <p>
-        Visible únicamente para administración. Las montadas pertenecen a cada sorteo; los demás
-        ingresos y gastos pertenecen a su fecha. No modifica los cierres de vendedores.
+        @if (selectedRouteId && finance.movementAllocation === 'PROPORTIONAL') {
+          Esta ruta representa {{ allocationPercent() }} % de las ventas del período; ese mismo
+          porcentaje se aplicó a los ingresos y gastos.
+        } @else if (selectedRouteId) {
+          Se aplicó el total de los ingresos y gastos del período a esta ruta.
+        } @else {
+          Visible únicamente para administración. Las montadas pertenecen a cada sorteo; los demás
+          ingresos y gastos pertenecen a su fecha. No modifica los cierres de vendedores.
+        }
       </p>
     </section>
   }
@@ -358,70 +405,79 @@
         <div>
           <span class="eyebrow">Movimientos del período</span>
           <h2>Detalle administrativo</h2>
-          <p>Cada montada pertenece a su sorteo; cada ingreso o gasto, a su fecha.</p>
+          <p>
+            {{
+              selectedRouteId
+                ? 'Los importes muestran la aplicación elegida para la ruta.'
+                : 'Cada montada pertenece a su sorteo; cada ingreso o gasto, a su fecha.'
+            }}
+          </p>
         </div>
         <a class="button" routerLink="/management"
           ><lo-icon name="wallet" [size]="17" /> Gestionar</a
         >
       </header>
-      <div class="finance-detail__section">
-        <div class="finance-detail__title">
-          <strong>Montadas</strong><span>{{ details.mountings.length }}</span>
-        </div>
-        @if (details.mountings.length) {
-          <div class="mounting-history">
-            @for (mounting of details.mountings; track mounting.id) {
-              <article>
-                <header>
-                  <div>
-                    <strong>{{ mountingDraw(mounting) }}</strong
-                    ><small
-                      >Ganador {{ mounting.winningNumber || '—' }} ·
-                      {{ mounting.registeredByName || 'Administración' }}</small
-                    >
-                  </div>
-                  <dl>
-                    <div>
-                      <dt>Montada</dt>
-                      <dd>−{{ money(mounting.totalStake) }}</dd>
-                    </div>
-                    <div>
-                      <dt>Premio externo</dt>
-                      <dd>+{{ money(mounting.externalPrize) }}</dd>
-                    </div>
-                    <div
-                      [class.loss]="mountingResult(mounting) < 0"
-                      [class.profit]="mountingResult(mounting) > 0"
-                    >
-                      <dt>Resultado</dt>
-                      <dd>{{ signedMoney(mountingResult(mounting)) }}</dd>
-                    </div>
-                  </dl>
-                </header>
-                @if (mounting.items.length) {
-                  <div class="mounting-items">
-                    @for (item of mounting.items; track item.number) {
-                      <span
-                        ><b>{{ item.number }}</b
-                        ><small
-                          >{{ money(item.stakeAmount) }} × {{ money(item.payoutMultiplier || 0) }} ·
-                          {{ money(item.potentialExternalPayout || 0) }}</small
-                        ></span
-                      >
-                    }
-                  </div>
-                } @else {
-                  <p class="mounting-no-items">
-                    Registro histórico sin desglose individual de números.
-                  </p>
-                }
-              </article>
-            }
+      @if (!selectedRouteId) {
+        <div class="finance-detail__section">
+          <div class="finance-detail__title">
+            <strong>Montadas</strong><span>{{ details.mountings.length }}</span>
           </div>
-        } @else {
-          <p class="finance-empty">No hubo montadas en el período.</p>
-        }
-      </div>
+          @if (details.mountings.length) {
+            <div class="mounting-history">
+              @for (mounting of details.mountings; track mounting.id) {
+                <article>
+                  <header>
+                    <div>
+                      <strong>{{ mountingDraw(mounting) }}</strong
+                      ><small
+                        >Ganador {{ mounting.winningNumber || '—' }} ·
+                        {{ mounting.registeredByName || 'Administración' }}</small
+                      >
+                    </div>
+                    <dl>
+                      <div>
+                        <dt>Montada</dt>
+                        <dd>−{{ money(mounting.totalStake) }}</dd>
+                      </div>
+                      <div>
+                        <dt>Premio externo</dt>
+                        <dd>+{{ money(mounting.externalPrize) }}</dd>
+                      </div>
+                      <div
+                        [class.loss]="mountingResult(mounting) < 0"
+                        [class.profit]="mountingResult(mounting) > 0"
+                      >
+                        <dt>Resultado</dt>
+                        <dd>{{ signedMoney(mountingResult(mounting)) }}</dd>
+                      </div>
+                    </dl>
+                  </header>
+                  @if (mounting.items.length) {
+                    <div class="mounting-items">
+                      @for (item of mounting.items; track item.number) {
+                        <span
+                          ><b>{{ item.number }}</b
+                          ><small
+                            >{{ money(item.stakeAmount) }} ×
+                            {{ money(item.payoutMultiplier || 0) }} ·
+                            {{ money(item.potentialExternalPayout || 0) }}</small
+                          ></span
+                        >
+                      }
+                    </div>
+                  } @else {
+                    <p class="mounting-no-items">
+                      Registro histórico sin desglose individual de números.
+                    </p>
+                  }
+                </article>
+              }
+            </div>
+          } @else {
+            <p class="finance-empty">No hubo montadas en el período.</p>
+          }
+        </div>
+      }
       <div class="finance-detail__section">
         <div class="finance-detail__title">
           <strong>Ingresos y gastos</strong
@@ -441,7 +497,10 @@
                   <strong>{{ movement.description }}</strong
                   ><small>{{ movement.userName || 'General' }}</small>
                 </div>
-                <b>{{ movement.type === 'INCOME' ? '+' : '−' }}{{ money(movement.amount) }}</b>
+                <b
+                  >{{ movement.type === 'INCOME' ? '+' : '−'
+                  }}{{ money(allocatedMovementAmount(movement.amount)) }}</b
+                >
               </article>
             }
           </div>

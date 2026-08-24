@@ -32,6 +32,7 @@ import {
   BusinessSettlement,
   ExternalMountingInput,
   BusinessFinanceSummary,
+  MovementAllocation,
   BusinessFinanceDetails,
   BusinessMovement,
   BusinessMovementInput,
@@ -304,13 +305,17 @@ export class LotoApiService {
     includeCommissions = true,
     includeMovements = true,
     includeProvisional = true,
+    routeId?: string,
+    movementAllocation: MovementAllocation = 'PROPORTIONAL',
   ) {
-    const params = new HttpParams()
+    let params = new HttpParams()
       .set('from', from)
       .set('to', to)
       .set('includeCommissions', includeCommissions)
       .set('includeMovements', includeMovements)
-      .set('includeProvisional', includeProvisional);
+      .set('includeProvisional', includeProvisional)
+      .set('movementAllocation', movementAllocation);
+    if (routeId) params = params.set('routeId', routeId);
     return this.http.get<BusinessFinanceSummary>('/api/v1/admin/finance/summary', { params });
   }
 

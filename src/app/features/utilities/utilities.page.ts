@@ -13,6 +13,7 @@ import {
   BusinessFinanceDetails,
   BusinessMountingDetail,
   Draw,
+  MovementAllocation,
   ReportSellerOption,
   UtilityDrawSummary,
   UtilitySellerSummary,
@@ -63,6 +64,7 @@ export class UtilitiesPage {
   protected selectedRouteId = '';
   protected includeCommissions = false;
   protected includeMovements = false;
+  protected movementAllocation: MovementAllocation = 'PROPORTIONAL';
   protected includeDraws = true;
   protected includeProvisional = true;
 
@@ -76,6 +78,7 @@ export class UtilitiesPage {
     this.selectedRouteId = this.auth.user()?.role === 'SELLER' ? '' : (stored?.routeId ?? '');
     this.includeCommissions = stored?.includeCommissions ?? false;
     this.includeMovements = this.auth.isAdmin() ? (stored?.includeMovements ?? false) : false;
+    this.movementAllocation = stored?.movementAllocation ?? 'PROPORTIONAL';
     this.includeDraws = stored?.includeDraws ?? true;
     this.includeProvisional = stored?.includeProvisional ?? true;
     const earliest = new Date();
@@ -116,7 +119,7 @@ export class UtilitiesPage {
       this.errorMessage.set('Selecciona al menos un turno o marca Todos.');
       return;
     }
-    if (this.selectedRouteId || this.selectedSellerId || !this.allDrawsSelected) {
+    if (this.selectedSellerId || !this.allDrawsSelected) {
       this.includeMovements = false;
     }
     this.rememberFilters();
@@ -148,7 +151,7 @@ export class UtilitiesPage {
       includeMovements: this.includeMovements,
       scopeLabel: this.selectedRoute()?.name,
       businessSummary: format === 'A4' ? this.businessSummary() : null,
-      businessDetails: format === 'A4' ? this.businessDetails() : null,
+      businessDetails: format === 'A4' ? this.financeDetailsForReport() : null,
     };
     const exportOperation =
       format === 'MOBILE'
@@ -276,6 +279,7 @@ export class UtilitiesPage {
     this.selectedRouteId = '';
     this.includeCommissions = false;
     this.includeMovements = false;
+    this.movementAllocation = 'PROPORTIONAL';
     this.includeDraws = true;
     this.includeProvisional = true;
     this.rememberFilters();
@@ -283,7 +287,6 @@ export class UtilitiesPage {
   }
 
   protected onRouteChanged(): void {
-    if (this.selectedRouteId) this.includeMovements = false;
     if (
       this.selectedSellerId &&
       !this.visibleSellers().some((seller) => seller.id === this.selectedSellerId)
@@ -353,6 +356,16 @@ export class UtilitiesPage {
     return `${base} − montadas + premios externos${
       this.includeMovements ? ' − gastos + otros ingresos' : ''
     }`;
+  }
+
+  protected allocationPercent(): string {
+    const rate = (this.businessSummary()?.movementAllocationRate ?? 0) * 100;
+    return new Intl.NumberFormat('es-NI', { maximumFractionDigits: 2 }).format(rate);
+  }
+
+  protected allocatedMovementAmount(amount: number): number {
+    if (!this.selectedRouteId || this.movementAllocation === 'FULL') return amount;
+    return Math.round(amount * (this.businessSummary()?.movementAllocationRate ?? 0) * 100) / 100;
   }
 
   protected mountingResult(mounting: BusinessMountingDetail): number {
@@ -525,6 +538,7 @@ export class UtilitiesPage {
       routeId: this.selectedRouteId,
       includeCommissions: this.includeCommissions,
       includeMovements: this.includeMovements,
+      movementAllocation: this.movementAllocation,
       includeDraws: this.includeDraws,
       includeProvisional: this.includeProvisional,
     });
@@ -536,7 +550,7 @@ export class UtilitiesPage {
       this.businessDetails.set(null);
       return;
     }
-    if (this.selectedRouteId || this.selectedSellerId || !this.allDrawsSelected) {
+    if (this.selectedSellerId || !this.allDrawsSelected) {
       this.businessSummary.set(null);
       this.api
         .getBusinessFinanceDetails(this.fromDate, this.toDate)
@@ -555,6 +569,8 @@ export class UtilitiesPage {
           this.includeCommissions,
           this.includeMovements,
           this.includeProvisional,
+          this.selectedRouteId || undefined,
+          this.movementAllocation,
         )
         .pipe(catchError(() => of(null))),
       details: this.api
@@ -566,6 +582,20 @@ export class UtilitiesPage {
         this.businessSummary.set(summary);
         this.businessDetails.set(details);
       });
+  }
+
+  private financeDetailsForReport(): BusinessFinanceDetails | null {
+    const details = this.businessDetails();
+    if (!details) return null;
+    if (!this.selectedRouteId) return details;
+    return {
+      ...details,
+      mountings: [],
+      movements: details.movements.map((movement) => ({
+        ...movement,
+        amount: this.allocatedMovementAmount(movement.amount),
+      })),
+    };
   }
 
   private isNativeRuntime(): boolean {
@@ -619,6 +649,7 @@ interface UtilityFilterState {
   routeId: string;
   includeCommissions: boolean;
   includeMovements: boolean;
+  movementAllocation: MovementAllocation;
   includeDraws: boolean;
   includeProvisional: boolean;
 }

@@ -252,8 +252,13 @@ export interface BusinessFinanceSummary {
   externalPrizes: number;
   expenses: number;
   extraIncome: number;
+  routeId?: string | null;
+  movementAllocation?: MovementAllocation;
+  movementAllocationRate?: number;
   businessResult: number;
 }
+
+export type MovementAllocation = 'PROPORTIONAL' | 'FULL';
 
 export interface BusinessMountingItem {
   number: string;
