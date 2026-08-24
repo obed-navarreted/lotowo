@@ -55,17 +55,12 @@ describe('UtilitiesPage', () => {
     };
 
     http
-      .expectOne((request) => request.url === '/api/v1/users')
-      .flush({
-        content: [],
-        page: 0,
-        size: 100,
-        totalElements: 0,
-        totalPages: 0,
-      });
-    http
       .expectOne((request) => request.url === '/api/v1/routes')
       .flush([{ id: 'route-id', code: 'R-01', name: 'Ruta Norte', active: true }]);
+    const initialSellers = http.expectOne((request) => request.url === '/api/v1/reports/sellers');
+    expect(initialSellers.request.params.get('from')).toBe('2026-08-02');
+    expect(initialSellers.request.params.get('to')).toBe('2026-08-08');
+    initialSellers.flush([]);
     const initial = http.expectOne(
       (request) => request.url === '/api/v1/reports/utilities/summary',
     );
@@ -81,6 +76,17 @@ describe('UtilitiesPage', () => {
     component.selectedRouteId = 'route-id';
     component.applyFilters();
 
+    const filteredSellers = http.expectOne((request) => request.url === '/api/v1/reports/sellers');
+    expect(filteredSellers.request.params.getAll('drawIds')).toEqual(['draw-id', 'draw-id-2']);
+    filteredSellers.flush([
+      {
+        id: 'seller-id',
+        fullName: 'Vendedora Uno',
+        routeId: 'route-id',
+        routeCode: 'R-01',
+        routeName: 'Ruta Norte',
+      },
+    ]);
     const summary = http.expectOne(
       (request) => request.url === '/api/v1/reports/utilities/summary',
     );
@@ -205,15 +211,6 @@ describe('UtilitiesPage', () => {
     );
     const fixture = TestBed.createComponent(UtilitiesPage);
 
-    http
-      .expectOne((request) => request.url === '/api/v1/users')
-      .flush({
-        content: [],
-        page: 0,
-        size: 100,
-        totalElements: 0,
-        totalPages: 0,
-      });
     http.expectOne('/api/v1/routes').flush([]);
     http
       .expectOne((request) => request.url === '/api/v1/draws')
@@ -235,6 +232,10 @@ describe('UtilitiesPage', () => {
           createdAt: '2026-08-08T12:00:00Z',
         },
       ]);
+    const sellers = http.expectOne((request) => request.url === '/api/v1/reports/sellers');
+    expect(sellers.request.params.get('from')).toBe('2026-08-08');
+    expect(sellers.request.params.get('to')).toBe('2026-08-08');
+    sellers.flush([]);
     http
       .expectOne((request) => request.url === '/api/v1/reports/utilities/summary')
       .flush({

@@ -281,6 +281,14 @@ describe('LotoApiService', () => {
     );
     expect(detail.request.params.get('sellerId')).toBe('seller-id');
     detail.flush({});
+
+    service.getReportSellerOptions('2026-08-02', '2026-08-02', ['draw-id']).subscribe();
+    const sellers = http.expectOne((request) => request.url === '/api/v1/reports/sellers');
+    expect(sellers.request.method).toBe('GET');
+    expect(sellers.request.params.get('from')).toBe('2026-08-02');
+    expect(sellers.request.params.get('to')).toBe('2026-08-02');
+    expect(sellers.request.params.getAll('drawIds')).toEqual(['draw-id']);
+    sellers.flush([]);
   });
 
   it('requests mounting calculations with the assumed payout', () => {

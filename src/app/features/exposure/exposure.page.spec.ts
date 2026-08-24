@@ -53,24 +53,6 @@ describe('ExposurePage', () => {
     http
       .expectOne('/api/v1/routes')
       .flush([{ id: 'route-id', code: 'TIC', name: 'Ticuantepe', active: true, createdAt: '' }]);
-    http
-      .expectOne((request) => request.url === '/api/v1/users')
-      .flush({
-        content: [
-          {
-            id: 'seller-id',
-            fullName: 'Luz Torres',
-            username: 'luz',
-            role: 'SELLER',
-            routeId: 'route-id',
-            enabled: true,
-          },
-        ],
-        page: 0,
-        size: 100,
-        totalElements: 1,
-        totalPages: 1,
-      });
     http.expectOne('/api/v1/notifications/settings').flush({
       numberExposureEnabled: true,
       numberExposureThreshold: 40_000,
@@ -82,6 +64,23 @@ describe('ExposurePage', () => {
           request.url === '/api/v1/reports/draws' && request.params.get('date') === '2026-08-04',
       )
       .flush([draw()]);
+    http
+      .expectOne(
+        (request) =>
+          request.url === '/api/v1/reports/sellers' &&
+          request.params.get('from') === '2026-08-04' &&
+          request.params.get('to') === '2026-08-04' &&
+          request.params.get('drawIds') === 'draw-id',
+      )
+      .flush([
+        {
+          id: 'seller-id',
+          fullName: 'Luz Torres',
+          routeId: 'route-id',
+          routeCode: 'TIC',
+          routeName: 'Ticuantepe',
+        },
+      ]);
     http.expectOne('/api/v1/reports/draws/draw-id/numbers').flush(report());
     fixture.detectChanges();
 
@@ -118,21 +117,13 @@ describe('ExposurePage', () => {
   it('configures risk alerts without leaving the exposure screen', () => {
     const fixture = TestBed.createComponent(ExposurePage);
     http.expectOne('/api/v1/routes').flush([]);
-    http
-      .expectOne((request) => request.url === '/api/v1/users')
-      .flush({
-        content: [],
-        page: 0,
-        size: 100,
-        totalElements: 0,
-        totalPages: 0,
-      });
     http.expectOne('/api/v1/notifications/settings').flush({
       numberExposureEnabled: false,
       numberExposureThreshold: 40_000,
       updatedAt: '2026-08-04T12:00:00Z',
     });
     http.expectOne((request) => request.url === '/api/v1/reports/draws').flush([draw()]);
+    http.expectOne((request) => request.url === '/api/v1/reports/sellers').flush([]);
     http.expectOne('/api/v1/reports/draws/draw-id/numbers').flush(report());
 
     const component = fixture.componentInstance as unknown as {

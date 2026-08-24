@@ -10,32 +10,23 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import {
-  catchError,
-  EMPTY,
-  expand,
-  finalize,
-  forkJoin,
-  map,
-  Observable,
-  of,
-  reduce,
-  timer,
-} from 'rxjs';
+import { catchError, finalize, forkJoin, of, timer } from 'rxjs';
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { ManagedUser, RouteSummary } from '../../core/models/admin.models';
+import { RouteSummary } from '../../core/models/admin.models';
 import { FilterStateService } from '../../core/navigation/filter-state.service';
 import {
   DrawNumberReport,
   DrawReport,
   NotificationSettings,
   NumberReport,
+  ReportSellerOption,
 } from '../../core/models/api.models';
 import { apiErrorMessage } from '../../shared/api-error';
 import { drawLabel } from '../../shared/draw-label';
 import { Icon } from '../../shared/icon/icon';
 import { newestDrawFirst } from '../../shared/result-order';
+import { reportSellerOptions } from '../../shared/report-seller-options';
 
 @Component({
   selector: 'lo-exposure-page',
@@ -52,7 +43,7 @@ export class ExposurePage {
   private readonly filterState = inject(FilterStateService);
 
   protected readonly routes = signal<RouteSummary[]>([]);
-  protected readonly sellers = signal<ManagedUser[]>([]);
+  protected readonly sellers = signal<ReportSellerOption[]>([]);
   protected readonly draws = signal<DrawReport[]>([]);
   protected readonly report = signal<DrawNumberReport | null>(null);
   protected readonly notificationSettings = signal<NotificationSettings | null>(null);
@@ -122,7 +113,7 @@ export class ExposurePage {
 
   protected onDrawChanged(): void {
     this.rememberFilters();
-    this.loadReport();
+    this.loadSellersAndReport();
   }
 
   protected onRouteChanged(): void {
@@ -158,16 +149,12 @@ export class ExposurePage {
     return (this.report()?.grossSales ?? 0) - item.potentialPayout;
   }
 
-  protected availableSellers(): ManagedUser[] {
-    return this.sellers().filter(
-      (seller) =>
-        seller.role === 'SELLER' &&
-        (!this.selectedRouteId || seller.routeId === this.selectedRouteId),
-    );
+  protected availableSellers(): ReportSellerOption[] {
+    return reportSellerOptions(this.sellers(), this.selectedRouteId);
   }
 
   protected refresh(): void {
-    this.loadReport(true);
+    this.loadSellersAndReport(true);
   }
 
   protected openAlertSettings(): void {
@@ -279,19 +266,13 @@ export class ExposurePage {
     if (this.auth.user()?.role === 'SELLER') return;
     forkJoin({
       routes: this.api.getRoutes().pipe(catchError(() => of([] as RouteSummary[]))),
-      users: this.loadAllUsers().pipe(catchError(() => of([] as ManagedUser[]))),
       settings: this.auth.isAdmin()
         ? this.api.getNotificationSettings().pipe(catchError(() => of(null)))
         : of(null),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(({ routes, users, settings }) => {
+      .subscribe(({ routes, settings }) => {
         this.routes.set(routes);
-        this.sellers.set(
-          users
-            .filter((user) => user.role === 'SELLER')
-            .sort((left, right) => left.fullName.localeCompare(right.fullName, 'es')),
-        );
         this.notificationSettings.set(settings);
         if (settings) this.applyAlertSettings(settings);
       });
@@ -300,16 +281,6 @@ export class ExposurePage {
   private applyAlertSettings(settings: NotificationSettings): void {
     this.alertEnabled = settings.numberExposureEnabled;
     this.alertThreshold = settings.numberExposureThreshold;
-  }
-
-  private loadAllUsers(): Observable<ManagedUser[]> {
-    return this.api.getUsers(0, 100).pipe(
-      expand((page) =>
-        page.page + 1 < page.totalPages ? this.api.getUsers(page.page + 1, 100) : EMPTY,
-      ),
-      map((page) => page.content),
-      reduce((users, page) => [...users, ...page], [] as ManagedUser[]),
-    );
   }
 
   private loadDraws(): void {
@@ -326,7 +297,7 @@ export class ExposurePage {
           this.selectedDrawId = newest.some((draw) => draw.drawId === preferred)
             ? preferred
             : (newest.find((draw) => draw.ticketCount > 0)?.drawId ?? newest[0]?.drawId ?? '');
-          this.loadReport();
+          this.loadSellersAndReport();
         },
         error: (error: HttpErrorResponse) => {
           this.draws.set([]);
@@ -336,6 +307,28 @@ export class ExposurePage {
             this.errorMessage.set(apiErrorMessage(error, 'No pudimos cargar los sorteos.'));
           }
         },
+      });
+  }
+
+  private loadSellersAndReport(background = false): void {
+    if (!this.selectedDrawId || this.auth.user()?.role === 'SELLER') {
+      this.sellers.set([]);
+      this.loadReport(background);
+      return;
+    }
+    if (!background) this.loading.set(true);
+    this.api
+      .getReportSellerOptions(this.selectedDate, this.selectedDate, [this.selectedDrawId])
+      .pipe(
+        catchError(() => of([] as ReportSellerOption[])),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((sellers) => {
+        this.sellers.set(sellers);
+        if (!this.availableSellers().some((seller) => seller.id === this.selectedSellerId)) {
+          this.selectedSellerId = '';
+        }
+        this.loadReport(background);
       });
   }
 

@@ -8,12 +8,12 @@ import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { OperationalReportPdfService } from '../../core/reports/operational-report-pdf.service';
 import { FilterStateService } from '../../core/navigation/filter-state.service';
-import { ManagedUser } from '../../core/models/admin.models';
 import {
   DailyReport,
   DrawNumberReport,
   DrawReport,
   DrawSettlementReport,
+  ReportSellerOption,
   SellerSettlement,
   BusinessSettlement,
 } from '../../core/models/api.models';
@@ -21,6 +21,7 @@ import { apiErrorMessage } from '../../shared/api-error';
 import { drawLabel } from '../../shared/draw-label';
 import { Icon } from '../../shared/icon/icon';
 import { newestDayFirst, newestDrawFirst } from '../../shared/result-order';
+import { reportSellerOptions } from '../../shared/report-seller-options';
 
 @Component({
   selector: 'lo-reports-page',
@@ -36,7 +37,7 @@ export class ReportsPage {
   private readonly destroyRef = inject(DestroyRef);
   private readonly reportPdf = inject(OperationalReportPdfService);
   private readonly filterState = inject(FilterStateService);
-  protected readonly sellers = signal<ManagedUser[]>([]);
+  protected readonly sellers = signal<ReportSellerOption[]>([]);
   protected readonly days = signal<DailyReport[]>([]);
   protected readonly draws = signal<DrawReport[]>([]);
   protected readonly report = signal<DrawNumberReport | null>(null);
@@ -70,7 +71,6 @@ export class ReportsPage {
     const earliest = new Date();
     earliest.setDate(earliest.getDate() - 15);
     this.historyMinDate = this.auth.isAdmin() ? '' : this.localDate(earliest);
-    this.loadSellers();
     this.loadDays();
   }
 
@@ -81,15 +81,14 @@ export class ReportsPage {
   }
 
   protected onSellerChanged(): void {
-    this.selectedDrawId = '';
     this.rememberFilters();
-    this.loadDays();
+    this.loadDetail();
   }
 
   protected onDrawChanged(): void {
     this.activeTab = 'SELLERS';
     this.rememberFilters();
-    this.loadDetail();
+    this.loadSellersAndDetail();
   }
 
   protected selectTab(tab: 'SELLERS' | 'TICKETS' | 'NUMBERS'): void {
@@ -182,24 +181,11 @@ export class ReportsPage {
     );
   }
 
-  private loadSellers(): void {
-    if (this.auth.user()?.role === 'SELLER') return;
-    this.api
-      .getUsers(0, 100)
-      .pipe(
-        catchError(() => of({ content: [] as ManagedUser[] })),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe((response) =>
-        this.sellers.set(response.content.filter((user) => user.role === 'SELLER')),
-      );
-  }
-
   private loadDays(): void {
     this.loading.set(true);
     this.errorMessage.set(null);
     this.api
-      .getDailyReports(undefined, undefined, this.selectedSellerId || undefined)
+      .getDailyReports()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (days) => {
@@ -227,7 +213,7 @@ export class ReportsPage {
     this.filterLoading.set(true);
     this.errorMessage.set(null);
     this.api
-      .getDrawReports(this.selectedDate, this.selectedSellerId || undefined)
+      .getDrawReports(this.selectedDate)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (draws) => {
@@ -240,7 +226,7 @@ export class ReportsPage {
             ? preferred
             : (latestWithSales?.drawId ?? '');
           this.filterLoading.set(false);
-          this.loadDetail();
+          this.loadSellersAndDetail();
         },
         error: (error: HttpErrorResponse) => {
           this.draws.set([]);
@@ -252,6 +238,28 @@ export class ReportsPage {
           if (error.status !== 404)
             this.errorMessage.set(apiErrorMessage(error, 'No pudimos cargar los sorteos del día.'));
         },
+      });
+  }
+
+  private loadSellersAndDetail(): void {
+    if (!this.selectedDrawId || this.auth.user()?.role === 'SELLER') {
+      this.sellers.set([]);
+      this.loadDetail();
+      return;
+    }
+    this.api
+      .getReportSellerOptions(this.selectedDate, this.selectedDate, [this.selectedDrawId])
+      .pipe(
+        catchError(() => of([] as ReportSellerOption[])),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((sellers) => {
+        const available = reportSellerOptions(sellers);
+        this.sellers.set(available);
+        if (!available.some((seller) => seller.id === this.selectedSellerId)) {
+          this.selectedSellerId = '';
+        }
+        this.loadDetail();
       });
   }
 

@@ -49,15 +49,6 @@ describe('ReportsPage', () => {
   it('opens the draw settlement by seller and exposes the winning-ticket view', () => {
     const fixture = TestBed.createComponent(ReportsPage);
 
-    http
-      .expectOne((request) => request.url === '/api/v1/users')
-      .flush({
-        content: [],
-        page: 0,
-        size: 100,
-        totalElements: 0,
-        totalPages: 0,
-      });
     http.expectOne('/api/v1/reports/days').flush([
       {
         date: '2026-08-02',
@@ -75,6 +66,19 @@ describe('ReportsPage', () => {
           request.url === '/api/v1/reports/draws' && request.params.get('date') === '2026-08-02',
       )
       .flush([drawReport()]);
+    const sellers = http.expectOne((request) => request.url === '/api/v1/reports/sellers');
+    expect(sellers.request.params.get('from')).toBe('2026-08-02');
+    expect(sellers.request.params.get('to')).toBe('2026-08-02');
+    expect(sellers.request.params.getAll('drawIds')).toEqual(['draw-id']);
+    sellers.flush([
+      {
+        id: 'seller-id',
+        fullName: 'Luz Torres',
+        routeId: 'route-id',
+        routeCode: 'R-01',
+        routeName: 'Ruta Norte',
+      },
+    ]);
     http.expectOne('/api/v1/reports/draws/draw-id/numbers').flush({
       ...drawReport(),
       numbers: [

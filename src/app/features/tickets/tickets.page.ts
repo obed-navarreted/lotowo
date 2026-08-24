@@ -8,12 +8,18 @@ import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ReceiptOutputService } from '../../core/receipts/receipt-output.service';
 import { FilterStateService } from '../../core/navigation/filter-state.service';
-import { ManagedUser } from '../../core/models/admin.models';
-import { Draw, NumberExposure, Ticket, TicketFilters } from '../../core/models/api.models';
+import {
+  Draw,
+  NumberExposure,
+  ReportSellerOption,
+  Ticket,
+  TicketFilters,
+} from '../../core/models/api.models';
 import { apiErrorMessage } from '../../shared/api-error';
 import { drawLabel } from '../../shared/draw-label';
 import { Icon } from '../../shared/icon/icon';
 import { newestDrawFirst } from '../../shared/result-order';
+import { reportSellerOptions } from '../../shared/report-seller-options';
 
 @Component({
   selector: 'lo-tickets-page',
@@ -31,7 +37,7 @@ export class TicketsPage {
   private readonly filterState = inject(FilterStateService);
   protected readonly tickets = signal<Ticket[]>([]);
   protected readonly draws = signal<Draw[]>([]);
-  protected readonly sellers = signal<ManagedUser[]>([]);
+  protected readonly sellers = signal<ReportSellerOption[]>([]);
   protected readonly exposure = signal<NumberExposure[]>([]);
   protected readonly loading = signal(true);
   protected readonly filterLoading = signal(true);
@@ -73,14 +79,14 @@ export class TicketsPage {
   }
   protected applyFilters(): void {
     this.rememberFilters();
-    this.load(0);
+    this.loadSellersAndTickets(0);
   }
   protected clearFilters(): void {
     this.search = '';
     this.selectedSellerId = '';
     this.selectedDrawId = '';
     this.rememberFilters();
-    this.load(0);
+    this.loadSellersAndTickets(0);
   }
   protected previous(): void {
     if (this.page() > 0) this.load(this.page() - 1);
@@ -164,17 +170,6 @@ export class TicketsPage {
 
   private initialize(): void {
     this.filterLoading.set(true);
-    if (this.auth.user()?.role !== 'SELLER') {
-      this.api
-        .getUsers(0, 100)
-        .pipe(
-          catchError(() => of({ content: [] as ManagedUser[] })),
-          takeUntilDestroyed(this.destroyRef),
-        )
-        .subscribe((users) =>
-          this.sellers.set(users.content.filter((user) => user.role === 'SELLER')),
-        );
-    }
     this.api
       .getSaleableDraws()
       .pipe(
@@ -219,15 +214,41 @@ export class TicketsPage {
           const desired = preferredDrawId ?? this.selectedDrawId;
           this.selectedDrawId = desired && draws.some((draw) => draw.id === desired) ? desired : '';
           this.filterLoading.set(false);
-          this.load(0);
+          this.loadSellersAndTickets(0);
         },
         error: (error: unknown) => {
           this.draws.set([]);
           this.selectedDrawId = '';
           this.filterLoading.set(false);
           this.errorMessage.set(apiErrorMessage(error, 'No pudimos cargar los turnos de ese día.'));
-          this.load(0);
+          this.loadSellersAndTickets(0);
         },
+      });
+  }
+
+  private loadSellersAndTickets(page: number): void {
+    if (this.auth.user()?.role === 'SELLER') {
+      this.sellers.set([]);
+      this.load(page);
+      return;
+    }
+    this.api
+      .getReportSellerOptions(
+        this.selectedDate,
+        this.selectedDate,
+        this.selectedDrawId ? [this.selectedDrawId] : [],
+      )
+      .pipe(
+        catchError(() => of([] as ReportSellerOption[])),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((sellers) => {
+        const available = reportSellerOptions(sellers);
+        this.sellers.set(available);
+        if (!available.some((seller) => seller.id === this.selectedSellerId)) {
+          this.selectedSellerId = '';
+        }
+        this.load(page);
       });
   }
 

@@ -52,16 +52,20 @@ describe('TicketsPage', () => {
     const fixture = TestBed.createComponent(TicketsPage);
 
     http.expectOne('/api/v1/draws/saleable').flush([]);
-    http
-      .expectOne((request) => request.url === '/api/v1/users')
-      .flush({
-        content: [],
-        page: 0,
-        size: 100,
-        totalElements: 0,
-        totalPages: 0,
-      });
     http.expectOne((request) => request.url === '/api/v1/draws').flush([drawFixture()]);
+    const sellers = http.expectOne((request) => request.url === '/api/v1/reports/sellers');
+    expect(sellers.request.params.get('from')).toBe('2026-08-01');
+    expect(sellers.request.params.get('to')).toBe('2026-08-01');
+    expect(sellers.request.params.getAll('drawIds')).toEqual(['draw-id']);
+    sellers.flush([
+      {
+        id: 'seller-id',
+        fullName: 'Vendedor',
+        routeId: 'route-id',
+        routeCode: 'NORTE-01',
+        routeName: 'Ruta Norte',
+      },
+    ]);
     http.expectOne('/api/v1/tickets/exposure/draw-id?sellerId=seller-id').flush([]);
     const ticketRequest = http.expectOne((request) => request.url === '/api/v1/tickets');
     expect(ticketRequest.request.params.get('fromDate')).toBe('2026-08-01');

@@ -6,13 +6,14 @@ import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, map, of } from 'rxjs';
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { ManagedUser, RouteSummary } from '../../core/models/admin.models';
+import { RouteSummary } from '../../core/models/admin.models';
 import { FilterStateService } from '../../core/navigation/filter-state.service';
 import {
   BusinessFinanceSummary,
   BusinessFinanceDetails,
   BusinessMountingDetail,
   Draw,
+  ReportSellerOption,
   UtilityDrawSummary,
   UtilitySellerSummary,
   UtilitySummary,
@@ -26,6 +27,7 @@ import { apiErrorMessage } from '../../shared/api-error';
 import { drawLabel } from '../../shared/draw-label';
 import { Icon } from '../../shared/icon/icon';
 import { groupUtilitiesByDay, UtilityDay } from '../../shared/utility-days';
+import { reportSellerOptions } from '../../shared/report-seller-options';
 
 @Component({
   selector: 'lo-utilities-page',
@@ -43,7 +45,7 @@ export class UtilitiesPage {
   private readonly filterState = inject(FilterStateService);
   protected readonly draws = signal<Draw[]>([]);
   protected readonly routes = signal<RouteSummary[]>([]);
-  protected readonly sellers = signal<ManagedUser[]>([]);
+  protected readonly sellers = signal<ReportSellerOption[]>([]);
   protected readonly summary = signal<UtilitySummary | null>(null);
   protected readonly businessSummary = signal<BusinessFinanceSummary | null>(null);
   protected readonly businessDetails = signal<BusinessFinanceDetails | null>(null);
@@ -91,15 +93,6 @@ export class UtilitiesPage {
             [...routes].sort((left, right) => left.name.localeCompare(right.name, 'es')),
           ),
         );
-      this.api
-        .getUsers(0, 100)
-        .pipe(
-          catchError(() => of({ content: [] as ManagedUser[] })),
-          takeUntilDestroyed(this.destroyRef),
-        )
-        .subscribe((users) =>
-          this.sellers.set(users.content.filter((user) => user.role === 'SELLER')),
-        );
     }
     this.loadPeriod();
   }
@@ -127,7 +120,7 @@ export class UtilitiesPage {
       this.includeMovements = false;
     }
     this.rememberFilters();
-    this.loadSummary();
+    this.loadSellersAndSummary();
   }
 
   protected onFinanceOptionsChanged(): void {
@@ -293,9 +286,7 @@ export class UtilitiesPage {
     if (this.selectedRouteId) this.includeMovements = false;
     if (
       this.selectedSellerId &&
-      !this.sellers().some(
-        (seller) => seller.id === this.selectedSellerId && seller.routeId === this.selectedRouteId,
-      )
+      !this.visibleSellers().some((seller) => seller.id === this.selectedSellerId)
     ) {
       this.selectedSellerId = '';
     }
@@ -303,10 +294,8 @@ export class UtilitiesPage {
     this.applyFilters();
   }
 
-  protected visibleSellers(): ManagedUser[] {
-    return this.selectedRouteId
-      ? this.sellers().filter((seller) => seller.routeId === this.selectedRouteId)
-      : this.sellers();
+  protected visibleSellers(): ReportSellerOption[] {
+    return reportSellerOptions(this.sellers(), this.selectedRouteId);
   }
 
   protected selectedRoute(): RouteSummary | undefined {
@@ -429,7 +418,7 @@ export class UtilitiesPage {
     if (!this.isSingleDay()) {
       this.draws.set([]);
       this.filterLoading.set(false);
-      this.loadSummary();
+      this.loadSellersAndSummary();
       return;
     }
     this.filterLoading.set(true);
@@ -457,7 +446,7 @@ export class UtilitiesPage {
             ),
           );
           this.filterLoading.set(false);
-          this.loadSummary();
+          this.loadSellersAndSummary();
         },
         error: (error: unknown) => {
           this.draws.set([]);
@@ -467,6 +456,31 @@ export class UtilitiesPage {
             apiErrorMessage(error, 'No pudimos cargar los sorteos de ese día.'),
           );
         },
+      });
+  }
+
+  private loadSellersAndSummary(): void {
+    if (this.auth.user()?.role === 'SELLER') {
+      this.sellers.set([]);
+      this.loadSummary();
+      return;
+    }
+    this.api
+      .getReportSellerOptions(
+        this.fromDate,
+        this.toDate,
+        this.allDrawsSelected ? [] : this.selectedDrawIds,
+      )
+      .pipe(
+        catchError(() => of([] as ReportSellerOption[])),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((sellers) => {
+        this.sellers.set(sellers);
+        if (!this.visibleSellers().some((seller) => seller.id === this.selectedSellerId)) {
+          this.selectedSellerId = '';
+        }
+        this.loadSummary();
       });
   }
 

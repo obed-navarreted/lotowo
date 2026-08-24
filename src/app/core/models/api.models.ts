@@ -364,6 +364,14 @@ export interface DrawNumberReport extends DrawReport {
   numbers: NumberReport[];
 }
 
+export interface ReportSellerOption {
+  id: string;
+  fullName: string;
+  routeId: string;
+  routeCode: string;
+  routeName: string;
+}
+
 export interface MountingItem {
   number: string;
   potentialPayout: number;

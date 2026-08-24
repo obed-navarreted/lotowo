@@ -12,6 +12,7 @@ import {
   DrawReport,
   DrawSettlementReport,
   NumberExposure,
+  ReportSellerOption,
   PageResponse,
   SellerAvailability,
   Ticket,
@@ -391,6 +392,14 @@ export class LotoApiService {
     if (sellerId) params = params.set('sellerId', sellerId);
     if (routeId) params = params.set('routeId', routeId);
     return this.http.get<DrawNumberReport>(`/api/v1/reports/draws/${drawId}/numbers`, { params });
+  }
+
+  getReportSellerOptions(from?: string, to?: string, drawIds: string[] = []) {
+    let params = new HttpParams();
+    if (from) params = params.set('from', from);
+    if (to) params = params.set('to', to);
+    for (const drawId of drawIds) params = params.append('drawIds', drawId);
+    return this.http.get<ReportSellerOption[]>('/api/v1/reports/sellers', { params });
   }
 
   getMountingReport(

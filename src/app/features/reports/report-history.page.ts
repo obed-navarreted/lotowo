@@ -14,11 +14,11 @@ import { catchError, of } from 'rxjs';
 import { LotoApiService } from '../../core/api/loto-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { FilterStateService } from '../../core/navigation/filter-state.service';
-import { ManagedUser } from '../../core/models/admin.models';
-import { DailyReport, DrawReport } from '../../core/models/api.models';
+import { DailyReport, DrawReport, ReportSellerOption } from '../../core/models/api.models';
 import { apiErrorMessage } from '../../shared/api-error';
 import { Icon } from '../../shared/icon/icon';
 import { newestDayFirst, newestDrawFirst } from '../../shared/result-order';
+import { reportSellerOptions } from '../../shared/report-seller-options';
 
 @Component({
   selector: 'lo-report-history-page',
@@ -32,7 +32,7 @@ export class ReportHistoryPage {
   private readonly api = inject(LotoApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly filterState = inject(FilterStateService);
-  protected readonly sellers = signal<ManagedUser[]>([]);
+  protected readonly sellers = signal<ReportSellerOption[]>([]);
   protected readonly days = signal<DailyReport[]>([]);
   protected readonly dayDraws = signal<DrawReport[]>([]);
   protected readonly expandedDate = signal<string | null>(null);
@@ -55,16 +55,22 @@ export class ReportHistoryPage {
     this.page.set(Math.max(0, stored?.page ?? 0));
     if (this.auth.user()?.role !== 'SELLER') {
       this.api
-        .getUsers(0, 100)
+        .getReportSellerOptions()
         .pipe(
-          catchError(() => of({ content: [] as ManagedUser[] })),
+          catchError(() => of([] as ReportSellerOption[])),
           takeUntilDestroyed(this.destroyRef),
         )
-        .subscribe((response) =>
-          this.sellers.set(response.content.filter((user) => user.role === 'SELLER')),
-        );
+        .subscribe((sellers) => {
+          const available = reportSellerOptions(sellers);
+          this.sellers.set(available);
+          if (!available.some((seller) => seller.id === this.selectedSellerId)) {
+            this.selectedSellerId = '';
+          }
+          this.loadDays();
+        });
+    } else {
+      this.loadDays();
     }
-    this.loadDays();
   }
 
   protected onSellerChanged(): void {
