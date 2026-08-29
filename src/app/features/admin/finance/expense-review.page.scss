@@ -2,8 +2,13 @@
   display: block;
 }
 
-.expense-heading .button {
+.expense-heading__actions {
+  display: flex;
   flex: 0 0 auto;
+  gap: 9px;
+}
+.expense-heading__actions .button {
+  min-width: 112px;
 }
 
 .expense-filter {
@@ -113,12 +118,14 @@
 .expense-summary__main small {
   color: rgba(255, 255, 255, 0.7);
 }
-.expense-summary__prize strong,
-.expense-summary__net--credit strong {
+.expense-summary__prize strong {
   color: var(--mint-dark);
 }
 .expense-summary__net strong {
   color: var(--danger);
+}
+.expense-summary__net.expense-summary__net--credit strong {
+  color: var(--mint-dark);
 }
 
 .expense-sections {
@@ -377,7 +384,10 @@
     align-items: stretch;
     flex-direction: column;
   }
-  .expense-heading .button {
+  .expense-heading__actions {
+    width: 100%;
+  }
+  .expense-heading__actions .button {
     width: 100%;
   }
   .expense-filter {

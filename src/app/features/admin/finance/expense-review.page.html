@@ -4,7 +4,17 @@
     <h1>Detalle de gastos</h1>
     <p class="page-subtitle">Revisa montadas, gastos manuales y premios externos del período.</p>
   </div>
-  <a class="button" routerLink="/management"> <lo-icon name="edit" [size]="17" /> Gestionar </a>
+  <div class="expense-heading__actions">
+    <a class="button" routerLink="/management"> <lo-icon name="edit" [size]="17" /> Gestionar </a>
+    <button
+      class="button button--primary"
+      type="button"
+      (click)="exportReport()"
+      [disabled]="exporting() || loading() || (!mountings().length && !manualExpenses().length)"
+    >
+      <lo-icon name="download" [size]="17" />{{ exporting() ? 'Generando…' : 'PDF' }}
+    </button>
+  </div>
 </header>
 
 <section class="expense-filter card" aria-label="Rango del reporte">

@@ -18,6 +18,7 @@ import {
   BusinessMountingDetail,
   BusinessMovement,
 } from '../../../core/models/api.models';
+import { ExpenseReportPdfService } from '../../../core/reports/expense-report-pdf.service';
 import { apiErrorMessage } from '../../../shared/api-error';
 import { drawLabel } from '../../../shared/draw-label';
 import { Icon } from '../../../shared/icon/icon';
@@ -38,9 +39,11 @@ export class ExpenseReviewPage {
   private readonly api = inject(LotoApiService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly filterState = inject(FilterStateService);
+  private readonly pdf = inject(ExpenseReportPdfService);
 
   protected readonly details = signal<BusinessFinanceDetails | null>(null);
   protected readonly loading = signal(false);
+  protected readonly exporting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly today = this.localDate(new Date());
   protected fromDate = this.weekStart(this.today);
@@ -81,6 +84,23 @@ export class ExpenseReviewPage {
       toDate: this.toDate,
     });
     this.load();
+  }
+
+  protected exportReport(): void {
+    const details = this.details();
+    if (
+      !details ||
+      this.exporting() ||
+      (!this.mountings().length && !this.manualExpenses().length)
+    ) {
+      return;
+    }
+    this.exporting.set(true);
+    this.errorMessage.set(null);
+    void this.pdf
+      .export(details)
+      .catch(() => this.errorMessage.set('No pudimos generar el reporte PDF.'))
+      .finally(() => this.exporting.set(false));
   }
 
   protected mountingResult(mounting: BusinessMountingDetail): number {
