@@ -141,6 +141,15 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'expenses',
+        title: 'Detalle de gastos · Suerte',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/admin/finance/expense-review.page').then(
+            (component) => component.ExpenseReviewPage,
+          ),
+      },
+      {
         path: 'users',
         title: 'Usuarios · Suerte',
         canActivate: [adminGuard],

@@ -6,23 +6,28 @@
       Registra ingresos y gastos extraordinarios sin mezclarlos con los cierres.
     </p>
   </div>
-  <label class="management-date">
-    <span>Fecha de gestión</span>
-    <span class="date-picker">
-      <lo-icon name="calendar" [size]="19" />
-      <span class="date-picker__copy"
-        ><strong>{{ dateLabel(selectedDate) }}</strong
-        ><small>DD/MM/AAAA</small></span
-      >
-      <input
-        type="date"
-        [(ngModel)]="selectedDate"
-        [max]="today"
-        (change)="onDateChanged()"
-        aria-label="Fecha de gestión"
-      />
-    </span>
-  </label>
+  <div class="management-header-actions">
+    <label class="management-date">
+      <span>Fecha de gestión</span>
+      <span class="date-picker">
+        <lo-icon name="calendar" [size]="19" />
+        <span class="date-picker__copy"
+          ><strong>{{ dateLabel(selectedDate) }}</strong
+          ><small>DD/MM/AAAA</small></span
+        >
+        <input
+          type="date"
+          [(ngModel)]="selectedDate"
+          [max]="today"
+          (change)="onDateChanged()"
+          aria-label="Fecha de gestión"
+        />
+      </span>
+    </label>
+    <a class="button" routerLink="/expenses"
+      ><lo-icon name="expense" [size]="17" /> Revisar gastos</a
+    >
+  </div>
 </header>
 
 <section class="management-help">

@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { catchError, finalize, of } from 'rxjs';
 import { LotoApiService } from '../../../core/api/loto-api.service';
 import { ManagedUser } from '../../../core/models/admin.models';
@@ -22,7 +23,7 @@ interface MovementDraft {
 
 @Component({
   selector: 'lo-finance-management-page',
-  imports: [FormsModule, Icon],
+  imports: [FormsModule, RouterLink, Icon],
   templateUrl: './finance-management.page.html',
   styleUrl: './finance-management.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

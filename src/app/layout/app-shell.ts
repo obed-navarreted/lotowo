@@ -80,6 +80,13 @@ export class AppShell {
       roles: ['ADMIN'],
     },
     {
+      label: 'Gastos',
+      shortLabel: 'Gastos',
+      icon: 'expense',
+      route: '/expenses',
+      roles: ['ADMIN'],
+    },
+    {
       label: 'Boletos',
       shortLabel: 'Boletos',
       icon: 'ticket',

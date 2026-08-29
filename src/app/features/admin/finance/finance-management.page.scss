@@ -14,6 +14,15 @@
   margin: 0;
   color: var(--muted-strong);
 }
+.management-header-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.management-header-actions .button {
+  flex: 0 0 auto;
+  text-decoration: none;
+}
 .management-date {
   display: flex;
   width: min(100%, 285px);
@@ -282,6 +291,14 @@
     flex-direction: column;
   }
   .management-date {
+    width: 100%;
+  }
+  .management-header-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .management-header-actions .button {
     width: 100%;
   }
   .management-create > header {

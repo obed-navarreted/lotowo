@@ -1,0 +1,183 @@
+<header class="page-header expense-heading">
+  <div class="page-header__copy">
+    <span class="eyebrow">Control financiero</span>
+    <h1>Detalle de gastos</h1>
+    <p class="page-subtitle">Revisa montadas, gastos manuales y premios externos del período.</p>
+  </div>
+  <a class="button" routerLink="/management"> <lo-icon name="edit" [size]="17" /> Gestionar </a>
+</header>
+
+<section class="expense-filter card" aria-label="Rango del reporte">
+  <div class="expense-filter__title">
+    <span class="expense-filter__icon"><lo-icon name="calendar" [size]="20" /></span>
+    <div><strong>Período a revisar</strong><small>Fechas en horario de Nicaragua</small></div>
+  </div>
+  <label>
+    <span>Desde</span>
+    <span class="date-picker">
+      <lo-icon name="calendar" [size]="18" />
+      <span class="date-picker__copy"
+        ><strong>{{ dateLabel(fromDate) }}</strong
+        ><small>DD/MM/AAAA</small></span
+      >
+      <input type="date" [(ngModel)]="fromDate" [max]="today" aria-label="Fecha inicial" />
+    </span>
+  </label>
+  <label>
+    <span>Hasta</span>
+    <span class="date-picker">
+      <lo-icon name="calendar" [size]="18" />
+      <span class="date-picker__copy"
+        ><strong>{{ dateLabel(toDate) }}</strong
+        ><small>DD/MM/AAAA</small></span
+      >
+      <input type="date" [(ngModel)]="toDate" [max]="today" aria-label="Fecha final" />
+    </span>
+  </label>
+  <button class="button button--primary" type="button" (click)="search()" [disabled]="loading()">
+    <lo-icon name="search" [size]="18" /> {{ loading() ? 'Cargando…' : 'Revisar' }}
+  </button>
+</section>
+
+@if (errorMessage()) {
+  <div class="expense-error"><lo-icon name="info" [size]="18" />{{ errorMessage() }}</div>
+}
+
+@if (loading()) {
+  <section class="expense-loading" aria-label="Cargando detalle">
+    @for (item of [1, 2, 3, 4]; track item) {
+      <span></span>
+    }
+  </section>
+} @else {
+  <section class="expense-summary" aria-label="Totales del período">
+    <article class="expense-summary__main">
+      <span>Gasto total</span>
+      <strong>{{ money(totalExpense()) }}</strong>
+      <small>Montadas + gastos manuales</small>
+    </article>
+    <article>
+      <span>Montadas</span>
+      <strong>{{ money(mountingExpense()) }}</strong>
+      <small>{{ mountings().length }} registros</small>
+    </article>
+    <article>
+      <span>Gastos manuales</span>
+      <strong>{{ money(manualExpense()) }}</strong>
+      <small>{{ manualExpenses().length }} registros</small>
+    </article>
+    <article class="expense-summary__prize">
+      <span>Premios externos</span>
+      <strong>+{{ money(externalPrizes()) }}</strong>
+      <small>Recuperado por montadas</small>
+    </article>
+    <article class="expense-summary__net" [class.expense-summary__net--credit]="netCost() < 0">
+      <span>Costo neto</span>
+      <strong
+        >{{ netCost() < 0 ? '+' : '' }}{{ money(netCost() < 0 ? -netCost() : netCost()) }}</strong
+      >
+      <small>{{ netCost() < 0 ? 'Saldo recuperado' : 'Gastos menos premios externos' }}</small>
+    </article>
+  </section>
+
+  @if (mountings().length || manualExpenses().length) {
+    <section class="expense-sections">
+      <article class="expense-detail card">
+        <header>
+          <span class="expense-detail__icon expense-detail__icon--mounting"
+            ><lo-icon name="stack" [size]="20"
+          /></span>
+          <div>
+            <span class="eyebrow">Por sorteo</span>
+            <h2>Montadas y premios</h2>
+          </div>
+          <b>{{ mountings().length }}</b>
+        </header>
+        <div class="mounting-list">
+          @for (mounting of mountings(); track mounting.id) {
+            <details class="mounting-entry">
+              <summary>
+                <span class="mounting-entry__winner">{{ mounting.winningNumber || '—' }}</span>
+                <span class="mounting-entry__copy"
+                  ><strong>{{ mountingLabel(mounting) }}</strong
+                  ><small
+                    >{{ mounting.items.length }} números ·
+                    {{ mounting.registeredByName || 'Administración' }}</small
+                  ></span
+                >
+                <dl>
+                  <div>
+                    <dt>Montada</dt>
+                    <dd>−{{ money(mounting.totalStake) }}</dd>
+                  </div>
+                  <div>
+                    <dt>Premio</dt>
+                    <dd>+{{ money(mounting.externalPrize) }}</dd>
+                  </div>
+                  <div
+                    [class.profit]="mountingResult(mounting) > 0"
+                    [class.loss]="mountingResult(mounting) < 0"
+                  >
+                    <dt>Balance</dt>
+                    <dd>
+                      {{ mountingResult(mounting) > 0 ? '+' : ''
+                      }}{{ money(mountingResult(mounting)) }}
+                    </dd>
+                  </div>
+                </dl>
+                <lo-icon name="arrow" [size]="17" />
+              </summary>
+              <div class="mounting-entry__body">
+                <div class="mounting-items">
+                  @for (item of mounting.items; track item.number) {
+                    <span
+                      ><b>{{ item.number }}</b
+                      ><small>Montada {{ money(item.stakeAmount) }}</small
+                      ><strong>{{
+                        item.potentialExternalPayout === null
+                          ? '—'
+                          : money(item.potentialExternalPayout)
+                      }}</strong></span
+                    >
+                  } @empty {
+                    <p>Este registro histórico no contiene un desglose por número.</p>
+                  }
+                </div>
+                <small>Registrado {{ dateTimeLabel(mounting.registeredAt) }}</small>
+              </div>
+            </details>
+          }
+        </div>
+      </article>
+
+      <article class="expense-detail card">
+        <header>
+          <span class="expense-detail__icon"><lo-icon name="expense" [size]="20" /></span>
+          <div>
+            <span class="eyebrow">Por fecha</span>
+            <h2>Gastos manuales</h2>
+          </div>
+          <b>{{ manualExpenses().length }}</b>
+        </header>
+        <div class="manual-list">
+          @for (expense of manualExpenses(); track expense.id) {
+            <div class="manual-entry">
+              <time>{{ movementDate(expense) }}</time>
+              <span
+                ><strong>{{ expense.description }}</strong
+                ><small>{{ expense.userName || 'Gasto general' }}</small></span
+              >
+              <b>−{{ money(expense.amount) }}</b>
+            </div>
+          }
+        </div>
+      </article>
+    </section>
+  } @else {
+    <section class="expense-empty card">
+      <span><lo-icon name="check" [size]="24" /></span>
+      <h2>Sin gastos en este período</h2>
+      <p>No hay montadas ni gastos manuales activos entre las fechas seleccionadas.</p>
+    </section>
+  }
+}

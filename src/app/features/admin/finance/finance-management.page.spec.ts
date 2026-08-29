@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 import { FinanceManagementPage } from './finance-management.page';
 
@@ -12,7 +13,7 @@ describe('FinanceManagementPage', () => {
     vi.setSystemTime(new Date('2026-08-16T12:00:00-06:00'));
     await TestBed.configureTestingModule({
       imports: [FinanceManagementPage],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     }).compileComponents();
     http = TestBed.inject(HttpTestingController);
   });
@@ -30,13 +31,15 @@ describe('FinanceManagementPage', () => {
       saveBatch(): void;
     };
 
-    http.expectOne((request) => request.url === '/api/v1/users').flush({
-      content: [{ id: 'seller-id', fullName: 'Ana Vendedora', role: 'SELLER' }],
-      page: 0,
-      size: 100,
-      totalElements: 1,
-      totalPages: 1,
-    });
+    http
+      .expectOne((request) => request.url === '/api/v1/users')
+      .flush({
+        content: [{ id: 'seller-id', fullName: 'Ana Vendedora', role: 'SELLER' }],
+        page: 0,
+        size: 100,
+        totalElements: 1,
+        totalPages: 1,
+      });
     http
       .expectOne((request) => request.url === '/api/v1/admin/finance/movements')
       .flush({ detail: 'Sin movimientos' }, { status: 404, statusText: 'Not Found' });
