@@ -9,11 +9,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { RouteSummary } from '../../core/models/admin.models';
 import { FilterStateService } from '../../core/navigation/filter-state.service';
 import {
-  BusinessFinanceSummary,
-  BusinessFinanceDetails,
-  BusinessMountingDetail,
   Draw,
-  MovementAllocation,
   ReportSellerOption,
   UtilityDrawSummary,
   UtilitySellerSummary,
@@ -48,8 +44,6 @@ export class UtilitiesPage {
   protected readonly routes = signal<RouteSummary[]>([]);
   protected readonly sellers = signal<ReportSellerOption[]>([]);
   protected readonly summary = signal<UtilitySummary | null>(null);
-  protected readonly businessSummary = signal<BusinessFinanceSummary | null>(null);
-  protected readonly businessDetails = signal<BusinessFinanceDetails | null>(null);
   protected readonly loading = signal(true);
   protected readonly exporting = signal<'A4' | 'MOBILE' | 'ZIP' | null>(null);
   protected readonly filterLoading = signal(true);
@@ -63,8 +57,6 @@ export class UtilitiesPage {
   protected selectedSellerId = '';
   protected selectedRouteId = '';
   protected includeCommissions = false;
-  protected includeMovements = false;
-  protected movementAllocation: MovementAllocation = 'PROPORTIONAL';
   protected includeDraws = true;
   protected includeProvisional = true;
 
@@ -77,8 +69,6 @@ export class UtilitiesPage {
     this.selectedSellerId = this.auth.user()?.role === 'SELLER' ? '' : (stored?.sellerId ?? '');
     this.selectedRouteId = this.auth.user()?.role === 'SELLER' ? '' : (stored?.routeId ?? '');
     this.includeCommissions = stored?.includeCommissions ?? false;
-    this.includeMovements = this.auth.isAdmin() ? (stored?.includeMovements ?? false) : false;
-    this.movementAllocation = stored?.movementAllocation ?? 'PROPORTIONAL';
     this.includeDraws = stored?.includeDraws ?? true;
     this.includeProvisional = stored?.includeProvisional ?? true;
     const earliest = new Date();
@@ -119,16 +109,12 @@ export class UtilitiesPage {
       this.errorMessage.set('Selecciona al menos un turno o marca Todos.');
       return;
     }
-    if (this.selectedSellerId || !this.allDrawsSelected) {
-      this.includeMovements = false;
-    }
     this.rememberFilters();
     this.loadSellersAndSummary();
   }
 
-  protected onFinanceOptionsChanged(): void {
+  protected onCommissionChanged(): void {
     this.rememberFilters();
-    this.loadBusinessSummary();
   }
 
   protected onReportDetailChanged(): void {
@@ -148,10 +134,7 @@ export class UtilitiesPage {
     const options = {
       includeCommissions: this.includeCommissions,
       includeDraws: this.includeDraws,
-      includeMovements: this.includeMovements,
       scopeLabel: this.selectedRoute()?.name,
-      businessSummary: format === 'A4' ? this.businessSummary() : null,
-      businessDetails: format === 'A4' ? this.financeDetailsForReport() : null,
     };
     const exportOperation =
       format === 'MOBILE'
@@ -227,7 +210,6 @@ export class UtilitiesPage {
   protected onAllDrawsChanged(selected: boolean): void {
     this.allDrawsSelected = selected;
     if (selected) this.selectedDrawIds = [];
-    else this.includeMovements = false;
     this.rememberFilters();
   }
 
@@ -278,8 +260,6 @@ export class UtilitiesPage {
     this.selectedSellerId = '';
     this.selectedRouteId = '';
     this.includeCommissions = false;
-    this.includeMovements = false;
-    this.movementAllocation = 'PROPORTIONAL';
     this.includeDraws = true;
     this.includeProvisional = true;
     this.rememberFilters();
@@ -345,48 +325,11 @@ export class UtilitiesPage {
   }
 
   protected resultValue(result: UtilitySummary): number {
-    const business = this.businessSummary();
-    if (this.auth.isAdmin() && business) return business.businessResult;
     return this.includeCommissions ? result.netAfterCommission : result.netResult;
   }
 
   protected resultDescription(): string {
-    const base = this.includeCommissions ? 'Ventas − premios − comisión' : 'Ventas − premios';
-    if (!this.auth.isAdmin() || !this.businessSummary()) return base;
-    return `${base} − montadas + premios externos${
-      this.includeMovements ? ' − gastos + otros ingresos' : ''
-    }`;
-  }
-
-  protected allocationPercent(): string {
-    const rate = (this.businessSummary()?.movementAllocationRate ?? 0) * 100;
-    return new Intl.NumberFormat('es-NI', { maximumFractionDigits: 2 }).format(rate);
-  }
-
-  protected allocatedMovementAmount(amount: number): number {
-    return this.allocatedAdjustmentAmount(amount);
-  }
-
-  protected allocatedAdjustmentAmount(amount: number): number {
-    if (!this.selectedRouteId || this.movementAllocation === 'FULL') return amount;
-    return Math.round(amount * (this.businessSummary()?.movementAllocationRate ?? 0) * 100) / 100;
-  }
-
-  protected mountingResult(mounting: BusinessMountingDetail): number {
-    return (
-      this.allocatedAdjustmentAmount(mounting.externalPrize) -
-      this.allocatedAdjustmentAmount(mounting.totalStake)
-    );
-  }
-
-  protected mountingDraw(mounting: BusinessMountingDetail): string {
-    const date = new Intl.DateTimeFormat('es-NI', {
-      day: '2-digit',
-      month: '2-digit',
-      year: '2-digit',
-      timeZone: 'America/Managua',
-    }).format(new Date(mounting.scheduledAt));
-    return `${mounting.drawType === 'NATIONAL_LOTTERY' ? 'Lotería' : 'LOTO'} · ${date} · ${this.hourLabel(mounting.scheduledAt)}`;
+    return this.includeCommissions ? 'Ventas − premios − comisión' : 'Ventas − premios';
   }
 
   protected sellerResultValue(seller: UtilitySummary['sellers'][number]): number {
@@ -522,12 +465,9 @@ export class UtilitiesPage {
         next: (summary) => {
           this.summary.set(summary);
           this.loading.set(false);
-          this.loadBusinessSummary();
         },
         error: (error: HttpErrorResponse) => {
           this.summary.set(null);
-          this.businessSummary.set(null);
-          this.businessDetails.set(null);
           this.loading.set(false);
           if (error.status !== 404)
             this.errorMessage.set(apiErrorMessage(error, 'No pudimos calcular las utilidades.'));
@@ -544,77 +484,9 @@ export class UtilitiesPage {
       sellerId: this.selectedSellerId,
       routeId: this.selectedRouteId,
       includeCommissions: this.includeCommissions,
-      includeMovements: this.includeMovements,
-      movementAllocation: this.movementAllocation,
       includeDraws: this.includeDraws,
       includeProvisional: this.includeProvisional,
     });
-  }
-
-  private loadBusinessSummary(): void {
-    if (!this.auth.isAdmin()) {
-      this.businessSummary.set(null);
-      this.businessDetails.set(null);
-      return;
-    }
-    if (this.selectedSellerId || !this.allDrawsSelected) {
-      this.businessSummary.set(null);
-      this.api
-        .getBusinessFinanceDetails(this.fromDate, this.toDate)
-        .pipe(
-          catchError(() => of(null)),
-          takeUntilDestroyed(this.destroyRef),
-        )
-        .subscribe((details) => this.businessDetails.set(details));
-      return;
-    }
-    forkJoin({
-      summary: this.api
-        .getBusinessFinanceSummary(
-          this.fromDate,
-          this.toDate,
-          this.includeCommissions,
-          this.includeMovements,
-          this.includeProvisional,
-          this.selectedRouteId || undefined,
-          this.movementAllocation,
-        )
-        .pipe(catchError(() => of(null))),
-      details: this.api
-        .getBusinessFinanceDetails(this.fromDate, this.toDate)
-        .pipe(catchError(() => of(null))),
-    })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(({ summary, details }) => {
-        this.businessSummary.set(summary);
-        this.businessDetails.set(details);
-      });
-  }
-
-  private financeDetailsForReport(): BusinessFinanceDetails | null {
-    const details = this.businessDetails();
-    if (!details) return null;
-    if (!this.selectedRouteId) return details;
-    return {
-      ...details,
-      mountings: details.mountings.map((mounting) => ({
-        ...mounting,
-        totalStake: this.allocatedAdjustmentAmount(mounting.totalStake),
-        externalPrize: this.allocatedAdjustmentAmount(mounting.externalPrize),
-        items: mounting.items.map((item) => ({
-          ...item,
-          stakeAmount: this.allocatedAdjustmentAmount(item.stakeAmount),
-          potentialExternalPayout:
-            item.potentialExternalPayout === null
-              ? null
-              : this.allocatedAdjustmentAmount(item.potentialExternalPayout),
-        })),
-      })),
-      movements: details.movements.map((movement) => ({
-        ...movement,
-        amount: this.allocatedMovementAmount(movement.amount),
-      })),
-    };
   }
 
   private isNativeRuntime(): boolean {
@@ -667,8 +539,6 @@ interface UtilityFilterState {
   sellerId: string;
   routeId: string;
   includeCommissions: boolean;
-  includeMovements: boolean;
-  movementAllocation: MovementAllocation;
   includeDraws: boolean;
   includeProvisional: boolean;
 }

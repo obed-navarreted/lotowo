@@ -47,7 +47,6 @@ describe('UtilitiesPage', () => {
       selectedSellerId: string;
       selectedRouteId: string;
       includeCommissions: boolean;
-      includeMovements: boolean;
       includeProvisional: boolean;
       applyFilters(): void;
       ticketsQuery(): Record<string, string>;
@@ -158,14 +157,6 @@ describe('UtilitiesPage', () => {
       ],
     };
     summary.flush(report);
-    http
-      .expectOne(
-        (request) =>
-          request.url === '/api/v1/admin/finance/details' &&
-          request.params.get('from') === '2026-08-01' &&
-          request.params.get('to') === '2026-08-01',
-      )
-      .flush({ detail: 'Sin movimientos' }, { status: 404, statusText: 'Not Found' });
     fixture.detectChanges();
 
     expect(component.ticketsQuery()).toEqual({
@@ -173,7 +164,6 @@ describe('UtilitiesPage', () => {
       sellerId: 'seller-id',
     });
     expect(component.includeCommissions).toBe(false);
-    expect(component.includeMovements).toBe(false);
     expect(component.includeProvisional).toBe(true);
     expect(component.resultValue(report)).toBe(60);
     expect(fixture.nativeElement.textContent).toContain('LOTO - 01/08/26 - 11AM');
@@ -194,7 +184,7 @@ describe('UtilitiesPage', () => {
     expect(component.resultValue(report)).toBe(50);
   });
 
-  it('shows dated expenses when the utility period contains a single day', () => {
+  it('keeps utilities limited to sales, prizes and the selected commission mode', () => {
     sessionStorage.setItem(
       'suerte.filters.admin-id.utilities',
       JSON.stringify({
@@ -205,7 +195,6 @@ describe('UtilitiesPage', () => {
         sellerId: '',
         routeId: '',
         includeCommissions: false,
-        includeMovements: false,
         includeDraws: true,
       }),
     );
@@ -251,97 +240,15 @@ describe('UtilitiesPage', () => {
         commissionProvisional: false,
         sellers: [],
       });
-    http
-      .expectOne((request) => request.url === '/api/v1/admin/finance/summary')
-      .flush({
-        from: '2026-08-08',
-        to: '2026-08-08',
-        grossSales: 100,
-        localPrizes: 0,
-        commissions: 10,
-        resultAfterCommission: 100,
-        externalStake: 0,
-        externalPrizes: 0,
-        expenses: 350,
-        extraIncome: 0,
-        businessResult: 100,
-      });
-    http
-      .expectOne((request) => request.url === '/api/v1/admin/finance/details')
-      .flush({
-        from: '2026-08-08',
-        to: '2026-08-08',
-        mountings: [],
-        movements: [
-          {
-            id: 'expense-id',
-            date: '2026-08-08',
-            type: 'EXPENSE',
-            amount: 350,
-            description: 'Combustible y almuerzo',
-            userId: null,
-            userName: null,
-            active: true,
-            createdAt: '2026-08-08T18:00:00Z',
-            createdBy: 'admin-id',
-            deletedAt: null,
-            deletedBy: null,
-            deletedByName: null,
-          },
-        ],
-      });
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.period-movements')?.textContent).toContain(
-      'Combustible y almuerzo',
-    );
-    expect(fixture.nativeElement.querySelector('.period-movements')?.textContent).toContain('350');
-
-    const component = fixture.componentInstance as unknown as {
-      selectedRouteId: string;
-      selectedSellerId: string;
-      allDrawsSelected: boolean;
-    };
-    component.selectedRouteId = 'route-id';
-    component.selectedSellerId = '';
-    component.allDrawsSelected = true;
-    fixture.changeDetectorRef.markForCheck();
-    fixture.detectChanges();
-    const movementChoice = [...fixture.nativeElement.querySelectorAll('.commission-choice')].find(
-      (choice: Element) => choice.textContent?.includes('Considerar otros ingresos y gastos'),
-    ) as HTMLLabelElement;
-    const movementInput = movementChoice.querySelector('input') as HTMLInputElement;
-    expect(movementInput.disabled).toBe(false);
-    movementInput.checked = true;
-    movementInput.dispatchEvent(new Event('change'));
-    http
-      .expectOne(
-        (request) =>
-          request.url === '/api/v1/admin/finance/summary' &&
-          request.params.get('routeId') === 'route-id' &&
-          request.params.get('movementAllocation') === 'PROPORTIONAL' &&
-          request.params.get('includeMovements') === 'true',
-      )
-      .flush({
-        from: '2026-08-08',
-        to: '2026-08-08',
-        grossSales: 100,
-        localPrizes: 0,
-        commissions: 10,
-        resultAfterCommission: 100,
-        externalStake: 0,
-        externalPrizes: 0,
-        expenses: 350,
-        extraIncome: 0,
-        routeId: 'route-id',
-        movementAllocation: 'PROPORTIONAL',
-        movementAllocationRate: 1,
-        businessResult: -250,
-      });
-    http
-      .expectOne((request) => request.url === '/api/v1/admin/finance/details')
-      .flush({ from: '2026-08-08', to: '2026-08-08', mountings: [], movements: [] });
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.movement-allocation')).not.toBeNull();
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Considerar comisiones');
+    expect(text).toContain('Considerar resultados provisionales');
+    expect(text).not.toContain('otros ingresos y gastos');
+    expect(text).not.toContain('Montadas');
+    expect(fixture.nativeElement.querySelector('.business-finance')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.finance-detail')).toBeNull();
+    http.expectNone((request) => request.url.startsWith('/api/v1/admin/finance'));
   });
 });
