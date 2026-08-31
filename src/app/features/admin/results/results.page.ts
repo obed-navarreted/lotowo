@@ -12,7 +12,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { LotoApiService } from '../../../core/api/loto-api.service';
-import { BusinessSettlement, Draw, ExternalMountingInput } from '../../../core/models/api.models';
+import { Draw, DrawClosure } from '../../../core/models/api.models';
 import { FilterStateService } from '../../../core/navigation/filter-state.service';
 import { apiErrorMessage } from '../../../shared/api-error';
 import { drawLabel } from '../../../shared/draw-label';
@@ -37,25 +37,7 @@ export class ResultsPage {
   protected readonly winningNumber = signal('');
   protected readonly saving = signal(false);
   protected readonly actionError = signal('');
-  protected readonly lastClosure = signal<BusinessSettlement | null>(null);
-  protected readonly mountings = signal<ExternalMountingInput[]>([]);
-  protected readonly externalPrizeReceived = signal(0);
-  protected readonly mountingTotal = computed(() =>
-    this.roundMoney(
-      this.mountings().reduce((total, item) => total + Number(item.stakeAmount || 0), 0),
-    ),
-  );
-  protected readonly calculatedExternalPrize = computed(() =>
-    this.roundMoney(
-      this.mountings()
-        .filter((item) => item.number === this.winningNumber())
-        .reduce(
-          (total, item) =>
-            total + Number(item.stakeAmount || 0) * Number(item.payoutMultiplier || 0),
-          0,
-        ),
-    ),
-  );
+  protected readonly lastClosure = signal<DrawClosure | null>(null);
   protected selectedDate: string;
   protected readonly pending = computed(() =>
     this.draws().filter((draw) => this.canRegister(draw)),
@@ -100,8 +82,6 @@ export class ResultsPage {
     if (!this.canRegister(draw)) return;
     this.selectedDraw.set(draw);
     this.winningNumber.set('');
-    this.mountings.set([]);
-    this.externalPrizeReceived.set(0);
     this.actionError.set('');
   }
 
@@ -111,38 +91,6 @@ export class ResultsPage {
 
   protected updateNumber(value: string): void {
     this.winningNumber.set(value.replace(/\D/g, '').slice(0, 2));
-    this.suggestExternalPrize();
-    this.actionError.set('');
-  }
-
-  protected addMounting(): void {
-    this.mountings.update((items) => [
-      ...items,
-      { number: '', stakeAmount: 0, payoutMultiplier: 80 },
-    ]);
-  }
-
-  protected removeMounting(index: number): void {
-    this.mountings.update((items) => items.filter((_, itemIndex) => itemIndex !== index));
-    this.suggestExternalPrize();
-  }
-
-  protected updateMountingNumber(index: number, value: string): void {
-    this.updateMounting(index, {
-      number: value.replace(/\D/g, '').slice(0, 2),
-    });
-  }
-
-  protected updateMountingAmount(index: number, value: string): void {
-    this.updateMounting(index, { stakeAmount: Number(value) });
-  }
-
-  protected updateMountingMultiplier(index: number, value: string): void {
-    this.updateMounting(index, { payoutMultiplier: Number(value) });
-  }
-
-  protected updateExternalPrize(value: string): void {
-    this.externalPrizeReceived.set(Number(value));
     this.actionError.set('');
   }
 
@@ -152,31 +100,9 @@ export class ResultsPage {
       this.actionError.set('Escribe el número ganador con dos dígitos, entre 00 y 99.');
       return;
     }
-    const mountingNumbers = this.mountings().map((item) => item.number);
-    if (
-      this.mountings().some(
-        (item) =>
-          !/^\d{2}$/.test(item.number) || !(item.stakeAmount > 0) || !(item.payoutMultiplier > 0),
-      ) ||
-      new Set(mountingNumbers).size !== mountingNumbers.length
-    ) {
-      this.actionError.set('Revisa los números, montos y multiplicadores de la montada.');
-      return;
-    }
-    if (this.externalPrizeReceived() !== this.calculatedExternalPrize()) {
-      this.actionError.set(
-        `El premio externo debe ser ${this.money(this.calculatedExternalPrize())} según la montada ganadora.`,
-      );
-      return;
-    }
     this.saving.set(true);
     this.api
-      .registerBusinessResult(
-        draw.id,
-        this.winningNumber(),
-        this.mountings(),
-        this.externalPrizeReceived(),
-      )
+      .registerWinningNumber(draw.id, this.winningNumber())
       .pipe(
         finalize(() => this.saving.set(false)),
         takeUntilDestroyed(this.destroyRef),
@@ -214,22 +140,6 @@ export class ResultsPage {
   }
   protected money(value: number): string {
     return new Intl.NumberFormat('es-NI', { maximumFractionDigits: 2 }).format(value);
-  }
-
-  private updateMounting(index: number, changes: Partial<ExternalMountingInput>): void {
-    this.mountings.update((items) =>
-      items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...changes } : item)),
-    );
-    this.suggestExternalPrize();
-    this.actionError.set('');
-  }
-
-  private suggestExternalPrize(): void {
-    this.externalPrizeReceived.set(this.calculatedExternalPrize());
-  }
-
-  private roundMoney(value: number): number {
-    return Math.round((value + Number.EPSILON) * 100) / 100;
   }
 
   private localDate(date: Date): string {

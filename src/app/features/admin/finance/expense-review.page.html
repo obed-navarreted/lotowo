@@ -10,7 +10,11 @@
       class="button button--primary"
       type="button"
       (click)="exportReport()"
-      [disabled]="exporting() || loading() || (!mountings().length && !manualExpenses().length)"
+      [disabled]="
+        exporting() ||
+        loading() ||
+        (!mountings().length && !mountingMovements().length && !manualExpenses().length)
+      "
     >
       <lo-icon name="download" [size]="17" />{{ exporting() ? 'Generando…' : 'PDF' }}
     </button>
@@ -69,7 +73,7 @@
     <article>
       <span>Montadas</span>
       <strong>{{ money(mountingExpense()) }}</strong>
-      <small>{{ mountings().length }} registros</small>
+      <small>{{ mountings().length + mountingOutflows().length }} registros</small>
     </article>
     <article>
       <span>Gastos manuales</span>
@@ -90,7 +94,7 @@
     </article>
   </section>
 
-  @if (mountings().length || manualExpenses().length) {
+  @if (mountings().length || mountingMovements().length || manualExpenses().length) {
     <section class="expense-sections">
       <article class="expense-detail card">
         <header>
@@ -98,10 +102,10 @@
             ><lo-icon name="stack" [size]="20"
           /></span>
           <div>
-            <span class="eyebrow">Por sorteo</span>
-            <h2>Montadas y premios</h2>
+            <span class="eyebrow">Montadas</span>
+            <h2>Egresos y premios</h2>
           </div>
-          <b>{{ mountings().length }}</b>
+          <b>{{ mountings().length + mountingMovements().length }}</b>
         </header>
         <div class="mounting-list">
           @for (mounting of mountings(); track mounting.id) {
@@ -156,6 +160,19 @@
                 <small>Registrado {{ dateTimeLabel(mounting.registeredAt) }}</small>
               </div>
             </details>
+          }
+          @for (movement of mountingMovements(); track movement.id) {
+            <div class="manual-entry mounting-movement">
+              <time>{{ movementDate(movement) }}</time>
+              <span
+                ><strong>{{ movement.description }}</strong
+                ><small>{{ movement.userName || 'Administración' }}</small></span
+              >
+              <b [class.profit]="movement.type === 'MOUNTING_INCOME'"
+                >{{ movement.type === 'MOUNTING_INCOME' ? '+' : '−'
+                }}{{ money(movement.amount) }}</b
+              >
+            </div>
           }
         </div>
       </article>

@@ -180,6 +180,31 @@ export class FinanceManagementPage {
     return new Intl.NumberFormat('es-NI', { maximumFractionDigits: 2 }).format(value);
   }
 
+  protected isIncome(type: BusinessMovementType): boolean {
+    return type === 'INCOME' || type === 'MOUNTING_INCOME';
+  }
+
+  protected isMounting(type: BusinessMovementType): boolean {
+    return type === 'MOUNTING_EXPENSE' || type === 'MOUNTING_INCOME';
+  }
+
+  protected movementLabel(type: BusinessMovementType): string {
+    switch (type) {
+      case 'INCOME':
+        return 'Ingreso';
+      case 'MOUNTING_EXPENSE':
+        return 'Egreso de montada';
+      case 'MOUNTING_INCOME':
+        return 'Ingreso de montada';
+      default:
+        return 'Gasto';
+    }
+  }
+
+  protected movementIcon(type: BusinessMovementType): 'trend' | 'wallet' | 'stack' {
+    return this.isMounting(type) ? 'stack' : this.isIncome(type) ? 'trend' : 'wallet';
+  }
+
   protected dateLabel(value: string): string {
     return new Intl.DateTimeFormat('es-NI', {
       day: '2-digit',

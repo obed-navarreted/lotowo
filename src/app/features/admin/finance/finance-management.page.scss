@@ -188,6 +188,10 @@
   color: var(--success);
   background: var(--mint-soft);
 }
+.movement--mounting .movement-type {
+  color: var(--violet);
+  background: var(--violet-soft);
+}
 .movement-copy {
   display: flex;
   min-width: 0;

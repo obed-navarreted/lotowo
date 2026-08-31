@@ -326,6 +326,9 @@
   font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
+.mounting-movement > b.profit {
+  color: var(--success);
+}
 
 .expense-empty {
   display: flex;

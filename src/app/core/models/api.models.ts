@@ -289,7 +289,7 @@ export interface BusinessFinanceDetails {
   movements: BusinessMovement[];
 }
 
-export type BusinessMovementType = 'EXPENSE' | 'INCOME';
+export type BusinessMovementType = 'EXPENSE' | 'INCOME' | 'MOUNTING_EXPENSE' | 'MOUNTING_INCOME';
 
 export interface BusinessMovementInput {
   type: BusinessMovementType;

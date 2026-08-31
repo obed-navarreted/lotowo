@@ -94,17 +94,49 @@ describe('ExpenseReviewPage', () => {
           deletedBy: null,
           deletedByName: null,
         },
+        {
+          id: 'mounting-expense-id',
+          date: '2026-08-27',
+          type: 'MOUNTING_EXPENSE',
+          amount: 200,
+          description: 'Montada 3 PM',
+          userId: null,
+          userName: null,
+          active: true,
+          createdAt: '2026-08-27T18:00:00Z',
+          createdBy: 'admin-id',
+          deletedAt: null,
+          deletedBy: null,
+          deletedByName: null,
+        },
+        {
+          id: 'mounting-income-id',
+          date: '2026-08-27',
+          type: 'MOUNTING_INCOME',
+          amount: 400,
+          description: 'Premio externo 3 PM',
+          userId: null,
+          userName: null,
+          active: true,
+          createdAt: '2026-08-27T18:00:00Z',
+          createdBy: 'admin-id',
+          deletedAt: null,
+          deletedBy: null,
+          deletedByName: null,
+        },
       ],
     });
     fixture.detectChanges();
 
     const page = fixture.nativeElement as HTMLElement;
-    expect(page.textContent).toContain('750');
-    expect(page.textContent).toContain('+8,000');
+    expect(page.textContent).toContain('950');
+    expect(page.textContent).toContain('+8,400');
     expect(page.textContent).toContain('Combustible');
+    expect(page.textContent).toContain('Montada 3 PM');
+    expect(page.textContent).toContain('Premio externo 3 PM');
     expect(page.textContent).not.toContain('Otro ingreso');
     expect(page.querySelectorAll('.mounting-entry')).toHaveLength(1);
-    expect(page.querySelectorAll('.manual-entry')).toHaveLength(1);
+    expect(page.querySelectorAll('.manual-entry')).toHaveLength(3);
   });
 
   it('shows a useful empty state when the API has no financial details', () => {

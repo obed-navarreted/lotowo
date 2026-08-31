@@ -3,7 +3,7 @@
     <span class="eyebrow">Administración financiera</span>
     <h1>Gestión</h1>
     <p class="page-subtitle">
-      Registra ingresos y gastos extraordinarios sin mezclarlos con los cierres.
+      Registra ingresos, gastos y movimientos de montada sin recargar los cierres.
     </p>
   </div>
   <div class="management-header-actions">
@@ -35,8 +35,8 @@
   <div>
     <strong>¿Qué se registra aquí?</strong
     ><span
-      >Gastos operativos e ingresos adicionales asociados a una fecha. Las montadas se registran con
-      el resultado de cada sorteo.</span
+      >Elige gasto o ingreso para movimientos operativos; usa egreso o ingreso de montada para el
+      dinero enviado y los premios recibidos externamente.</span
     >
   </div>
 </section>
@@ -67,8 +67,14 @@
         <label
           ><span>Tipo</span
           ><select class="select" [(ngModel)]="item.type">
-            <option value="EXPENSE">Gasto</option>
-            <option value="INCOME">Ingreso</option>
+            <optgroup label="Operación">
+              <option value="EXPENSE">Gasto</option>
+              <option value="INCOME">Ingreso</option>
+            </optgroup>
+            <optgroup label="Montadas">
+              <option value="MOUNTING_EXPENSE">Egreso de montada</option>
+              <option value="MOUNTING_INCOME">Ingreso de montada</option>
+            </optgroup>
           </select></label
         >
         <label
@@ -136,22 +142,22 @@
       @for (movement of movements(); track movement.id) {
         <article
           [class.movement--deleted]="!movement.active"
-          [class.movement--income]="movement.type === 'INCOME'"
+          [class.movement--income]="isIncome(movement.type)"
+          [class.movement--mounting]="isMounting(movement.type)"
         >
           <span class="movement-type"
-            ><lo-icon [name]="movement.type === 'INCOME' ? 'trend' : 'wallet'" [size]="18"
+            ><lo-icon [name]="movementIcon(movement.type)" [size]="18"
           /></span>
           <div class="movement-copy">
             <strong>{{ movement.description }}</strong
             ><small
-              >{{ movement.type === 'INCOME' ? 'Ingreso' : 'Gasto' }} ·
-              {{ movement.userName || 'General' }}</small
+              >{{ movementLabel(movement.type) }} · {{ movement.userName || 'General' }}</small
             >
             @if (!movement.active) {
               <small>Eliminado por {{ movement.deletedByName || 'Administrador' }}</small>
             }
           </div>
-          <b>{{ movement.type === 'INCOME' ? '+' : '−' }}{{ money(movement.amount) }}</b>
+          <b>{{ isIncome(movement.type) ? '+' : '−' }}{{ money(movement.amount) }}</b>
           @if (movement.active) {
             <div class="movement-actions">
               <button type="button" (click)="startEdit(movement)" aria-label="Editar">
@@ -169,7 +175,7 @@
   } @else {
     <div class="empty-row">
       <strong>Sin movimientos</strong
-      ><span>No hay ingresos ni gastos registrados en esta fecha.</span>
+      ><span>No hay ingresos, gastos ni montadas registradas en esta fecha.</span>
     </div>
   }
 </section>
@@ -183,8 +189,14 @@
         <label
           ><span>Tipo</span
           ><select class="select" [(ngModel)]="editType">
-            <option value="EXPENSE">Gasto</option>
-            <option value="INCOME">Ingreso</option>
+            <optgroup label="Operación">
+              <option value="EXPENSE">Gasto</option>
+              <option value="INCOME">Ingreso</option>
+            </optgroup>
+            <optgroup label="Montadas">
+              <option value="MOUNTING_EXPENSE">Egreso de montada</option>
+              <option value="MOUNTING_INCOME">Ingreso de montada</option>
+            </optgroup>
           </select></label
         >
         <label
@@ -231,7 +243,9 @@
       <p>
         <strong>{{ movement.description }}</strong> · {{ money(movement.amount) }}
       </p>
-      <p class="modal-note">Dejará de afectar las utilidades, pero su auditoría se conservará.</p>
+      <p class="modal-note">
+        Dejará de afectar el control financiero, pero su auditoría se conservará.
+      </p>
       <footer>
         <button class="button" type="button" (click)="deleting.set(null)">Cancelar</button
         ><button

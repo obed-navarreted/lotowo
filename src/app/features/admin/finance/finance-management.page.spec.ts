@@ -46,9 +46,9 @@ describe('FinanceManagementPage', () => {
 
     expect(component.selectedDate).toBe('2026-08-16');
     Object.assign(component.drafts()[0], {
-      type: 'EXPENSE',
+      type: 'MOUNTING_EXPENSE',
       amount: 350,
-      description: 'Combustible',
+      description: 'Montada de las 11 AM',
       userId: 'seller-id',
     });
     component.saveBatch();
@@ -58,9 +58,9 @@ describe('FinanceManagementPage', () => {
       date: '2026-08-16',
       movements: [
         {
-          type: 'EXPENSE',
+          type: 'MOUNTING_EXPENSE',
           amount: 350,
-          description: 'Combustible',
+          description: 'Montada de las 11 AM',
           userId: 'seller-id',
         },
       ],

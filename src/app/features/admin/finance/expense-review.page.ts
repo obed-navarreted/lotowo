@@ -53,8 +53,22 @@ export class ExpenseReviewPage {
   protected readonly manualExpenses = computed(() =>
     (this.details()?.movements ?? []).filter((movement) => movement.type === 'EXPENSE'),
   );
+  protected readonly mountingMovements = computed(() =>
+    (this.details()?.movements ?? []).filter(
+      (movement) => movement.type === 'MOUNTING_EXPENSE' || movement.type === 'MOUNTING_INCOME',
+    ),
+  );
+  protected readonly mountingOutflows = computed(() =>
+    this.mountingMovements().filter((movement) => movement.type === 'MOUNTING_EXPENSE'),
+  );
+  protected readonly mountingIncome = computed(() =>
+    this.mountingMovements().filter((movement) => movement.type === 'MOUNTING_INCOME'),
+  );
   protected readonly mountingExpense = computed(() =>
-    this.round(this.mountings().reduce((total, mounting) => total + mounting.totalStake, 0)),
+    this.round(
+      this.mountings().reduce((total, mounting) => total + mounting.totalStake, 0) +
+        this.mountingOutflows().reduce((total, movement) => total + movement.amount, 0),
+    ),
   );
   protected readonly manualExpense = computed(() =>
     this.round(this.manualExpenses().reduce((total, movement) => total + movement.amount, 0)),
@@ -63,7 +77,10 @@ export class ExpenseReviewPage {
     this.round(this.mountingExpense() + this.manualExpense()),
   );
   protected readonly externalPrizes = computed(() =>
-    this.round(this.mountings().reduce((total, mounting) => total + mounting.externalPrize, 0)),
+    this.round(
+      this.mountings().reduce((total, mounting) => total + mounting.externalPrize, 0) +
+        this.mountingIncome().reduce((total, movement) => total + movement.amount, 0),
+    ),
   );
   protected readonly netCost = computed(() =>
     this.round(this.totalExpense() - this.externalPrizes()),
@@ -91,7 +108,9 @@ export class ExpenseReviewPage {
     if (
       !details ||
       this.exporting() ||
-      (!this.mountings().length && !this.manualExpenses().length)
+      (!this.mountings().length &&
+        !this.mountingMovements().length &&
+        !this.manualExpenses().length)
     ) {
       return;
     }

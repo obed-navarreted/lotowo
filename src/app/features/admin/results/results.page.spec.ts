@@ -24,14 +24,11 @@ describe('ResultsPage', () => {
     vi.useRealTimers();
   });
 
-  it('registers the winner, late mounting and external prize in one request', () => {
+  it('registers only the winner from the simplified result dialog', () => {
     const fixture = TestBed.createComponent(ResultsPage);
     const component = fixture.componentInstance as unknown as {
       openResult(draw: Draw): void;
       updateNumber(value: string): void;
-      addMounting(): void;
-      updateMountingNumber(index: number, value: string): void;
-      updateMountingAmount(index: number, value: string): void;
       submitResult(): void;
     };
     const draw = pendingDraw();
@@ -39,28 +36,33 @@ describe('ResultsPage', () => {
 
     component.openResult(draw);
     component.updateNumber('08');
-    component.addMounting();
-    component.updateMountingNumber(0, '08');
-    component.updateMountingAmount(0, '100');
     component.submitResult();
 
-    const result = http.expectOne('/api/v1/admin/finance/draws/draw-id/result');
-    expect(result.request.body).toEqual({
-      winningNumber: '08',
-      mountings: [{ number: '08', stakeAmount: 100, payoutMultiplier: 80 }],
-      externalPrizeReceived: 8000,
-    });
+    const result = http.expectOne('/api/v1/settlements/draws/draw-id/result');
+    expect(result.request.body).toEqual({ number: '08' });
     result.flush({
+      id: 'closure-id',
       drawId: 'draw-id',
+      drawName: 'Sorteo diario 11 AM',
       winningNumber: '08',
       grossSales: 500,
-      localPrizes: 1000,
-      commissions: 50,
-      externalStake: 100,
-      externalPrize: 8000,
-      businessResult: 7350,
+      winningStakes: 12.5,
+      prizesDue: 1000,
+      netResult: -500,
+      createdAt: '2026-08-16T18:01:00Z',
     });
     http.expectOne((request) => request.url === '/api/v1/draws').flush([]);
+  });
+
+  it('does not present mounting fields in the result dialog', () => {
+    const fixture = TestBed.createComponent(ResultsPage);
+    const component = fixture.componentInstance as unknown as { openResult(draw: Draw): void };
+    const draw = pendingDraw();
+    http.expectOne((request) => request.url === '/api/v1/draws').flush([draw]);
+    component.openResult(draw);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Montada externa');
+    expect(fixture.nativeElement.textContent).toContain('Agregar número ganador');
   });
 });
 

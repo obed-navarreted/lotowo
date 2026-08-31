@@ -18,9 +18,24 @@ export class ExpenseReportPdfService {
     const document = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
     const mountings = details.mountings;
     const expenses = details.movements.filter((movement) => movement.type === 'EXPENSE');
-    const mountingExpense = this.sum(mountings.map((item) => item.totalStake));
+    const mountingMovements = details.movements.filter(
+      (movement) => movement.type === 'MOUNTING_EXPENSE' || movement.type === 'MOUNTING_INCOME',
+    );
+    const mountingOutflows = mountingMovements.filter(
+      (movement) => movement.type === 'MOUNTING_EXPENSE',
+    );
+    const mountingIncome = mountingMovements.filter(
+      (movement) => movement.type === 'MOUNTING_INCOME',
+    );
+    const mountingExpense = this.round(
+      this.sum(mountings.map((item) => item.totalStake)) +
+        this.sum(mountingOutflows.map((item) => item.amount)),
+    );
     const manualExpense = this.sum(expenses.map((item) => item.amount));
-    const externalPrizes = this.sum(mountings.map((item) => item.externalPrize));
+    const externalPrizes = this.round(
+      this.sum(mountings.map((item) => item.externalPrize)) +
+        this.sum(mountingIncome.map((item) => item.amount)),
+    );
     const totalExpense = this.round(mountingExpense + manualExpense);
     const netCost = this.round(totalExpense - externalPrizes);
 
@@ -39,6 +54,17 @@ export class ExpenseReportPdfService {
       for (const mounting of mountings) y = this.mountingRow(document, y, mounting);
     } else {
       y = this.emptyRow(document, y, 'No hubo montadas en el período.');
+    }
+
+    y = this.ensureSpace(document, y + 8, 25);
+    y = this.sectionTitle(document, y, 'MOVIMIENTOS DE MONTADA', mountingMovements.length);
+    if (mountingMovements.length) {
+      y = this.mountingMovementTableHeader(document, y);
+      for (const movement of mountingMovements) {
+        y = this.mountingMovementRow(document, y, movement);
+      }
+    } else {
+      y = this.emptyRow(document, y, 'No hubo movimientos simples de montada en el período.');
     }
 
     y = this.ensureSpace(document, y + 8, 25);
@@ -164,6 +190,45 @@ export class ExpenseReportPdfService {
       ['MONTO', 192, 'right'],
     ]);
     return top + 8;
+  }
+
+  private mountingMovementTableHeader(document: PdfDocument, top: number): number {
+    document.setFillColor(242, 240, 236);
+    document.rect(16, top, 178, 8, 'F');
+    this.tableHeader(document, top + 5.2, [
+      ['FECHA', 18, 'left'],
+      ['TIPO', 47, 'left'],
+      ['DESCRIPCIÓN', 86, 'left'],
+      ['MONTO', 192, 'right'],
+    ]);
+    return top + 8;
+  }
+
+  private mountingMovementRow(
+    document: PdfDocument,
+    top: number,
+    movement: BusinessMovement,
+  ): number {
+    const description = document.splitTextToSize(this.clean(movement.description), 90) as string[];
+    const height = Math.max(11, 7 + description.length * 3.2);
+    let y = this.ensureSpace(document, top, height + 8, true);
+    if (y !== top) y = this.mountingMovementTableHeader(document, y);
+    const income = movement.type === 'MOUNTING_INCOME';
+    document.setDrawColor(232, 228, 220);
+    document.setLineWidth(0.15);
+    document.line(16, y + height, 194, y + height);
+    document.setFont('helvetica', 'normal');
+    document.setFontSize(7);
+    document.setTextColor(67, 64, 59);
+    document.text(this.shortDate(movement.date), 18, y + 6);
+    document.setFont('helvetica', 'bold');
+    document.text(income ? 'Ingreso' : 'Egreso', 47, y + 6);
+    document.text(description, 86, y + 6);
+    document.setTextColor(income ? 38 : 177, income ? 121 : 65, income ? 101 : 65);
+    document.text(`${income ? '+' : '-'}${this.amount(movement.amount)}`, 192, y + 6, {
+      align: 'right',
+    });
+    return y + height;
   }
 
   private expenseRow(document: PdfDocument, top: number, expense: BusinessMovement): number {
