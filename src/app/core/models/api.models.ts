@@ -224,6 +224,29 @@ export interface DrawClosure {
   createdAt: string;
 }
 
+export interface ResultCorrectionPreview {
+  drawId: string;
+  version: number;
+  previousNumber: string;
+  newNumber: string;
+  grossSales: number;
+  previousPrizesDue: number;
+  newPrizesDue: number;
+  previousNetResult: number;
+  newNetResult: number;
+  commissions: number;
+  externalStake: number;
+  previousExternalPrize: number;
+  externalPayouts: {
+    batchId: string;
+    source: string;
+    currentAmount: number;
+    calculatedAmount: number | null;
+    requiresInput: boolean;
+  }[];
+  manualMovementsNeedReview: boolean;
+}
+
 export interface ExternalMountingInput {
   number: string;
   stakeAmount: number;

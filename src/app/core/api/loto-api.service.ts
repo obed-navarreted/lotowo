@@ -5,6 +5,7 @@ import {
   DailyReport,
   Draw,
   DrawClosure,
+  ResultCorrectionPreview,
   DrawNumberReport,
   MountingReport,
   MountingMode,
@@ -284,6 +285,25 @@ export class LotoApiService {
 
   registerWinningNumber(drawId: string, number: string) {
     return this.http.post<DrawClosure>(`/api/v1/settlements/draws/${drawId}/result`, { number });
+  }
+
+  previewResultCorrection(drawId: string, number: string) {
+    return this.http.post<ResultCorrectionPreview>(
+      `/api/v1/settlements/draws/${drawId}/result/preview`,
+      { number },
+    );
+  }
+
+  correctWinningNumber(
+    drawId: string,
+    request: {
+      number: string;
+      reason: string;
+      expectedVersion: number;
+      externalPayouts: { batchId: string; amount: number }[];
+    },
+  ) {
+    return this.http.put<DrawClosure>(`/api/v1/settlements/draws/${drawId}/result`, request);
   }
 
   registerBusinessResult(

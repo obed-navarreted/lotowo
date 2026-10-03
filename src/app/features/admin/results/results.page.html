@@ -32,7 +32,10 @@
   <div class="closure-success">
     <span class="closure-success__icon"><lo-icon name="check" [size]="17" /></span>
     <div class="closure-success__copy">
-      <strong>Ganador {{ closure.winningNumber }} registrado</strong>
+      <strong
+        >Ganador {{ closure.winningNumber }}
+        {{ lastWasCorrection() ? 'corregido' : 'registrado' }}</strong
+      >
       <div class="closure-success__metrics">
         <span
           >Ventas <b>{{ money(closure.grossSales) }}</b></span
@@ -111,13 +114,26 @@
       @if (registered().length) {
         <div class="draw-list">
           @for (draw of registered(); track draw.id) {
-            <a routerLink="/reports" [queryParams]="{ date: selectedDate, drawId: draw.id }"
-              ><span class="winner-number">{{ draw.winningNumber }}</span
-              ><span
+            <article class="registered-row">
+              <span class="winner-number">{{ draw.winningNumber }}</span>
+              <span
                 ><strong>{{ drawName(draw) }}</strong
-                ><small>Ganador registrado · ver cierre y detalle</small></span
-              ><lo-icon name="arrow" [size]="17"
-            /></a>
+                ><small>Ganador registrado</small></span
+              >
+              <div class="registered-actions">
+                <a
+                  class="button"
+                  routerLink="/reports"
+                  [queryParams]="{ date: selectedDate, drawId: draw.id }"
+                  >Ver cierre</a
+                >
+                @if (draw.status === 'SETTLED') {
+                  <button class="button" type="button" (click)="openCorrection(draw)">
+                    Editar ganador
+                  </button>
+                }
+              </div>
+            </article>
           }
         </div>
       } @else {
@@ -141,9 +157,17 @@
       (click)="$event.stopPropagation()"
     >
       <span class="modal-icon"><lo-icon name="check" [size]="23" /></span
-      ><span class="eyebrow">Cierre definitivo</span>
-      <h2 id="winner-title">Agregar número ganador</h2>
+      ><span class="eyebrow">{{
+        isCorrection() ? 'Corrección de resultado' : 'Cierre de sorteo'
+      }}</span>
+      <h2 id="winner-title">{{ isCorrection() ? 'Editar ganador' : 'Agregar número ganador' }}</h2>
       <p>{{ drawName(draw) }}</p>
+      @if (isCorrection()) {
+        <p>
+          Ganador actual: <strong>{{ draw.winningNumber }}</strong
+          >. Revisa los nuevos premios antes de guardar.
+        </p>
+      }
       <label
         ><span>Terminación ganadora</span
         ><input
@@ -156,20 +180,117 @@
           autofocus
         /><small>Se calcularán premios y cierres globales, por ruta y por vendedor.</small></label
       >
+      @if (isCorrection()) {
+        <label class="correction-reason"
+          ><span>Motivo de la corrección</span>
+          <textarea
+            class="input"
+            rows="3"
+            maxlength="500"
+            [value]="correctionReason()"
+            (input)="correctionReason.set($any($event.target).value)"
+            placeholder="Explica por qué cambió el ganador"
+          ></textarea>
+        </label>
+        @if (correctionPreview(); as preview) {
+          <div class="correction-preview">
+            <strong>Vista previa: {{ preview.previousNumber }} → {{ preview.newNumber }}</strong>
+            <div>Ventas: C$ {{ money(preview.grossSales) }}</div>
+            <div>
+              Premios: C$ {{ money(preview.previousPrizesDue) }} → C$
+              {{ money(preview.newPrizesDue) }}
+            </div>
+            <div>
+              Resultado antes de comisión: C$ {{ money(preview.previousNetResult) }} → C$
+              {{ money(preview.newNetResult) }}
+            </div>
+            <div>Comisión histórica: C$ {{ money(preview.commissions) }}</div>
+            <div>
+              Resultado financiero del sorteo: C$ {{ money(previousBusinessResult(preview)) }} →
+              @if (projectedBusinessResult(preview) === null) {
+                pendiente de conciliar montadas externas
+              } @else {
+                C$ {{ money(projectedBusinessResult(preview)!) }}
+              }
+            </div>
+          </div>
+          @for (payout of preview.externalPayouts; track payout.batchId) {
+            @if (payout.requiresInput) {
+              <label class="correction-external">
+                <span>Premio corregido del lote externo {{ payout.batchId }}</span>
+                <small
+                  >Premio registrado: C$ {{ money(payout.currentAmount) }}. Comprueba el monto
+                  recibido.</small
+                >
+                <input
+                  class="input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Premio nuevo"
+                  [value]="externalAmounts()[payout.batchId]"
+                  (input)="updateExternalAmount(payout.batchId, $any($event.target).value)"
+                />
+              </label>
+            } @else {
+              <p class="correction-note">
+                Montada externa {{ payout.batchId }}: premio C$ {{ money(payout.currentAmount) }} →
+                C$ {{ money(payout.calculatedAmount ?? 0) }}.
+              </p>
+            }
+          }
+          @if (preview.manualMovementsNeedReview) {
+            <label class="correction-review"
+              ><input
+                type="checkbox"
+                [checked]="manualReviewed()"
+                (change)="manualReviewed.set($any($event.target).checked)"
+              />
+              <span
+                >Revisé los movimientos manuales de montada de esta fecha. Si alguno corresponde a
+                este sorteo, lo corregiré en Gestión financiera.</span
+              >
+            </label>
+          }
+        }
+      }
       @if (actionError()) {
         <div class="modal-error">{{ actionError() }}</div>
       }
       <footer>
-        <button class="button" type="button" (click)="closeResult()" [disabled]="saving()">
-          Cancelar</button
-        ><button
-          class="button button--primary"
+        <button
+          class="button"
           type="button"
-          (click)="submitResult()"
-          [disabled]="saving() || winningNumber().length !== 2"
+          (click)="closeResult()"
+          [disabled]="saving() || previewLoading()"
         >
-          {{ saving() ? 'Calculando cierres…' : 'Registrar ganador' }}
+          Cancelar
         </button>
+        @if (isCorrection() && !correctionPreview()) {
+          <button
+            class="button button--primary"
+            type="button"
+            (click)="requestPreview()"
+            [disabled]="saving() || previewLoading() || winningNumber().length !== 2"
+          >
+            {{ previewLoading() ? 'Calculando…' : 'Ver cambios' }}
+          </button>
+        } @else {
+          <button
+            class="button button--primary"
+            type="button"
+            (click)="isCorrection() ? submitCorrection() : submitResult()"
+            [disabled]="saving() || winningNumber().length !== 2"
+          >
+            {{
+              saving()
+                ? 'Guardando…'
+                : isCorrection()
+                  ? 'Confirmar corrección'
+                  : 'Registrar ganador'
+            }}
+          </button>
+        }
       </footer>
     </section>
   </div>
